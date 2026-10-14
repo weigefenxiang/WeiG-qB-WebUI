@@ -6,7 +6,7 @@ import path from 'node:path';
 import crypto from 'node:crypto';
 import {execFileSync,spawnSync} from 'node:child_process';
 import {launchBrowser} from './browser-driver.mjs';
-import {probePeerWindows} from './instance-peer-window-probe.mjs';
+import {probePeerWindows,probeLivePeerConsent} from './instance-peer-window-probe.mjs';
 const sha=process.env.GITHUB_SHA||'',versions=['4.6.7','5.2.4'];
 const id='weig-a76-shared-'+process.pid+'-'+Date.now();
 const stage=fs.mkdtempSync(path.join(os.tmpdir(),'weig-a76-'));
@@ -100,7 +100,7 @@ async function verifyInstanceSidebar(page,q){
  await page.locator('#sidebar-instances .sidebar-instances__more').first().click();
  const menu=page.locator('#weig-floating-layer .ui-context-menu[role="menu"]');
  await menu.waitFor({state:'visible',timeout:5000});
- assert((await menu.locator('[role="menuitem"]').count())===3,'Instance menu must have Rename/Edit/Remove');
+ assert((await menu.locator('[role="menuitem"]').count())===4,'Instance menu must have Connect/Rename/Edit/Remove');
  await page.waitForTimeout(60);
  assert(await menu.isVisible(),'Opening click closed instance menu');
  await page.keyboard.press('Escape');
@@ -235,6 +235,7 @@ async function test(){
  assert((await context.cookies(qbs[1].url)).every(c=>c.name!==qbs[0].sessionCookieName),'First instance session cookie leaked to second qB host');
  const second=await enter(context,qbs[1]);
  const peerWindowEvidence=await probePeerWindows({first,context,target:qbs[1],assert,awaitRealApp});
+ const peerLiveEvidence=await probeLivePeerConsent({first,target:qbs[1],assert,awaitRealApp});
 
  // A76-47: current qB reports only an on-visit snapshot.
  // The destination displays its historical count without a live online light.
@@ -350,7 +351,7 @@ async function test(){
  assert((await context.cookies(qbs[1].url)).find(c=>c.name===qbs[1].sessionCookieName)?.value===sidB,'Handoff changed destination qB session');
  await context.close();
  fs.mkdirSync('artifacts/real-qb-full',{recursive:true});
- fs.writeFileSync('artifacts/real-qb-full/'+sha+'-shared-static.json',JSON.stringify({status:'PASS',weig_sha:sha,qb_versions:versions,scenario:'two-real-qb-one-shared-static-root',sid_isolation:'PASS',cross_origin_registry:'PASS',whole_page_switch:'PASS',return_navigation:'PASS',protected_cookie_handoff:'PASS',protected_session_probe:'PASS',no_credential_replay:'PASS',sessions_preserved:'PASS',settings_after_return:'PASS',shared_private_assets:'PASS',noncredential_handoff:'PASS',handoff_requires_consent:'PASS',navigation_http_200:'PASS',navigation_referer_suppressed:'PASS',peer_window_feasibility:'PASS',peerWindowEvidence,settings_per_origin:'PASS',private_docker_network:'internal',static_sha256:checks[0].sha256,checks,settingsChecks,roundTripSettings,sidebarChecks},null,2)+'\n');
+ fs.writeFileSync('artifacts/real-qb-full/'+sha+'-shared-static.json',JSON.stringify({status:'PASS',weig_sha:sha,qb_versions:versions,scenario:'two-real-qb-one-shared-static-root',sid_isolation:'PASS',cross_origin_registry:'PASS',whole_page_switch:'PASS',return_navigation:'PASS',protected_cookie_handoff:'PASS',protected_session_probe:'PASS',no_credential_replay:'PASS',sessions_preserved:'PASS',settings_after_return:'PASS',shared_private_assets:'PASS',noncredential_handoff:'PASS',handoff_requires_consent:'PASS',navigation_http_200:'PASS',navigation_referer_suppressed:'PASS',peer_window_feasibility:'PASS',peerWindowEvidence,peer_live_consent:'PASS',peerLiveEvidence,settings_per_origin:'PASS',private_docker_network:'internal',static_sha256:checks[0].sha256,checks,settingsChecks,roundTripSettings,sidebarChecks},null,2)+'\n');
  console.log('A76 real shared static and cross-instance session PASS');
 }
 try{await test();}catch(e){console.error('A76 real shared static failed: '+String(e?.message||e));process.exitCode=1;}

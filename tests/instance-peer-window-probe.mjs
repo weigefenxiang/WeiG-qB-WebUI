@@ -69,3 +69,67 @@ export async function probePeerWindows({first,context,target,assert,awaitRealApp
     await first.evaluate(()=>document.getElementById('weig-a76-peer-open')?.remove()).catch(()=>{});
   }
 }
+
+
+// Product-level proof: real qB 4.6.7 origin -> independently authenticated
+// real qB 5.2.4 origin, through both actual consent dialogs.
+export async function probeLivePeerConsent({first,target,assert,awaitRealApp}){
+  const name='Consented live qB',url=target.url;
+  await first.evaluate(({url,name})=>{
+    const W=window.WeiG;
+    if(!W.InstanceRegistry.list(true).some(item=>item.url===url))W.InstanceRegistry.add(name,url);
+    W.InstancesUI.render();
+  },{url,name});
+  const row=first.locator('#sidebar-instances .sidebar-instances__row').filter({hasText:name});
+  let popup=null;
+  try{
+    await row.locator('.sidebar-instances__more').click();
+    const menu=first.locator('#weig-floating-layer .ui-context-menu[role="menu"]');
+    await menu.getByRole('menuitem',{name:'Connect',exact:true}).click();
+    const sourceConsent=first.locator('.instance-manager-dialog').filter({hasText:'Connect instance?'});
+    await sourceConsent.waitFor({state:'visible',timeout:10000});
+    const popupEvent=first.waitForEvent('popup',{timeout:20000});
+    await sourceConsent.locator('.btn--primary').click({timeout:10000});
+    popup=await popupEvent;
+    await awaitRealApp(popup,target,'consented live peer target');
+    await popup.waitForFunction(()=>!!window.WeiG?.InstancePeerBridge&&!!window.WeiG?.InstancesUI,null,{timeout:20000});
+    assert(await popup.evaluate(()=>!!window.opener),'Live peer target must retain the actual opener WindowProxy');
+    const targetConsent=popup.locator('.instance-manager-dialog').filter({hasText:'Share live status?'});
+    await targetConsent.waitFor({state:'visible',timeout:20000});
+    await targetConsent.locator('.btn--primary').click({timeout:10000});
+    await first.waitForFunction(url=>{
+      const row=WeiG.InstanceHealth?.get(url);
+      return row?.status==='online'&&row.source==='peer'&&Number.isSafeInteger(row.count);
+    },url,{timeout:20000});
+    const live=await first.evaluate(url=>{
+      const health=WeiG.InstanceHealth.get(url),row=[...document.querySelectorAll('#sidebar-instances .sidebar-instances__row')]
+        .find(el=>el.querySelector('.sidebar-instances__select')?.title.includes(url));
+      return{count:health.count,status:health.status,source:health.source,
+        label:row?.querySelector('.sidebar-instances__count')?.textContent?.trim(),
+        dot:row?.querySelector('.sidebar-instances__dot')?.dataset.state};
+    },url);
+    const actual=await popup.evaluate(()=>WeiG.AppState.client.torrentCount());
+    assert(live.status==='online'&&live.source==='peer'&&live.count===actual
+      &&live.dot==='online'&&live.label===String(actual),
+      'Actual consented peer qB count/color mismatch: '+JSON.stringify({live,actual}));
+    await row.locator('.sidebar-instances__more').click();
+    await menu.getByRole('menuitem',{name:'Disconnect',exact:true}).click();
+    await first.waitForFunction(url=>{
+      const health=WeiG.InstanceHealth.get(url);
+      const row=[...document.querySelectorAll('#sidebar-instances .sidebar-instances__row')]
+        .find(el=>el.querySelector('.sidebar-instances__select')?.title.includes(url));
+      return health.status==='unverified'&&Number.isSafeInteger(health.reportedCount)
+        &&row?.querySelector('.sidebar-instances__dot')?.dataset.state==='historical'
+        &&row.querySelector('.sidebar-instances__count')?.textContent?.trim()===String(health.reportedCount)+'*';
+    },url,{timeout:10000});
+    return{realLiveStatus:'PASS',sourceConsent:'PASS',targetConsent:'PASS',
+      disconnectHistorical:'PASS',count:actual};
+  }finally{
+    await first.evaluate(url=>{
+      const W=window.WeiG;W?.InstancePeerBridge?.disconnect(url);
+      if(W?.InstanceRegistry?.list(true).some(item=>item.url===url))W.InstanceRegistry.remove(url);
+      W?.InstancesUI?.render();
+    },url).catch(()=>{});
+    if(popup)await popup.close().catch(()=>{});
+  }
+}

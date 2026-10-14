@@ -35,7 +35,7 @@ jobs:
           node tests/real-qb-shared-static.mjs
           evidence="artifacts/real-qb-full/$GITHUB_SHA-shared-static.json"
           test -s "$evidence"
-          jq -e --arg sha "$GITHUB_SHA" '.status == "PASS" and .weig_sha == $sha and .sid_isolation == "PASS" and .cross_origin_registry == "PASS" and .whole_page_switch == "PASS" and .noncredential_handoff == "PASS" and .handoff_requires_consent == "PASS" and .peer_window_feasibility == "PASS" and .peerWindowEvidence.opener == "PASS" and .peerWindowEvidence.noForeignReferer == "PASS" and (.qb_versions == ["4.6.7","5.2.4"])' "$evidence"
+          jq -e --arg sha "$GITHUB_SHA" '.status == "PASS" and .weig_sha == $sha and .sid_isolation == "PASS" and .cross_origin_registry == "PASS" and .whole_page_switch == "PASS" and .noncredential_handoff == "PASS" and .handoff_requires_consent == "PASS" and .peer_window_feasibility == "PASS" and .peer_live_consent == "PASS" and .peerLiveEvidence.sourceConsent == "PASS" and .peerLiveEvidence.targetConsent == "PASS" and .peerLiveEvidence.disconnectHistorical == "PASS" and .peerWindowEvidence.opener == "PASS" and .peerWindowEvidence.noForeignReferer == "PASS" and (.qb_versions == ["4.6.7","5.2.4"])' "$evidence"
       - name: Retain exact-SHA evidence
         if: ${{ always() }}
         uses: actions/upload-artifact@v7
