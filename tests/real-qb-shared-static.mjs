@@ -6,7 +6,7 @@ import path from 'node:path';
 import crypto from 'node:crypto';
 import {execFileSync,spawnSync} from 'node:child_process';
 import {launchBrowser} from './browser-driver.mjs';
-import {probePeerWindows} from './a76-peer-window-probe.mjs';
+import {probePeerWindows} from './instance-peer-window-probe.mjs';
 const sha=process.env.GITHUB_SHA||'',versions=['4.6.7','5.2.4'];
 const id='weig-a76-shared-'+process.pid+'-'+Date.now();
 const stage=fs.mkdtempSync(path.join(os.tmpdir(),'weig-a76-'));

@@ -27,7 +27,7 @@ jobs:
           google-chrome --version
           command -v docker
           node --check tests/real-qb-shared-static.mjs
-          node --check tests/a76-peer-window-probe.mjs
+          node --check tests/instance-peer-window-probe.mjs
       - name: Verify dual real qB shared static and consent
         run: |
           set -euo pipefail
