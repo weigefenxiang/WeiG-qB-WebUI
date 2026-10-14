@@ -101,27 +101,37 @@ export async function probeLivePeerConsent({first,target,assert,awaitRealApp}){
       const row=WeiG.InstanceHealth?.get(url);
       return row?.status==='online'&&row.source==='peer'&&Number.isSafeInteger(row.count);
     },url,{timeout:20000});
-    const live=await first.evaluate(url=>{
+    // Health publication and Sidebar DOM paint may finish in separate tasks.
+    // Assert real rendered evidence, not an instantaneous business-state snapshot.
+    await first.waitForFunction(({url,name})=>{
+      const health=WeiG.InstanceHealth?.get(url);
+      const row=[...document.querySelectorAll('#sidebar-instances .sidebar-instances__row')]
+        .find(el=>el.querySelector('.sidebar-instances__name')?.textContent?.includes(name));
+      return health?.source==='peer'&&health.status==='online'
+        &&row?.querySelector('.sidebar-instances__dot')?.dataset.state==='online'
+        &&row.querySelector('.sidebar-instances__count')?.textContent?.trim()===String(health.count);
+    },{url,name},{timeout:12000});
+    const live=await first.evaluate(({url,name})=>{
       const health=WeiG.InstanceHealth.get(url),row=[...document.querySelectorAll('#sidebar-instances .sidebar-instances__row')]
-        .find(el=>el.querySelector('.sidebar-instances__select')?.title.includes(url));
+        .find(el=>el.querySelector('.sidebar-instances__name')?.textContent?.includes(name));
       return{count:health.count,status:health.status,source:health.source,
         label:row?.querySelector('.sidebar-instances__count')?.textContent?.trim(),
         dot:row?.querySelector('.sidebar-instances__dot')?.dataset.state};
-    },url);
+    },{url,name});
     const actual=await popup.evaluate(()=>WeiG.AppState.client.torrentCount());
     assert(live.status==='online'&&live.source==='peer'&&live.count===actual
       &&live.dot==='online'&&live.label===String(actual),
       'Actual consented peer qB count/color mismatch: '+JSON.stringify({live,actual}));
     await row.locator('.sidebar-instances__more').click();
     await menu.getByRole('menuitem',{name:'Disconnect',exact:true}).click();
-    await first.waitForFunction(url=>{
+    await first.waitForFunction(({url,name})=>{
       const health=WeiG.InstanceHealth.get(url);
       const row=[...document.querySelectorAll('#sidebar-instances .sidebar-instances__row')]
-        .find(el=>el.querySelector('.sidebar-instances__select')?.title.includes(url));
+        .find(el=>el.querySelector('.sidebar-instances__name')?.textContent?.includes(name));
       return health.status==='unverified'&&Number.isSafeInteger(health.reportedCount)
         &&row?.querySelector('.sidebar-instances__dot')?.dataset.state==='historical'
         &&row.querySelector('.sidebar-instances__count')?.textContent?.trim()===String(health.reportedCount)+'*';
-    },url,{timeout:10000});
+    },{url,name},{timeout:12000});
     return{realLiveStatus:'PASS',sourceConsent:'PASS',targetConsent:'PASS',
       disconnectHistorical:'PASS',count:actual};
   }finally{
