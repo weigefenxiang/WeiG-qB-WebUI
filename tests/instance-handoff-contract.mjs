@@ -17,19 +17,33 @@ function context(href,shared){
 }
 const from=context('http://source.local/');
 const list=[{name:'本机 qB',url:'http://source.local/'},{name:'NAS qB',url:'http://192.168.1.73:8080/'}];
-const target=from.handoff.urlFor('http://192.168.1.73:8080/',list,'http://source.local/');
+const timestamp=Date.now();
+const reports=[{url:'http://source.local/',count:0,at:timestamp}];
+const target=from.handoff.urlFor('http://192.168.1.73:8080/',list,'http://source.local/',reports);
 assert.ok(target.startsWith('http://192.168.1.73:8080/#!weig-instances='));
 assert.ok(!target.includes('password')&&!target.includes('SID='));
 const dst=context(target);
 assert.equal(dst.location.hash,'','incoming fragment must be removed before authenticated UI/router starts');
 assert.equal(dst.handoff.peek().items.length,2);
 assert.equal(dst.handoff.peek().items[0].name,'本机 qB');
+assert.equal(dst.handoff.peek().reports[0].count,0,'Zero survives the fragment transfer');
+const secondHop=dst.handoff.urlFor('https://third.example/',list,'http://192.168.1.73:8080/',dst.handoff.peek().reports);
+const third=context(secondHop);
+assert.equal(third.handoff.peek().reports[0].count,0,'A→B→C handoff preserves previous verified-at-visit zero');
+third.handoff.consume();
+
 assert.equal(dst.values.size,1,'entry only holds pending consent state, never writes the InstanceRegistry');
 dst.handoff.consume();
 assert.equal(dst.handoff.peek(),null);
 const invalid=['http://user:secret@example.net/','https://host.test/?token=1','javascript:alert(1)'];
 for(const url of invalid){
   assert.throws(()=>from.handoff.urlFor('https://dest.example/',[{name:'Bad',url}],'http://source.local/'));
+}
+for(const bad of [[{url:'http://source.local/',count:-1,at:timestamp}],
+  [{url:'https://unknown.example/',count:1,at:timestamp}],
+  [{url:'http://source.local/',count:1,at:timestamp,password:'secret'}],
+  [{url:'http://source.local/',count:2,at:timestamp-90000000}]]){
+  assert.throws(()=>from.handoff.urlFor('http://192.168.1.73:8080/',list,'http://source.local/',bad));
 }
 const old=context('https://target.example/#!weig-instances=bad',new Map());
 assert.equal(old.handoff.peek(),null);

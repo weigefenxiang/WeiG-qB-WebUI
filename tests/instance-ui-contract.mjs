@@ -8,12 +8,6 @@ const health=read('webui/private/scripts/instance-health.js'),css=read('webui/pr
 assert.ok(shell.includes('id="sidebar-instances"'),'Single Sidebar placement must be below the Facet owner');
 assert.ok(shell.indexOf('id="sidebar-instances"')>shell.indexOf('id="facet-controls"'));
 assert.ok(plan.styles.includes('css/sidebar-instances.css'));
-const dormant=JSON.parse(read('webui/private/weig-instance-status.json'));
-assert.equal(dormant.schemaVersion,1,'The optional collector must have a regular, distributable status resource');
-assert.equal(dormant.generatedAt,0,'The no-collector resource must never claim fresh online evidence');
-assert.equal(dormant.maxAgeMs,90000);
-assert.deepEqual(dormant.instances,[],'The default resource must never fabricate peer instances or torrent counts');
-
 const nav=read('webui/private/scripts/navigation.js');
 assert.ok(!plan.phases.some(x=>x.scripts.includes('scripts/instance-registry.js')||x.scripts.includes('scripts/instance-health.js')||x.scripts.includes('scripts/instances-ui.js')),'Instance feature must not regrow the bounded initial bootstrap');
 assert.ok(nav.includes("['scripts/instance-registry.js','scripts/instance-health.js','scripts/instances-ui.js']")&&nav.includes('loadInstances:loadInstances'),'Navigation must load the canonical feature via RuntimeAssets after first paint');
@@ -24,102 +18,58 @@ assert.ok(ui.includes('R.previewIncoming(json)')&&ui.includes('importOffered'),'
 assert.ok(ui.includes('R.defaultName(current)')&&ui.includes("active?tr('currentSuffix')"),'Unregistered current instances use stable host identity and current badge');
 assert.ok(ui.includes('selected.delete(item.url)')&&ui.includes('R.importMissing(JSON.stringify'),'A review row can exclude an instance, committing only the selected set');
 assert.ok(!ui.includes("function openInterval(")&&!ui.includes("sidebar-instances__interval"),'Instance interval must be owned only by Settings');
-assert.ok(read('webui/private/scripts/settings.js').includes("instanceCheckRow()"),'Settings must own the interval row');
+assert.ok(!read('webui/private/scripts/settings.js').includes('instanceCheckRow()'),'Retire obsolete remote-detection interval setting');
 assert.ok(ui.includes("addEventListener('weig:instance-health',updateHealth)")&&ui.includes('liveRows.forEach(paintHealth)'),'Health events must preserve row DOM, focus and context menu');
-assert.ok(health.includes('lastVerifiedAt')&&health.includes("row.status!=='online'"),'History is a bounded previous WebAPI proof, never stored as live online');
-assert.ok(health.includes("global.addEventListener('weig:app-ready'")&&health.includes('inspectCurrent().then'),'Current qB must reconcile even when initial shared feed load is in flight');
+assert.ok(health.includes('reportedCount')&&health.includes("status:'unverified'"),'Historical peer reports must never become live online evidence');
+assert.ok(health.includes("global.addEventListener('weig:app-ready'")&&health.includes('checkNow()'),'Current qB must reconcile after app-ready');
 assert.ok(ui.includes('syncAddressHint')&&ui.includes('loopbackWarning'),'Loopback addresses require an explicit user-facing browser-device hint');
 assert.ok(ui.includes('bindContextMenuTrigger')&&ui.includes('R.update(')&&ui.includes('currentSuffix'),'Reuse shared ContextMenu and registry identity for rename');
 assert.ok(!ui.includes('localStorage.')&&!ui.includes('fetch('),'UI is a presentation-only consumer');
 assert.ok(css.includes('var(--border)')&&css.includes('var(--selected-control-surface)'),'Sidebar color/selection must use shared theme tokens');
-assert.ok(!css.includes('[data-state="reachable"]')&&!css.includes('[data-state="denied"]'),'Retire unused cross-origin reachability/denied dot styles');
-assert.ok(health.includes("credentials:'same-origin'")&&health.includes("mode:'same-origin'")&&health.includes("cache:'no-store'"),'Authenticated status uses only the current qB origin and bypasses stale HTTP cache');
-assert.ok(!health.includes('remoteGet(')&&!health.includes('reachable(')&&!health.includes("mode:'no-cors'"),'Old credential-free cross-origin probe owner must retire');
-assert.ok(health.includes("expiresAt:data.generatedAt+data.maxAgeMs"),'Remote qB online proof must expire with the shared host snapshot');
-const saved=new Map(),observed=[],registry={
+assert.ok(!css.includes('[data-state="reachable"]')&&!css.includes('[data-state="denied"]'),'Retire unreachable legacy status styles');
+assert.ok(!health.includes('refreshShared')&&!health.includes('weig-instance-status.json')&&!health.includes('fetch('),'All collector/shared HTTP status logic must retire');
+assert.ok(!health.includes('setInterval(')&&!health.includes('setMinutes('),'No legacy remote polling timer/setting');
+assert.ok(ui.includes("String(historical)+'*'"),'Historical count is explicitly distinguished from live');
+const saved=new Map(),registry={
   currentUrl:()=> 'https://one.example/',
-  list:()=>[{name:'Other',url:'https://two.example/'}]
+  list:()=>[{name:'One',url:'https://one.example/'},{name:'Two',url:'https://two.example/'}]
 };
-const store={get:(key,def)=>saved.has(key)?saved.get(key):def,set:(key,value)=>{saved.set(key,value);return true;}};
-const client={qbVersion:'0.0.0',torrentCount:async()=>42};
-const window={
-  WeiG:{StorageRuntime:{local:store},StorageKeys:{instanceProbeInterval:'weig.instances.probeMinutes'},InstanceRegistry:registry,AppState:{client}},
-  location:{origin:'https://one.example'},addEventListener(){},dispatchEvent(){}
-};
-const document={readyState:'loading',visibilityState:'visible',addEventListener(){}};
-let now=Date.now(),unavailable=true,body=null;
-class TestDate extends Date{static now(){return now;}}
-const row=(count,status='online')=>({url:'https://two.example/',status,count,checkedAt:now});
-function feed(remoteCount,remoteStatus='online'){
-  return {schemaVersion:1,generatedAt:now,maxAgeMs:90000,instances:[row(remoteCount,remoteStatus)]};
-}
-async function fetch(url,opts){
-  assert.equal(String(url),'https://one.example/weig-instance-status.json');
-  assert.equal(opts.credentials,'same-origin');
-  assert.equal(opts.mode,'same-origin');
-  assert.equal(opts.cache,'no-store');
-  observed.push(String(url));
-  if(unavailable)throw new TypeError('Missing private feed');
-  return{ok:true,status:200,text:async()=>JSON.stringify(body)};
-}
-vm.runInNewContext(health,{window,document,URL,Number,Map,CustomEvent:class{},AbortController,fetch,setTimeout,clearTimeout,setInterval:()=>1,clearInterval:()=>{},Date:TestDate});
-const H=window.WeiG.InstanceHealth;
-assert.equal(H.minutes(),30);
-assert.equal(H.setMinutes('15'),15);assert.equal(H.minutes(),15);
-assert.throws(()=>H.setMinutes('1'));
-assert.throws(()=>H.setMinutes('1441'));
-assert.equal(H.setMinutes(0),0);assert.equal(H.minutes(),0);
+const storage={get:(k,d)=>saved.has(k)?saved.get(k):d,set:(k,v)=>{saved.set(k,v);return true;}};
+let now=Date.now();
+class Time extends Date{static now(){return now;}}
+const client={qbVersion:'v5.2.4',torrentCount:async()=>0};
+const app={client,catalogReady:true,catalog:[],filter:'all'};
+const win={WeiG:{StorageRuntime:{local:storage},InstanceRegistry:registry,AppState:app},
+  location:{origin:'https://one.example'},addEventListener(){},dispatchEvent(){}};
+const document={readyState:'loading',addEventListener(){}};
+vm.runInNewContext(health,{window:win,document,URL,Number,Map,Set,CustomEvent:class{},Date:Time});
+const H=win.WeiG.InstanceHealth;
 await H.checkNow();
-assert.equal(H.get('https://one.example/').status,'unverified','Undetected 0.0.0 qB must not count as online');
-client.qbVersion='v5.2.4';
-unavailable=false;body=feed(67);
-await H.checkNow();
-assert.equal(H.get('https://one.example/').status,'online');
-assert.equal(H.get('https://one.example/').count,42);
-assert.equal(H.get('https://two.example/').status,'online');
-assert.equal(H.get('https://two.example/').count,67);
-assert.equal(observed.length,2,'One shared read per explicit check; no cross-origin qB requests');
-client.torrentCount=async()=>0;body=feed(0);
-await H.checkNow();
-assert.equal(H.get('https://one.example/').count,0,'Numeric zero from current QBClient is valid');
-assert.equal(H.get('https://two.example/').count,0,'Zero from authenticated host collector is valid');
-client.torrentCount=async()=>42;await H.checkNow();
-const app=window.WeiG.AppState;
-app.knownTotal=0;app.knownTotalFresh=true;app.filter='all';
-assert.equal(H.get('https://one.example/').count,0,'Verified unfiltered total overrides earlier local probe');
-app.search='filtered';
-assert.equal(H.get('https://one.example/').count,42,'Filtered total cannot replace global count');
-app.search='';app.knownTotalFresh=false;
-assert.equal(H.get('https://one.example/').count,42,'Stale total cannot replace verified probe');
-app.catalogReady=true;app.catalog=[];
-assert.equal(H.get('https://one.example/').count,0,'Verified empty catalog is authoritative');
-app.catalogReady=false;
-now+=91000;unavailable=true;await H.checkNow();
-assert.notEqual(H.get('https://two.example/')?.status,'online','An expired shared snapshot cannot remain online');
-assert.equal(H.get('https://two.example/')?.count??null,null);
-unavailable=false;body=feed(null,'unverified');
-await H.checkNow();
+assert.equal(H.get('https://one.example/').count,0,'Authoritative current zero retained');
+assert.equal(H.exportReports().find(x=>x.url==='https://one.example/').count,0);
 assert.equal(H.get('https://two.example/').status,'unverified');
-assert.equal(H.get('https://two.example/').count,null);
-body=feed(20);body.instances[0].count=-1;
-await H.checkNow();
-assert.notEqual(H.get('https://two.example/').status,'online','Invalid count cannot make the qB online');
-body=feed(20);body.generatedAt=now-100000;
-await H.checkNow();
-assert.notEqual(H.get('https://two.example/').status,'online','Stale host feed is not live status');
-const historyKey='weig.instances.lastVerified.v1',history=JSON.parse(saved.get(historyKey));
-assert.equal(history.schemaVersion,1);
-assert.ok(history.items.length<=16&&history.items.some(x=>x.url==='https://one.example/'&&x.at>0));
-assert.ok(history.items.every(x=>Object.keys(x).sort().join(',')==='at,url'),'Persist timestamps only, never Cookie/SID/count');
-const reloadWindow={
-  WeiG:{StorageRuntime:{local:store},StorageKeys:{instanceHealthHistory:historyKey},InstanceRegistry:registry,AppState:{client}},
-  location:{origin:'https://one.example'},addEventListener(){},dispatchEvent(){}
-};
-vm.runInNewContext(health,{window:reloadWindow,document,URL,Number,Map,CustomEvent:class{},AbortController,fetch,setTimeout,clearTimeout,setInterval:()=>1,clearInterval:()=>{},Date:TestDate});
-const previous=reloadWindow.WeiG.InstanceHealth.get('https://one.example/');
-assert.equal(previous.status,'unverified','Persisted historical proof must not be projected as live online');
-assert.equal(previous.count,null,'Persisted history must not carry a torrent count');
-assert.ok(previous.lastVerifiedAt>0,'Retain only bounded evidence timestamp');
+assert.equal(H.importReports([{url:'https://two.example/',count:42,at:now}]),1);
+assert.equal(H.get('https://two.example/').reportedCount,42,'Remote report carries useful count');
+assert.equal(H.get('https://two.example/').count,null,'Remote report must not masquerade as live count');
+assert.equal(H.get('https://two.example/').status,'unverified','Remote report must never show green');
+assert.equal(H.importReports([{url:'https://other.example/',count:123,at:now}]),0,'Unregistered URL is ignored');
+assert.equal(H.importReports([{url:'https://two.example/',count:99,at:now-1000}]),0,'Older reports cannot overwrite newer');
+now+=1000;
+const newer={url:'https://two.example/',count:0,at:now};
+assert.equal(H.importReports([newer]),1,'Remote zero is a valid newer historical report');
+assert.equal(H.get('https://two.example/').reportedCount,0);
+const persisted=JSON.parse(saved.get('weig.instances.reports.v1'));
+assert.equal(persisted.schemaVersion,1);
+assert.ok(persisted.items.every(x=>Object.keys(x).sort().join(',')==='at,count,url'),'No login details/session/status in history');
+const reload={WeiG:{StorageRuntime:{local:storage},InstanceRegistry:registry,AppState:app},
+  location:{origin:'https://one.example'},addEventListener(){},dispatchEvent(){}};
+vm.runInNewContext(health,{window:reload,document,URL,Number,Map,Set,CustomEvent:class{},Date:Time});
+const restored=reload.WeiG.InstanceHealth.get('https://two.example/');
+assert.equal(restored.reportedCount,0);
+assert.equal(restored.status,'unverified');
+now+=24*60*60000+2000;
+assert.equal(reload.WeiG.InstanceHealth.get('https://two.example/').reportedCount,undefined,'24h report expires');
+assert.equal(reload.WeiG.InstanceHealth.exportReports().some(x=>x.url==='https://two.example/'),false);
 
 const coreI18n=read('webui/private/scripts/i18n.js');
 const enMatch=coreI18n.match(/\bvar EN=(\{[^\n]+\});/);

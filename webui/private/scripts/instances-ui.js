@@ -42,11 +42,11 @@
   }
   function paintHealth(view){
     var health=H&&H.get(view.item.url),state=health&&health.status||'unknown',count=health&&health.count;
-    var status=state==='online'?tr('online'):tr('unverified');
+    var status=state==='online'?tr('online'):tr('unverified'),historical=count==null&&health&&Number.isSafeInteger(health.reportedCount)?health.reportedCount:null;
     view.dot.dataset.state=state;
-    view.total.textContent=count==null?'—':String(count);
-    var previous=health&&health.lastVerifiedAt&&state!=='online'?tr('lastVerified',{time:new Date(health.lastVerifiedAt).toLocaleString()}):'';
-    view.select.title=view.item.name+' · '+view.item.url+' · '+status+(count==null?'':' · '+tr('torrentCount',{count:count}))+(previous?' · '+previous:'');
+    view.total.textContent=count==null?(historical===null?'—':String(historical)+'*'):String(count);
+    var previous=health&&health.reportedAt&&state!=='online'?tr('lastReported',{time:new Date(health.reportedAt).toLocaleString()}):'';
+    view.select.title=view.item.name+' · '+view.item.url+' · '+status+(count!=null?' · '+tr('torrentCount',{count:count}):historical===null?'':' · '+tr('torrentCount',{count:historical})+'*')+(previous?' · '+previous:'');
     view.select.setAttribute('aria-label',view.select.title);
   }
   function updateHealth(){liveRows.forEach(paintHealth);}
@@ -173,7 +173,7 @@
     var json=JSON.stringify({schemaVersion:1,items:proposal.items}),preview;
     try{preview=R.previewIncoming(json);}catch(error){notice(error.message);bridge.consume();return;}
     // A fully synchronized destination does not need another consent dialog.
-    if(!preview.pending.length){bridge.consume();return;}
+    if(!preview.pending.length){if(H&&H.importReports)H.importReports(proposal.reports||[]);bridge.consume();return;}
     var selected=new Set(preview.pending.map(function(item){return item.url;}));
     var m=modal(tr('importTitle'));
     m.body.appendChild(el('p','text-description',tr('importHint',{count:proposal.items.length,source:proposal.source})));
@@ -185,6 +185,7 @@
         if(!chosen.length)return;
         // Revalidate the selected subset at the point of the atomic write.
         R.importMissing(JSON.stringify({schemaVersion:1,items:chosen}));
+        if(H&&H.importReports)H.importReports(proposal.reports||[]);
         finished=true;bridge.consume();render();D.close(m.dialog,'confirm');
       }catch(error){feedback.textContent=error.message;}
     });

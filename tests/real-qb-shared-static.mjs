@@ -242,64 +242,31 @@ async function test(){
  assert((await context.cookies(qbs[1].url)).every(c=>c.name!==qbs[0].sessionCookieName),'First instance session cookie leaked to second qB host');
  const second=await enter(context,qbs[1]);
 
- // A76-42: prove a host-updated authenticated static status feed is readable
- // through BOTH real qB servers, without changing the read-only Docker mounts.
- const statusName='weig-instance-status.json',statusFile=path.join(shared,'private',statusName);
- const publishStatus=(generation)=>{
-   const generatedAt=Date.now();
-   const data={schemaVersion:1,generatedAt,maxAgeMs:90000,generation,
-     instances:qbs.map((q,i)=>({url:q.url,status:'online',count:i+generation,checkedAt:generatedAt}))};
-   const next=statusFile+'.next';
-   fs.writeFileSync(next,JSON.stringify(data)+'\n',{mode:0o644});
-   fs.renameSync(next,statusFile);
-   return data;
- };
- const round1=publishStatus(1);
- for(const q of qbs){
-   assert(sh('docker',['exec',q.name,'cat','/weig-webui/private/'+statusName]).includes('"generation":1'),
-     'Read-only qB container cannot observe host-generated regular file');
-   const guest=await fetch(q.url+statusName,{redirect:'manual'});
-   assert(guest.status!==200,'Anonymous guest accessed authenticated instance status file in '+q.version);
- }
- for(const page of [first,second]){
-   const status=await page.evaluate(async name=>{
-     const response=await fetch('/'+name,{credentials:'same-origin',cache:'no-store'});
-     return{status:response.status,data:response.ok?await response.json():null};
-   },statusName);
-   assert(status.status===200&&status.data?.generation===1&&status.data?.instances?.length===2,
-     'Authenticated qB did not serve shared host-generated status: '+JSON.stringify(status));
- }
- const round2=publishStatus(2);
- for(const page of [first,second]){
-   const data=await page.evaluate(async name=>{
-     const response=await fetch('/'+name,{credentials:'same-origin',cache:'no-store'});
-     return response.ok?await response.json():null;
-   },statusName);
-   assert(data?.generation===2&&data?.instances[0]?.count===round2.instances[0].count,
-     'qB served stale or corrupt status after atomic host rename');
- }
- // Verify the actual A76-44 product consumer, not just direct fetch() of the file.
- for(const [page,remote] of [[first,qbs[1]],[second,qbs[0]]]){
-   await page.evaluate(url=>{
-     window.WeiG.InstanceRegistry.add('Remote qB',url);
-     window.WeiG.InstancesUI.render();
-   },remote.url);
-   await page.evaluate(()=>window.WeiG.InstanceHealth.checkNow());
-   const report=await page.evaluate(url=>{
-     const H=window.WeiG.InstanceHealth.get(url);
-     const rows=[...document.querySelectorAll('#sidebar-instances .sidebar-instances__row')];
-     const row=rows.find(item=>item.querySelector('.sidebar-instances__select')?.title.includes(url));
-     return{status:H?.status,count:H?.count,dot:row?.querySelector('.sidebar-instances__dot')?.dataset.state,
-       displayed:row?.querySelector('.sidebar-instances__count')?.textContent?.trim()};
-   },remote.url);
-   const expected=qbs.findIndex(q=>q.url===remote.url)+2;
-   assert(report.status==='online'&&report.count===expected&&report.dot==='online'
-     &&report.displayed===String(expected),'Shared host feed did not update real remote Sidebar: '+JSON.stringify(report));
-   await page.evaluate(url=>{
-     window.WeiG.InstanceRegistry.remove(url);
-     window.WeiG.InstancesUI.render();
-   },remote.url);
- }
+ // A76-47: current qB reports only an on-visit snapshot.
+ // The destination displays its historical count without a live online light.
+ const report=await first.evaluate(async()=>{
+   await WeiG.InstanceHealth.checkNow();
+   return{url:WeiG.InstanceRegistry.currentUrl(),
+     reports:WeiG.InstanceHealth.exportReports()};
+ });
+ assert(report.reports.some(x=>x.url===report.url&&Number.isSafeInteger(x.count)),
+   'Current authenticated qB must export a numeric (including zero) visit snapshot');
+ await second.evaluate(url=>WeiG.InstanceRegistry.add('Previous qB',url),report.url);
+ const peerState=await second.evaluate(data=>{
+   WeiG.InstanceHealth.importReports(data.reports);
+   WeiG.InstancesUI.render();
+   const result=WeiG.InstanceHealth.get(data.url);
+   const row=[...document.querySelectorAll('#sidebar-instances .sidebar-instances__row')]
+     .find(el=>el.querySelector('.sidebar-instances__select')?.title.includes(data.url));
+   return{status:result?.status,count:result?.count,reportedCount:result?.reportedCount,
+     label:row?.querySelector('.sidebar-instances__count')?.textContent?.trim(),
+     dot:row?.querySelector('.sidebar-instances__dot')?.dataset.state};
+ },report);
+ const amount=report.reports.find(x=>x.url===report.url).count;
+ assert(peerState.status==='unverified'&&peerState.count===null&&peerState.reportedCount===amount
+   &&peerState.label===String(amount)+'*'&&peerState.dot!=='online',
+   'Destination must render the previous qB count as historical only: '+JSON.stringify(peerState));
+ await second.evaluate(url=>{WeiG.InstanceRegistry.remove(url);WeiG.InstancesUI.render();},report.url);
  const sidebarChecks=await Promise.all([verifyInstanceSidebar(first,qbs[0]),verifyInstanceSidebar(second,qbs[1])]);
  for(const [i,q] of qbs.entries()){
    const row=checks.find(item=>item.qb_version===q.version);

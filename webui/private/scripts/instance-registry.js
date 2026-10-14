@@ -162,7 +162,9 @@
           if(items.length>=LIMIT)throw new Error('Instance list is full. Export it manually.');
           items.unshift({name:options.currentName||defaultName(current.href),url:current.href});
         }
-        destination=handoff.urlFor(canonical,items,current.href);
+        var allowed=new Set(items.map(function(x){return x.url;}));
+        var reports=W.InstanceHealth&&W.InstanceHealth.exportReports?W.InstanceHealth.exportReports().filter(function(x){return allowed.has(x.url);}):[];
+        destination=handoff.urlFor(canonical,items,current.href,reports);
       }
       navigateIsolated(destination);
     }
