@@ -229,7 +229,7 @@ async function main(){
     assert(scriptsInPlan.some(p=>/^scripts\/startup-[a-z0-9-]+\.js$/.test(p)),'Real qB must execute distribution JS bundles');
     assert(JSON.stringify(stagedAssets.css)===JSON.stringify(stagedAssets.plan.styles),'Real qB CSS DOM order diverges from installed canonical bootstrap');
     assert(JSON.stringify(stagedAssets.js)===JSON.stringify(scriptsInPlan),'Real qB initial JS DOM order diverges from installed canonical bootstrap');
-    const sanctionedDeferred=new Set(['scripts/settings.js','scripts/rss.js','scripts/logs.js','scripts/update-check.js','scripts/instance-registry.js','scripts/instance-health.js','scripts/instances-ui.js']);
+    const sanctionedDeferred=new Set(['scripts/settings.js','scripts/rss.js','scripts/logs.js','scripts/update-check.js','scripts/instance-registry.js','scripts/instance-health.js','scripts/instance-peer-bridge.js','scripts/instances-ui.js']);
     assert(stagedAssets.deferred.every(p=>sanctionedDeferred.has(p)),
       'Real qB executed an unregistered deferred module: '+JSON.stringify(stagedAssets.deferred));
     for(const resource of stagedAssets.resources){

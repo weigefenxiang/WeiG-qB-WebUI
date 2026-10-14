@@ -6,7 +6,7 @@ const source=fs.readFileSync(new URL('../webui/private/scripts/instance-registry
 const plan=JSON.parse(fs.readFileSync(new URL('../webui/private/bootstrap-plan.json',import.meta.url),'utf8'));
 const navigation=fs.readFileSync(new URL('../webui/private/scripts/navigation.js',import.meta.url),'utf8');
 assert.ok(!plan.phases.some(x=>x.scripts.includes('scripts/instance-registry.js')),'Registry should be deferred, not startup-owned');
-assert.ok(navigation.includes("['scripts/instance-registry.js','scripts/instance-health.js','scripts/instances-ui.js']")&&navigation.includes('loadInstances:loadInstances'),'Navigation owns ordered deferred instance modules');
+assert.ok(navigation.includes("['scripts/instance-registry.js','scripts/instance-health.js','scripts/instance-peer-bridge.js','scripts/instances-ui.js']")&&navigation.includes('loadInstances:loadInstances'),'Navigation owns ordered deferred instance modules');
 function safeNavigationDocument(navigations){
   return{
     body:{appendChild(anchor){assert.equal(anchor.tagName,'A');}},
