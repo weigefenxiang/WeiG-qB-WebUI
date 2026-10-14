@@ -56,6 +56,10 @@ for(const verifier of [
   assert.equal(lanes.filter(lane=>lane.pref_mode==='shard').length,4,'Settings must verify every Preferences shard');
   assert.equal(lanes.filter(lane=>lane.pref_mode==='anchor').length,1,'Settings must verify Preferences anchor');
 }
+const settingsCoverage=pagesVerifyLanes('settings').map(lane=>lane.name);
+assert.ok(settingsCoverage.includes('core')&&settingsCoverage.includes('mobile-layout'),
+  'Settings/About changes must run the deployed mobile route and console-error regression, not only Preferences shards');
+assert.equal(new Set(settingsCoverage).size,settingsCoverage.length,'Settings Pages verification lanes must not duplicate runtime owners');
 assert.equal(verificationProfileForClassification(classifyChangedPaths(['tests/pages-live-auth.mjs'])),'full','general live verifier stays on durable full lanes');
 assert.equal(verificationProfileForClassification(classifyChangedPaths(['tests/pages-live-preferences.mjs','tools/pages-verify-plan.mjs'])),'settings','coherent plan+Preferences repair must preserve Settings lane owner');
 

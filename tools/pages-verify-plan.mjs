@@ -58,7 +58,7 @@ export function pagesVerifyLanes(profile='full'){
     case'native': return pick(['core','services-modern']);
     case'settings':
       return[
-        baseLane('core','tests/pages-live-acceptance.mjs'),
+        ...pick(['core','mobile-layout']),
         baseLane('locale-bootstrap','tests/pages-live-locale-bootstrap.mjs'),
         baseLane('release-profile-settings','tests/pages-live-release-profile.mjs',{release_mode:'settings'}),
         preferenceAnchor(4),
