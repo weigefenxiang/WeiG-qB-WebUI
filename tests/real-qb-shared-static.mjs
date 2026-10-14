@@ -88,13 +88,13 @@ async function verifyInstanceSidebar(page,q){
    const border=node&&getComputedStyle(node);
    return{parent:node?.parentElement===slot?.parentElement,
      order:slot?.nextElementSibling===node,collapsed:node?.dataset.expanded,
-     interval:window.WeiG?.InstanceHealth?.minutes?.(),hasOldInterval:!!oldInterval,
+     hasOldInterval:!!oldInterval,
      borderStyle:border?.borderTopStyle,borderWidth:border?.borderTopWidth,
      itemCount:node?.querySelectorAll('.sidebar-instances__row').length};
  });
- assert(before.parent&&before.order&&before.collapsed==='1'&&before.interval===30&&!before.hasOldInterval&&before.itemCount>=1
+ assert(before.parent&&before.order&&before.collapsed==='1'&&!before.hasOldInterval&&before.itemCount>=1
    &&before.borderStyle==='solid'&&before.borderWidth==='1px',
-   'A76 real qB '+q.version+' Sidebar owner/order/divider/default interval: '+JSON.stringify(before));
+   'A76 real qB '+q.version+' Sidebar owner/order/divider/no-legacy-interval: '+JSON.stringify(before));
  // Opening an instance menu must not be canceled by the shared document click closer.
  await page.locator('#sidebar-instances .sidebar-instances__more').first().click();
  const menu=page.locator('#weig-floating-layer .ui-context-menu[role="menu"]');
@@ -142,25 +142,17 @@ async function verifyInstanceSidebar(page,q){
  const dark=await page.locator('#sidebar-instances').evaluate(node=>getComputedStyle(node).borderTopColor);
  await page.evaluate(mode=>WeiG.Theme.setMode(mode),themeBefore);
  assert(light!==dark,'A76 Sidebar separator must follow actual light/dark theme tokens: '+light+'/'+dark);
- return{version:q.version,default_minutes:30,collapse:'PASS',
+ return{version:q.version,collapse:'PASS',
    placement:'below-facets',theme_border:'PASS'};
 }
 async function verifyInstanceSettings(page,q){
  await page.locator('#app-nav [data-route="settings"]').click();
  await page.waitForFunction(()=>location.hash.includes('settings'),null,{timeout:20000});
  await page.locator('#settings-content[data-settings-renderer="canonical"]').waitFor({timeout:20000});
- // A76-25: interval moved to WeiG Interface Settings, not a sidebar Dialog.
+ // No remote polling settings remain in browser-only history mode.
  await page.locator('#settings-tabs [data-settings-tab="weig"]').click();
- const interval=page.locator('#settings-content [data-setting-key="weig_instance_check"] .ui-select__trigger');
- await interval.waitFor({timeout:20000});
- assert((await interval.innerText()).includes('30 min'),'Default interval should be 30 min in WeiG Settings');
- await interval.click();
- await page.locator('.ui-select__menu:not([hidden]) .ui-select__option[data-value="15"]').click();
- await page.waitForFunction(()=>WeiG.InstanceHealth.minutes()===15,null,{timeout:10000});
- assert((await interval.innerText()).includes('15 min'),'Interval Select must display invariant min');
- await interval.click();
- await page.locator('.ui-select__menu:not([hidden]) .ui-select__option[data-value="30"]').click();
- await page.waitForFunction(()=>WeiG.InstanceHealth.minutes()===30,null,{timeout:10000});
+ assert(await page.locator('#settings-content [data-setting-key="weig_instance_check"]').count()===0,
+   'Obsolete instance polling interval must not be rendered');
  const snapshot=await page.evaluate(async origin=>{
    const registry=window.WeiG?.CapabilityRegistry;
    const identity=registry?.releaseIdentity?.(),settingsDomain=registry?.domainResolution?.('settings');
