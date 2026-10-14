@@ -3,6 +3,7 @@
   var W=global.WeiG=global.WeiG||{},K=W.StorageKeys||{},store=W.StorageRuntime&&W.StorageRuntime.session;
   if(W.InstanceHandoff)return;
   var PREFIX='#!weig-instances=',KEY=K.instanceHandoff||'weig.instances.pending',LIMIT=8192,AGE=10*60*1000;
+  var PEER_PREFIX='#!weig-peer=',PEER_KEY='weig.instances.peerInvite.v1';
   // Only public instance names and canonical URLs are transported: never credentials/SID/tokens.
   function publicAddress(raw){
     if(typeof raw!=='string'||!raw||raw.length>2048)return false;
@@ -74,6 +75,37 @@
     try{var clean=new URL(global.location.href);clean.hash='';if(global.history&&global.history.replaceState)global.history.replaceState(global.history.state,'',clean.href);}catch(_error){}
     return ok;
   }
+  // The existing pre-auth Handoff owner also preserves a one-time peer
+  // invitation across login redirects. It contains only source URL and nonce.
+  function validPeer(data){
+    return data&&typeof data==='object'&&!Array.isArray(data)&&data.v===1
+      &&Object.keys(data).sort().join(',')==='nonce,source,v'
+      &&publicAddress(data.source)&&new URL(data.source).href===data.source
+      &&typeof data.nonce==='string'&&/^[a-f0-9]{48}$/.test(data.nonce);
+  }
+  function capturePeer(){
+    var hash=String(global.location&&global.location.hash||'');
+    if(!hash.startsWith(PEER_PREFIX))return false;
+    var ok=false;
+    try{
+      if(hash.length>1024)throw new Error('Oversized peer invite');
+      var data=JSON.parse(decodeURIComponent(hash.slice(PEER_PREFIX.length)));
+      if(!validPeer(data))throw new Error('Invalid peer invite');
+      if(store&&store.set(PEER_KEY,JSON.stringify({createdAt:Date.now(),value:data})))ok=true;
+    }catch(_e){}
+    try{var clean=new URL(global.location.href);clean.hash='';
+      if(global.history&&global.history.replaceState)global.history.replaceState(global.history.state,'',clean.href);
+    }catch(_e){}
+    return ok;
+  }
+  function peekPeer(){
+    try{
+      var row=JSON.parse(store&&store.get(PEER_KEY,null)||'null'),now=Date.now();
+      return row&&Number.isSafeInteger(row.createdAt)&&row.createdAt<=now+60000
+        &&now-row.createdAt<=AGE&&validPeer(row.value)?row.value:null;
+    }catch(_e){return null;}
+  }
+  function consumePeer(){if(store)store.remove(PEER_KEY);}
   function peek(){
     try{
       var row=JSON.parse(store&&store.get(KEY,null)||'null');
@@ -82,6 +114,7 @@
     }catch(_error){return null;}
   }
   function consume(){if(store)store.remove(KEY);}
-  W.InstanceHandoff=Object.freeze({urlFor:urlFor,capture:capture,peek:peek,consume:consume});
-  capture();
+  W.InstanceHandoff=Object.freeze({urlFor:urlFor,capture:capture,peek:peek,consume:consume,
+    capturePeer:capturePeer,peekPeer:peekPeer,consumePeer:consumePeer});
+  capture();capturePeer();
 })(window);

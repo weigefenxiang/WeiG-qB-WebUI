@@ -10,7 +10,7 @@ assert.ok(shell.indexOf('id="sidebar-instances"')>shell.indexOf('id="facet-contr
 assert.ok(plan.styles.includes('css/sidebar-instances.css'));
 const nav=read('webui/private/scripts/navigation.js');
 assert.ok(!plan.phases.some(x=>x.scripts.includes('scripts/instance-registry.js')||x.scripts.includes('scripts/instance-health.js')||x.scripts.includes('scripts/instances-ui.js')),'Instance feature must not regrow the bounded initial bootstrap');
-assert.ok(nav.includes("['scripts/instance-registry.js','scripts/instance-health.js','scripts/instances-ui.js']")&&nav.includes('loadInstances:loadInstances'),'Navigation must load the canonical feature via RuntimeAssets after first paint');
+assert.ok(nav.includes("['scripts/instance-registry.js','scripts/instance-health.js','scripts/instance-peer-bridge.js','scripts/instances-ui.js']")&&nav.includes('loadInstances:loadInstances'),'Navigation must load the canonical feature via RuntimeAssets after first paint');
 assert.ok(nav.includes("settings:['scripts/update-check.js','scripts/bug-report.js','scripts/settings.js']"),'Settings-only UpdateCheck must be loaded with Settings instead of in startup');
 assert.ok(ui.includes('R.switchTo(item.url,{transfer:true,allowDowngrade:insecure===true'),'UI must opt in to transfer and HTTPS downgrade per explicit user gesture');
 assert.ok(ui.includes('W.AppState.initialized')&&ui.includes("'weig:app-ready'"),'Incoming cross-origin consent must wait for the target qB locale startup barrier');
@@ -80,6 +80,52 @@ assert.equal(restored.status,'unverified');
 now+=24*60*60000+2000;
 assert.equal(reload.WeiG.InstanceHealth.get('https://two.example/').reportedCount,undefined,'24h report expires');
 assert.equal(reload.WeiG.InstanceHealth.exportReports().some(x=>x.url==='https://two.example/'),false);
+
+// A76: the new transport has exactly one lazy owner and a consented, bounded
+// cross-origin handshake. Unknown origins or Window sources must not update Health.
+const peerSource=read('webui/private/scripts/instance-peer-bridge.js');
+assert.ok(peerSource.includes("link.rel='opener'")&&peerSource.includes("link.referrerPolicy='no-referrer'"),'Consented popup retains opener without leaking Referer');
+assert.ok(peerSource.includes('approved')&&peerSource.includes('event.source===approved.win'),'Target peer needs explicit consent and Window validation');
+{
+  let opened=null,updates=[],cleared=[],posted=[],events={};
+  const peerWindow={closed:false,postMessage(message,origin){posted.push({message,origin});}};
+  const link={click(){opened=this.href;},remove(){}};
+  const fakeWindow={
+    location:{href:'https://one.example/',origin:'https://one.example',protocol:'https:',hash:''},
+    WeiG:{InstanceRegistry:{currentUrl:()=> 'https://one.example/',
+      list:()=>[{url:'https://two.example/'}]},
+      InstanceHealth:{acceptPeer:(url,row)=>updates.push({url,row}),clearPeer:url=>cleared.push(url)},
+      InstanceHandoff:{peekPeer:()=>null}},
+    document:{createElement:()=>link,body:{appendChild(){}}},
+    crypto:{getRandomValues:a=>{a.fill(0x1f);return a;}},
+    addEventListener:(name,cb)=>{events[name]=cb;},
+    setInterval:()=>0,dispatchEvent:()=>{}
+  };
+  vm.runInNewContext(peerSource,{window:fakeWindow,URL,Map,Uint8Array,Date,CustomEvent:class{}});
+  const P=fakeWindow.WeiG.InstancePeerBridge;
+  assert.throws(()=>P.connect('https://unknown.example/'),'Unknown instance not permitted');
+  assert.equal(P.connect('https://two.example/'),true);
+  assert.ok(opened.startsWith('https://two.example/#!weig-peer='));
+  const invite=JSON.parse(decodeURIComponent(new URL(opened).hash.slice('#!weig-peer='.length)));
+  assert.equal(invite.source,'https://one.example/');
+  const hello={protocol:'weig-peer-v1',type:'hello',nonce:invite.nonce,url:'https://two.example/'};
+  events.message({origin:'https://evil.example',source:peerWindow,data:hello});
+  assert.equal(P.isConnected('https://two.example/'),false,'Wrong-Origin handshake rejected');
+  events.message({origin:'https://two.example',source:peerWindow,data:hello});
+  assert.equal(P.isConnected('https://two.example/'),true,'Consented matching peer accepted');
+  assert.ok(posted.some(x=>x.message.type==='welcome'&&x.origin==='https://two.example'));
+  const status={protocol:'weig-peer-v1',type:'status',nonce:invite.nonce,
+    url:'https://two.example/',status:'online',count:0,at:Date.now()};
+  events.message({origin:'https://two.example',source:{closed:false,postMessage(){}},data:status});
+  assert.equal(updates.length,0,'Foreign WindowProxy must not inject a count');
+  events.message({origin:'https://two.example',source:peerWindow,data:{...status,count:-1}});
+  assert.equal(updates.length,0,'Invalid negative count rejected');
+  events.message({origin:'https://two.example',source:peerWindow,data:status});
+  assert.equal(updates.length,1,'Verified zero count reaches only canonical InstanceHealth');
+  assert.equal(updates[0].row.count,0);
+  P.disconnect('https://two.example/');
+  assert.ok(cleared.includes('https://two.example/'),'Disconnect invalidates live evidence');
+}
 
 const coreI18n=read('webui/private/scripts/i18n.js');
 const enMatch=coreI18n.match(/\bvar EN=(\{[^\n]+\});/);

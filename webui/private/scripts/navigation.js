@@ -83,7 +83,7 @@
     if(instancesTask)return instancesTask;
     var asset=W.RuntimeAssets&&W.RuntimeAssets.loadScript;
     if(typeof asset!=='function')return Promise.reject(new Error('Shared module loader unavailable.'));
-    var modules=['scripts/instance-registry.js','scripts/instance-health.js','scripts/instances-ui.js'];
+    var modules=['scripts/instance-registry.js','scripts/instance-health.js','scripts/instance-peer-bridge.js','scripts/instances-ui.js'];
     instancesTask=modules.reduce(function(p,path){return p.then(function(){
       return asset(path,{namespace:'sidebar-feature',identity:'instances'});
     });},Promise.resolve()).then(function(){

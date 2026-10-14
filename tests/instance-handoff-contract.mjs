@@ -49,4 +49,27 @@ const old=context('https://target.example/#!weig-instances=bad',new Map());
 assert.equal(old.handoff.peek(),null);
 assert.equal(old.location.hash,'','malformed handoff never lingers in URL');
 assert.throws(()=>from.handoff.urlFor('https://dest.example/',Array.from({length:17},(_,i)=>({name:'qB '+i,url:'https://qb'+i+'.example/'})),'http://source.local/'));
+const invite={v:1,source:'https://source.example/',nonce:'a'.repeat(48)};
+const peerFragment='#!weig-peer='+encodeURIComponent(JSON.stringify(invite));
+const peer=context('https://other.example/'+peerFragment);
+assert.equal(peer.location.hash,'','Peer login invitation must be captured pre-auth, not exposed to Router');
+assert.equal(peer.handoff.peekPeer().source,invite.source);
+assert.equal(peer.handoff.peekPeer().nonce,invite.nonce);
+assert.equal(peer.handoff.peek(),null,'Peer invitation must not manufacture an instance-list import');
+peer.handoff.consumePeer();
+assert.equal(peer.handoff.peekPeer(),null,'Consent has a single-use invitation');
+for(const invalidPeer of [
+ {v:1,source:'https://source.example/',nonce:'bad'},
+ {v:1,source:'https://attacker.example/?sid=1',nonce:'b'.repeat(48)},
+ {v:1,source:'https://source.example/',nonce:'b'.repeat(48),password:'not-allowed'}
+]){
+ const test=context('https://other.example/#!weig-peer='+encodeURIComponent(JSON.stringify(invalidPeer)));
+ assert.equal(test.handoff.peekPeer(),null,'Malformed peer invitation must not become accepted');
+ assert.equal(test.location.hash,'','Malformed peer Fragment must be removed');
+}
+const expired=context('https://other.example/#!weig-peer='+encodeURIComponent(JSON.stringify(invite)));
+const raw=JSON.parse(expired.values.get('weig.instances.peerInvite.v1'));
+raw.createdAt=Date.now()-11*60*1000;
+expired.values.set('weig.instances.peerInvite.v1',JSON.stringify(raw));
+assert.equal(expired.handoff.peekPeer(),null,'Peer invitations expire without silent authorization');
 console.log('Instance handoff contract passed: URL-fragment transport, pre-auth capture, origin-local pending consent, strict noncredential validation.');
