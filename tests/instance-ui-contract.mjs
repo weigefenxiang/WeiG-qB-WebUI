@@ -34,19 +34,29 @@ const saved=new Map(),registry={
   currentUrl:()=> 'https://one.example/',
   list:()=>[{name:'One',url:'https://one.example/'},{name:'Two',url:'https://two.example/'}]
 };
-const storage={get:(k,d)=>saved.has(k)?saved.get(k):d,set:(k,v)=>{saved.set(k,v);return true;}};
+let reportWrites=0;
+const storage={get:(k,d)=>saved.has(k)?saved.get(k):d,set:(k,v)=>{
+  if(k==='weig.instances.reports.v1')reportWrites++;
+  saved.set(k,v);return true;
+}};
 let now=Date.now();
 class Time extends Date{static now(){return now;}}
 const client={qbVersion:'v5.2.4',torrentCount:async()=>0};
 const app={client,catalogReady:true,catalog:[],filter:'all'};
+const listeners=new Map();
 const win={WeiG:{StorageRuntime:{local:storage},InstanceRegistry:registry,AppState:app},
-  location:{origin:'https://one.example'},addEventListener(){},dispatchEvent(){}};
+  location:{origin:'https://one.example'},addEventListener(name,fn){listeners.set(name,fn);},dispatchEvent(){}};
 const document={readyState:'loading',addEventListener(){}};
 vm.runInNewContext(health,{window:win,document,URL,Number,Map,Set,CustomEvent:class{},Date:Time});
 const H=win.WeiG.InstanceHealth;
 await H.checkNow();
 assert.equal(H.get('https://one.example/').count,0,'Authoritative current zero retained');
 assert.equal(H.exportReports().find(x=>x.url==='https://one.example/').count,0);
+H.start();
+const writesBeforeZeroRefresh=reportWrites;
+listeners.get('weig:library-state')();
+listeners.get('weig:library-state')();
+assert.equal(reportWrites,writesBeforeZeroRefresh,'Repeated unchanged zero count must not cause storage writes');
 assert.equal(H.get('https://two.example/').status,'unverified');
 assert.equal(H.importReports([{url:'https://two.example/',count:42,at:now}]),1);
 assert.equal(H.get('https://two.example/').reportedCount,42,'Remote report carries useful count');

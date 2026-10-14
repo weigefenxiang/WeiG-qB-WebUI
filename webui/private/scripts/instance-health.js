@@ -110,7 +110,7 @@
     global.addEventListener('weig:library-state',function(){
       var previous=live&&live.count;
       var row=snapshotCurrent();
-      if(row&&row.count!==null&&(row.count!==previous||!previous)){saveReports();}
+      if(row&&row.count!==null&&row.count!==previous)saveReports();
       emit();
     });
     if(W.AppState&&W.AppState.initialized)checkNow().catch(function(){emit();});
