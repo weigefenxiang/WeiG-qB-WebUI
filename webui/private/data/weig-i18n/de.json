@@ -460,7 +460,7 @@
     "instances.loopbackWarning": "127.0.0.1 / localhost bezeichnet dieses Browsergerät, nicht den entfernten Server.",
     "instances.lastReported": "Zuletzt gemeldet: {time}",
     "instances.add": "Hinzufügen",
-    "instances.refresh": "Jetzt prüfen",
+    "instances.refresh": "Aktuelle prüfen",
     "instances.manage": "Instanzen verwalten",
     "instances.name": "Instanzname",
     "instances.url": "WebUI-Adresse",

@@ -473,7 +473,7 @@
     "instances.loopbackWarning": "127.0.0.1 / localhost aponta para o dispositivo deste navegador, não para o servidor remoto.",
     "instances.lastReported": "Último registro: {time}",
     "instances.add": "Adicionar",
-    "instances.refresh": "Verificar agora",
+    "instances.refresh": "Atualizar atual",
     "instances.manage": "Gerir instâncias",
     "instances.name": "Nome da instância",
     "instances.url": "Endereço do WebUI",

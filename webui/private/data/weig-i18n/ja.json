@@ -476,7 +476,7 @@
     "instances.loopbackWarning": "127.0.0.1 / localhost はリモートサーバーではなく、このブラウザの端末を指します。",
     "instances.lastReported": "前回の記録：{time}",
     "instances.add": "追加",
-    "instances.refresh": "今すぐ確認",
+    "instances.refresh": "現在の接続を更新",
     "instances.manage": "インスタンスを管理",
     "instances.name": "インスタンス名",
     "instances.url": "WebUI アドレス",

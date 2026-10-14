@@ -652,7 +652,7 @@
     "instances.loopbackWarning": "127.0.0.1 / localhost 指瀏覽器所在裝置，並非遠端伺服器。",
     "instances.lastReported": "上次記錄：{time}",
     "instances.add": "新增",
-    "instances.refresh": "立即檢查",
+    "instances.refresh": "重新整理目前",
     "instances.manage": "管理執行個體",
     "instances.name": "執行個體名稱",
     "instances.url": "WebUI 位址",

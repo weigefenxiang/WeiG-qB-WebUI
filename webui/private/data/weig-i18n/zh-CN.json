@@ -648,7 +648,7 @@
     "instances.loopbackWarning": "127.0.0.1 / localhost 指浏览器所在设备，不是远程服务器。",
     "instances.lastReported": "上次记录：{time}",
     "instances.add": "添加",
-    "instances.refresh": "立即检测",
+    "instances.refresh": "刷新当前",
     "instances.manage": "管理实例",
     "instances.name": "实例名称",
     "instances.url": "WebUI 地址",

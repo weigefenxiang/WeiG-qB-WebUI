@@ -477,7 +477,7 @@
     "instances.loopbackWarning": "127.0.0.1 / localhost는 원격 서버가 아닌 이 브라우저가 실행 중인 기기를 가리킵니다.",
     "instances.lastReported": "마지막 기록: {time}",
     "instances.add": "추가",
-    "instances.refresh": "지금 확인",
+    "instances.refresh": "현재 새로고침",
     "instances.manage": "인스턴스 관리",
     "instances.name": "인스턴스 이름",
     "instances.url": "WebUI 주소",

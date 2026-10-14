@@ -480,7 +480,7 @@
     "instances.loopbackWarning": "127.0.0.1 / localhost — это устройство с браузером, а не удалённый сервер.",
     "instances.lastReported": "Последние данные: {time}",
     "instances.add": "Добавить",
-    "instances.refresh": "Проверить сейчас",
+    "instances.refresh": "Обновить текущий",
     "instances.manage": "Управление экземплярами",
     "instances.name": "Имя экземпляра",
     "instances.url": "Адрес WebUI",
