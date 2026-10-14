@@ -112,7 +112,7 @@ assert.ok(peerSource.includes('approved')&&peerSource.includes('event.source===a
   const fakeWindow={
     location:{href:'https://one.example/',origin:'https://one.example',protocol:'https:',hash:''},
     WeiG:{InstanceRegistry:{currentUrl:()=> 'https://one.example/',
-      list:()=>[{url:'https://two.example/'}]},
+      list:()=>[{url:'https://two.example/'},{url:'http://three.example/'}]},
       InstanceHealth:{acceptPeer:(url,row)=>updates.push({url,row}),clearPeer:url=>cleared.push(url)},
       InstanceHandoff:{peekPeer:()=>null}},
     document:{createElement:()=>link,body:{appendChild(){}}},
@@ -124,6 +124,13 @@ assert.ok(peerSource.includes('approved')&&peerSource.includes('event.source===a
   vm.runInNewContext(peerSource,{window:fakeWindow,URL,Map,Uint8Array,Date,CustomEvent:class{}});
   const P=fakeWindow.WeiG.InstancePeerBridge;
   assert.throws(()=>P.connect('https://unknown.example/'),'Unknown instance not permitted');
+  assert.throws(()=>P.connect('http://three.example/'),/HTTPS to HTTP/,
+    'Downgrade must require explicit confirmation even for a saved instance');
+  const canOpen=fakeWindow.open;
+  fakeWindow.open=()=>null;
+  assert.throws(()=>P.connect('https://two.example/'),/blocked/,
+    'Popup blocking must be reported and not mistaken for a live connection');
+  fakeWindow.open=canOpen;
   assert.equal(P.connect('https://two.example/'),true);
   assert.ok(opened.startsWith('https://two.example/#!weig-peer='));
   const invite=JSON.parse(decodeURIComponent(new URL(opened).hash.slice('#!weig-peer='.length)));
@@ -145,6 +152,11 @@ assert.ok(peerSource.includes('approved')&&peerSource.includes('event.source===a
   events.message({origin:'https://two.example',source:peerWindow,data:status});
   assert.equal(updates.length,1,'Verified zero count reaches only canonical InstanceHealth');
   assert.equal(updates[0].row.count,0);
+  peerWindow.closed=true;
+  assert.equal(P.focus('https://two.example/'),false,
+    'Closing the target tab cannot retain a live connected WindowProxy');
+  assert.ok(cleared.includes('https://two.example/'),'Closed peer must clear health evidence');
+  peerWindow.closed=false;
   P.disconnect('https://two.example/');
   assert.ok(cleared.includes('https://two.example/'),'Disconnect invalidates live evidence');
 }

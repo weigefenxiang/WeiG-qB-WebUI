@@ -35,6 +35,10 @@ on:
       - webui/private/scripts/logs.js
       - webui/private/scripts/settings.js
       - webui/private/scripts/i18n.js
+      # Cross-instance Sidebar shares Dialog/ContextMenu and can affect Add Torrent.
+      - webui/private/scripts/instance-health.js
+      - webui/private/scripts/instance-peer-bridge.js
+      - webui/private/scripts/instances-ui.js
       - tests/real-qb-docker.sh
       - tests/real-qb-browser.mjs
       - audits/real-qb-full-matrix-contract.mjs
