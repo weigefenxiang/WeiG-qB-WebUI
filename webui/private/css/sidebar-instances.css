@@ -17,6 +17,10 @@
 .sidebar-instances__name{display:flex;align-items:center;gap:8px;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .sidebar-instances__dot{width:7px;height:7px;flex:0 0 7px;border-radius:50%;background:var(--text-muted)}
 .sidebar-instances__dot[data-state="online"]{background:var(--success)}
+/* A peer that is no longer fresh is only a remembered visit, never live. */
+.sidebar-instances__dot[data-state="historical"]{position:relative;background:transparent;border:1.5px solid var(--success);box-sizing:border-box}
+.sidebar-instances__dot[data-state="historical"]::after{content:'◷';position:absolute;left:6px;top:-6px;color:var(--success);font-size:10px;line-height:1}
+
 .sidebar-instances__count{flex:0 0 auto;color:var(--text-muted);font-variant-numeric:tabular-nums;font-size:var(--text-meta-size)}
 .sidebar-instances__actions{display:flex;gap:7px;flex-wrap:wrap;align-items:center}
 .sidebar-instances__actions>.btn{flex:1 1 auto;min-width:0;min-height:30px;padding:4px 7px;font-size:var(--text-meta-size)}

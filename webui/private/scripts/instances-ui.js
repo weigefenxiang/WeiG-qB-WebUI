@@ -1,6 +1,6 @@
 (function(global){
   'use strict';
-  var W=global.WeiG=global.WeiG||{},R=W.InstanceRegistry,H=W.InstanceHealth,D=W.DialogRuntime,STORE=W.StorageRuntime&&W.StorageRuntime.local;
+  var W=global.WeiG=global.WeiG||{},R=W.InstanceRegistry,H=W.InstanceHealth,P=W.InstancePeerBridge,D=W.DialogRuntime,STORE=W.StorageRuntime&&W.StorageRuntime.local;
   if(W.InstancesUI||!R||!D)return;
   var KEY=W.StorageKeys&&W.StorageKeys.instancesCollapsed||'weig.instances.collapsed';
   var host=null,expanded=!(STORE&&STORE.get(KEY,'0')==='1'),importOffered=false,liveRows=new Map();
@@ -30,6 +30,8 @@
   }
   function transferAndSwitch(item){
     if(item.url===R.currentUrl())return;
+    // Reuse the consented live tab instead of unloading the broker page.
+    if(P&&P.isConnected(item.url)&&P.focus(item.url))return;
     var action=function(insecure){
       try{R.switchTo(item.url,{transfer:true,allowDowngrade:insecure===true,currentName:records()[0].name});}
       catch(error){notice(error.message);}
@@ -43,7 +45,7 @@
   function paintHealth(view){
     var health=H&&H.get(view.item.url),state=health&&health.status||'unknown',count=health&&health.count;
     var status=state==='online'?tr('online'):tr('unverified'),historical=count==null&&health&&Number.isSafeInteger(health.reportedCount)?health.reportedCount:null;
-    view.dot.dataset.state=state;
+    view.dot.dataset.state=state==='online'?'online':historical===null?'unknown':'historical';
     view.total.textContent=count==null?(historical===null?'—':String(historical)+'*'):String(count);
     var previous=health&&health.reportedAt&&state!=='online'?tr('lastReported',{time:new Date(health.reportedAt).toLocaleString()}):'';
     view.select.title=view.item.name+' · '+view.item.url+' · '+status+(count!=null?' · '+tr('torrentCount',{count:count}):historical===null?'':' · '+tr('torrentCount',{count:historical})+'*')+(previous?' · '+previous:'');
@@ -114,11 +116,24 @@
     m.show(input);input.select();
   }
   function instanceMenu(item,active){
+    var connected=P&&P.isConnected(item.url);
     return[
+      {label:connected?tr('disconnect'):tr('connect'),disabled:active||!P,onSelect:function(){
+        if(!P)return;
+        if(connected){P.disconnect(item.url);render();return;}
+        var downgrade=global.location.protocol==='https:'&&new URL(item.url).protocol==='http:';
+        var description=tr('connectHint',{name:item.name})+' · '+item.url+
+          (downgrade?' · '+tr('insecureWarning'):'');
+        ask(tr('connectTitle'),description,tr('connect'),function(){
+          P.connect(item.url,{allowDowngrade:downgrade});
+        });
+      }},
       {label:tr('rename'),onSelect:function(){openRename(item);}},
       {label:tr('edit'),onSelect:function(){openManager(item);}},
       {label:tr('remove'),disabled:active,onSelect:function(){
-        ask(tr('remove'),item.name+' · '+item.url,tr('remove'),function(){R.remove(item.url);render();});
+        ask(tr('remove'),item.name+' · '+item.url,tr('remove'),function(){
+          if(P)P.disconnect(item.url);R.remove(item.url);render();
+        });
       }}
     ];
   }
@@ -145,7 +160,7 @@
         var row=el('div','instance-manager__row'),label=el('span','',item.name+' · '+item.url);
         var edit=button(tr('edit'),'btn btn--ghost',function(){editingUrl=item.url;name.value=item.name;url.value=item.url;name.focus();});
         var remove=button(tr('remove'),'btn btn--ghost',function(){
-          try{R.remove(item.url);status.textContent='';showRows();render();}catch(error){status.textContent=error.message;}
+          try{if(P)P.disconnect(item.url);R.remove(item.url);status.textContent='';showRows();render();}catch(error){status.textContent=error.message;}
         });
         row.append(label,edit,remove);list.appendChild(row);
       });}catch(error){status.textContent=error.message;}
@@ -211,6 +226,17 @@
     m.dialog.addEventListener('close',function(){if(!finished)bridge.consume();});
     paintPreview();m.show(accept);
   }
+  function offerPeerInvitation(){
+    if(!P||!P.pendingInvitation)return;
+    var invite=P.pendingInvitation();
+    if(!invite)return;
+    var decided=false;
+    var consent=ask(tr('allowTitle'),tr('allowHint',{source:invite.source}),tr('allow'),function(){
+      if(!P.approveIncoming())throw new Error('Peer window was closed or invitation expired.');
+      decided=true;
+    },function(){decided=true;P.rejectIncoming();});
+    consent.dialog.addEventListener('close',function(){if(!decided)P.rejectIncoming();});
+  }
   function init(){
     host=document.getElementById('sidebar-instances');if(!host)return;
     render();if(H&&H.start)H.start();
@@ -219,14 +245,16 @@
       if(!ok)return;
       // Session-ready is earlier than preferences.locale / the WeiG locale shard.
       // Wait for the canonical app startup barrier; the initial Dialog is not reactive.
-      if(W.AppState&&W.AppState.initialized)offerIncoming();
-      else global.addEventListener('weig:app-ready',offerIncoming,{once:true});
+      function offerPending(){offerIncoming();offerPeerInvitation();}
+      if(W.AppState&&W.AppState.initialized)offerPending();
+      else global.addEventListener('weig:app-ready',offerPending,{once:true});
     }).catch(function(){});
   }
   W.InstancesUI=Object.freeze({render:render,openManager:openManager});
   if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',init,{once:true});else init();
   global.addEventListener('weig:languagechange',render);
   global.addEventListener('weig:instance-health',updateHealth);
+  global.addEventListener('weig:instance-peer',render);
   // App's full catalog may finish after the first health probe; reuse its
   // verified count without creating another network probe or replacing rows.
   global.addEventListener('weig:library-state',updateHealth);

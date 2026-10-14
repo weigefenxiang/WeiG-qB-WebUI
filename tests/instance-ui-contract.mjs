@@ -26,6 +26,10 @@ assert.ok(ui.includes('syncAddressHint')&&ui.includes('loopbackWarning'),'Loopba
 assert.ok(ui.includes('bindContextMenuTrigger')&&ui.includes('R.update(')&&ui.includes('currentSuffix'),'Reuse shared ContextMenu and registry identity for rename');
 assert.ok(!ui.includes('localStorage.')&&!ui.includes('fetch('),'UI is a presentation-only consumer');
 assert.ok(css.includes('var(--border)')&&css.includes('var(--selected-control-surface)'),'Sidebar color/selection must use shared theme tokens');
+assert.ok(css.includes('[data-state="historical"]')&&ui.includes("'historical'"),
+  'Expired peer observations must use a distinct hollow historical marker');
+assert.ok(ui.includes("tr('connectTitle')")&&ui.includes("P.approveIncoming()"),
+  'Both ends must confirm before a peer may share status');
 assert.ok(!css.includes('[data-state="reachable"]')&&!css.includes('[data-state="denied"]'),'Retire unreachable legacy status styles');
 assert.ok(!health.includes('refreshShared')&&!health.includes('weig-instance-status.json')&&!health.includes('fetch('),'All collector/shared HTTP status logic must retire');
 assert.ok(!health.includes('setInterval(')&&!health.includes('setMinutes('),'No legacy remote polling timer/setting');
@@ -41,7 +45,7 @@ const storage={get:(k,d)=>saved.has(k)?saved.get(k):d,set:(k,v)=>{
 }};
 let now=Date.now();
 class Time extends Date{static now(){return now;}}
-const client={qbVersion:'v5.2.4',torrentCount:async()=>0};
+const client={qbVersion:'v5.2.4',request:async endpoint=>endpoint==='app/version'?'v5.2.4':'',torrentCount:async()=>0};
 const app={client,catalogReady:true,catalog:[],filter:'all'};
 const listeners=new Map();
 const win={WeiG:{StorageRuntime:{local:storage},InstanceRegistry:registry,AppState:app},
@@ -52,6 +56,12 @@ const H=win.WeiG.InstanceHealth;
 await H.checkNow();
 assert.equal(H.get('https://one.example/').count,0,'Authoritative current zero retained');
 assert.equal(H.exportReports().find(x=>x.url==='https://one.example/').count,0);
+assert.equal((await H.samplePeer()).count,0,'Remote sampling must preserve a freshly verified zero');
+const originalCount=client.torrentCount;
+client.torrentCount=async()=>{throw new Error('Offline count endpoint');};
+assert.equal((await H.samplePeer()).status,'unverified','Version alone cannot claim fresh torrent count');
+client.torrentCount=originalCount;
+await H.checkNow();
 H.start();
 const writesBeforeZeroRefresh=reportWrites;
 listeners.get('weig:library-state')();
@@ -68,6 +78,15 @@ now+=1000;
 const newer={url:'https://two.example/',count:0,at:now};
 assert.equal(H.importReports([newer]),1,'Remote zero is a valid newer historical report');
 assert.equal(H.get('https://two.example/').reportedCount,0);
+assert.equal(H.acceptPeer('https://two.example/',{status:'online',count:0,checkedAt:now}),true,
+  'Only an authenticated transport may publish a live zero');
+assert.equal(H.get('https://two.example/').status,'online');
+assert.equal(H.get('https://two.example/').count,0);
+now+=90001;
+assert.equal(H.get('https://two.example/').status,'unverified','Ninety-second peer evidence must expire');
+assert.equal(H.get('https://two.example/').reportedCount,0,'Expired live count falls back to marked history');
+assert.equal(H.acceptPeer('https://two.example/',{status:'online',count:null,checkedAt:now}),false,
+  'A missing live wire count must not produce a green online state');
 const persisted=JSON.parse(saved.get('weig.instances.reports.v1'));
 assert.equal(persisted.schemaVersion,1);
 assert.ok(persisted.items.every(x=>Object.keys(x).sort().join(',')==='at,count,url'),'No login details/session/status in history');
@@ -88,8 +107,8 @@ assert.ok(peerSource.includes("link.rel='opener'")&&peerSource.includes("link.re
 assert.ok(peerSource.includes('approved')&&peerSource.includes('event.source===approved.win'),'Target peer needs explicit consent and Window validation');
 {
   let opened=null,updates=[],cleared=[],posted=[],events={};
-  const peerWindow={closed:false,postMessage(message,origin){posted.push({message,origin});}};
-  const link={click(){opened=this.href;},remove(){}};
+  const peerWindow={closed:false,name:'',postMessage(message,origin){posted.push({message,origin});}};
+  const link={click(){assert.equal(this.target,peerWindow.name);opened=this.href;},remove(){}};
   const fakeWindow={
     location:{href:'https://one.example/',origin:'https://one.example',protocol:'https:',hash:''},
     WeiG:{InstanceRegistry:{currentUrl:()=> 'https://one.example/',
@@ -98,6 +117,7 @@ assert.ok(peerSource.includes('approved')&&peerSource.includes('event.source===a
       InstanceHandoff:{peekPeer:()=>null}},
     document:{createElement:()=>link,body:{appendChild(){}}},
     crypto:{getRandomValues:a=>{a.fill(0x1f);return a;}},
+    open:(url,target)=>{assert.equal(url,'about:blank');assert.equal(target,'_blank');return peerWindow;},
     addEventListener:(name,cb)=>{events[name]=cb;},
     setInterval:()=>0,dispatchEvent:()=>{}
   };
@@ -111,6 +131,8 @@ assert.ok(peerSource.includes('approved')&&peerSource.includes('event.source===a
   const hello={protocol:'weig-peer-v1',type:'hello',nonce:invite.nonce,url:'https://two.example/'};
   events.message({origin:'https://evil.example',source:peerWindow,data:hello});
   assert.equal(P.isConnected('https://two.example/'),false,'Wrong-Origin handshake rejected');
+  events.message({origin:'https://two.example',source:{closed:false,postMessage(){}},data:hello});
+  assert.equal(P.isConnected('https://two.example/'),false,'Same-Origin wrong WindowProxy handshake rejected');
   events.message({origin:'https://two.example',source:peerWindow,data:hello});
   assert.equal(P.isConnected('https://two.example/'),true,'Consented matching peer accepted');
   assert.ok(posted.some(x=>x.message.type==='welcome'&&x.origin==='https://two.example'));
@@ -131,7 +153,7 @@ const coreI18n=read('webui/private/scripts/i18n.js');
 const enMatch=coreI18n.match(/\bvar EN=(\{[^\n]+\});/);
 assert.ok(enMatch,'Canonical English WeiG dictionary must be present');
 const english=JSON.parse(enMatch[1]),instanceKeys=Object.keys(english).filter(k=>k.startsWith('instances.')).sort();
-assert.equal(instanceKeys.length,28,'The instance feature must have one complete semantic English dictionary');
+assert.equal(instanceKeys.length,35,'The instance feature must have one complete semantic English dictionary');
 const placeholders=s=>[...String(s).matchAll(/\{([a-z]+)\}/g)].map(m=>m[1]).sort();
 for(const locale of ['de','es','fr','ja','ko','pt','ru','zh-CN','zh-TW']){
   const file=JSON.parse(read('webui/private/data/weig-i18n/'+locale+'.json'));

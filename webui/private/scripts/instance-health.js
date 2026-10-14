@@ -5,7 +5,7 @@
   // A76-47: one owner for same-origin live status and bounded historical reports.
   // Foreign reports are untrusted URL-fragment data, NEVER evidence of current online.
   var KEY='weig.instances.reports.v1',AGE=24*60*60000,LIMIT=16;
-  var live=null,started=false,reports=new Map();
+  var live=null,started=false,reports=new Map(),peers=new Map(),PEER_TTL=90000;
   function current(){return W.InstanceRegistry&&W.InstanceRegistry.currentUrl?W.InstanceRegistry.currentUrl():global.location.origin+'/';}
   function emit(){global.dispatchEvent(new CustomEvent('weig:instance-health'));}
   function validAddress(url){
@@ -88,12 +88,59 @@
     emit();
     return !!row;
   }
+  // Peer evidence is memory-only. Only an authenticated page that passed
+  // InstancePeerBridge's nonce+Origin+Window checks may publish it.
+  function clearPeer(url){
+    if(peers.delete(url)){emit();return true;}
+    return false;
+  }
+  function expirePeers(){
+    var now=Date.now(),changed=false;
+    peers.forEach(function(row,url){if(now-row.checkedAt>PEER_TTL){peers.delete(url);changed=true;}});
+    if(changed)emit();
+    return changed;
+  }
+  function acceptPeer(url,row){
+    var now=Date.now(),allowed=knownUrls();
+    if(!allowed.has(url)||url===current()||!row||row.status!=='online'
+      ||!Number.isSafeInteger(row.checkedAt)||Math.abs(now-row.checkedAt)>60000
+      ||!Number.isSafeInteger(row.count)||row.count<0)return false;
+    var previous=peers.get(url);
+    if(previous&&previous.checkedAt>row.checkedAt)return false;
+    // TTL is measured locally at receipt, never from the remote machine's clock.
+    peers.set(url,{status:'online',count:row.count,checkedAt:now});
+    if(merge({url:url,count:row.count,at:now},allowed))saveReports();
+    emit();return true;
+  }
+  // A live peer report must verify its own qB on the wire, not just replay
+  // an initialized page's old catalog or cached detected-version string.
+  async function samplePeer(){
+    var a=W.AppState,client=a&&a.client,now=Date.now();
+    if(!client||typeof client.request!=='function')return{status:'unverified',count:null,checkedAt:now};
+    try{
+      var version=await client.request('app/version',{type:'text'});
+      if(!verifiedVersion(version))throw new Error('No verified current qB');
+      // The share contract needs a fresh wire count, not an old catalog fallback.
+      if(typeof client.torrentCount!=='function')throw new Error('No verified count endpoint');
+      var count=numericCount(await client.torrentCount());
+      if(count===null)throw new Error('Invalid current torrent count');
+      live={status:'online',count:count,checkedAt:Date.now()};
+      if(count!==null&&merge({url:current(),count:count,at:live.checkedAt}))saveReports();
+      emit();return{status:'online',count:count,checkedAt:live.checkedAt};
+    }catch(_e){
+      live=null;emit();
+      return{status:'unverified',count:null,checkedAt:Date.now()};
+    }
+  }
   function get(url){
     var key=String(url||''),now=Date.now(),report=reports.get(key);
     if(key===current()&&live&&now-live.checkedAt<=5*60000){
       var count=trustedCurrentCount();
       return{status:live.status,count:count===null?live.count:count,checkedAt:live.checkedAt};
     }
+    var peer=peers.get(key);
+    if(peer&&peer.status==='online'&&now-peer.checkedAt<=PEER_TTL)
+      return{status:'online',count:peer.count,checkedAt:peer.checkedAt,source:'peer'};
     if(report&&validReport(report,now))
       return{status:'unverified',count:null,reportedCount:report.count,reportedAt:report.at};
     return{status:'unverified',count:null};
@@ -115,6 +162,7 @@
     });
     if(W.AppState&&W.AppState.initialized)checkNow().catch(function(){emit();});
   }
-  W.InstanceHealth=Object.freeze({get:get,checkNow:checkNow,exportReports:exportReports,importReports:importReports,start:start});
+  W.InstanceHealth=Object.freeze({get:get,checkNow:checkNow,exportReports:exportReports,importReports:importReports,start:start,
+    samplePeer:samplePeer,acceptPeer:acceptPeer,clearPeer:clearPeer,expirePeers:expirePeers});
   if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',start,{once:true});else start();
 })(window);
