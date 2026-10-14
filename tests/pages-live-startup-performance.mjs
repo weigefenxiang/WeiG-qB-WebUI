@@ -151,9 +151,9 @@ try{
   assert.deepEqual(bootstrapEvidence.seeds,['scripts/runtime-assets.js'],'private index must own exactly one RuntimeAssets seed');
   const startupNames=new Set(bootstrapScripts);
   const deferredModules=bootstrapEvidence.scripts.filter(name=>!startupNames.has(name));
-  const expectedDeferred=['scripts/instance-registry.js','scripts/instance-health.js','scripts/instances-ui.js'];
+  const expectedDeferred=['scripts/instance-registry.js','scripts/instance-health.js','scripts/instance-peer-bridge.js','scripts/instances-ui.js'];
   assert.deepEqual(deferredModules,expectedDeferred,
-    'Deferred Sidebar modules must have exactly one ordered Registry/Health/UI owner');
+    'Deferred Sidebar modules must have exactly one ordered Registry/Health/PeerBridge/UI lifecycle');
   assert.deepEqual(bootstrapEvidence.scripts.filter(name=>startupNames.has(name)).sort(),[...bootstrapScripts].sort(),
     'RuntimeAssets initial DOM script ownership must exactly match deployed startup plan');
   assert.deepEqual([...bootstrapEvidence.styles].sort(),[...bootstrapPlan.styles].sort(),'RuntimeAssets DOM stylesheet ownership must exactly match the deployed bootstrap plan');
