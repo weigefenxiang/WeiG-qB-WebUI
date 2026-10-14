@@ -121,12 +121,22 @@ for(const item of a74IssueForms){
   }
 }
 const a74ReportSource=read('webui/private/scripts/bug-report.js');
+assert(settingsSource.includes('W.BugReport&&W.BugReport.bindLink')&&!settingsSource.includes('W.BugReport&&W.BugReport.prepareLink'),'Settings About must not discover GitHub Main forms during render');
 let a74TestLocale='ru',a74LookupCount=0;
 const a74ReportWindow={WeiG:{I18n:{getLocale:()=>a74TestLocale}},navigator:{userAgent:'Chrome 154'},fetch:async url=>{a74LookupCount++;assert(url.includes('/contents/.github/ISSUE_TEMPLATE?ref=main'),'Main directory listing must be the one Issue Form truth');return{ok:true,json:async()=>[{type:'file',name:'bug_report.yml'},{type:'file',name:'bug_report_ru.yml'},{type:'file',name:'bug_report_zh-TW.yml'}]};},open:()=>({})};
 vm.runInNewContext(a74ReportSource,{window:a74ReportWindow,URL});
 const a74Reporter=a74ReportWindow.WeiG.BugReport;
 const a74Before=new URL(a74Reporter.issueUrl({version:'1.2.2',gitSha:'a'.repeat(40)}));
 assert(a74Before.searchParams.get('template')==='bug_report.yml'&&a74Before.searchParams.get('webui_locale')==='ru'&&a74Before.searchParams.get('problem')==='WebUI language: ru\n\n','Main default form lacks webui_locale: preserve language in its known problem field');
+const a74LinkListeners=new Map();
+const a74DeferredAnchor={isConnected:true,href:a74Before.href,
+  addEventListener:(name,fn)=>a74LinkListeners.set(name,fn),
+  removeEventListener:(name,fn)=>{if(a74LinkListeners.get(name)===fn)a74LinkListeners.delete(name);}};
+assert(a74Reporter.bindLink({},a74DeferredAnchor)&&a74LookupCount===0,'About render must not fetch Main template inventory');
+assert(a74LinkListeners.has('focus')&&a74LinkListeners.has('pointerenter'),'About feedback link must support keyboard and pointer intent');
+a74LinkListeners.get('focus')();
+await new Promise(resolve=>setImmediate(resolve));
+assert(a74LookupCount===1&&new URL(a74DeferredAnchor.href).searchParams.get('template')==='bug_report_ru.yml','The first deliberate focus may resolve the verified localized form');
 const a74ReportAnchor={isConnected:true,href:a74Before.href};
 assert(await a74Reporter.prepareLink({version:'1.2.2',gitSha:'a'.repeat(40)},a74ReportAnchor),'Verified Main Issue Form should enable localized native href');
 assert(new URL(a74ReportAnchor.href).searchParams.get('template')==='bug_report_ru.yml'&&new URL(a74ReportAnchor.href).searchParams.get('problem')===null&&a74LookupCount===1,'Localized forms use webui_locale alone, without an extra problem-prefill line');
@@ -137,6 +147,15 @@ a74TestLocale='zh-CN';const missingLocalized={isConnected:true,href:''};
 assert((await a74Reporter.prepareLink({},missingLocalized))===false,'A missing Main language form must not be requested by filename');
 assert(new URL(a74Reporter.issueUrl({})).searchParams.get('template')==='bug_report.yml','Missing Main template falls back to the existing English form');
 assert(a74LookupCount===1,'All locale checks share one Main inventory request');
+
+const a74OfflineWindow={WeiG:{I18n:{getLocale:()=> 'ru'}},navigator:{userAgent:'Chrome'},fetch:async()=>({ok:false,status:403})};
+vm.runInNewContext(a74ReportSource,{window:a74OfflineWindow,URL});
+const a74OfflineReport=a74OfflineWindow.WeiG.BugReport;
+const a74OfflineDefault=a74OfflineReport.issueUrl({});
+const a74OfflineAnchor={isConnected:true,href:a74OfflineDefault};
+assert(!(await a74OfflineReport.prepareLink({},a74OfflineAnchor))&&a74OfflineAnchor.href===a74OfflineDefault,
+  'An unavailable GitHub template inventory must keep the canonical English fallback');
+
 a74TestLocale='it';
 assert(new URL(a74Reporter.issueUrl({})).searchParams.get('template')==='bug_report.yml'&&new URL(a74Reporter.issueUrl({})).searchParams.get('problem')==='WebUI language: it\n\n','Unsupported locales must use English while recording the selected locale');
 

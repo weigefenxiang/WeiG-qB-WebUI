@@ -48,6 +48,20 @@
   }
   function prepareLink(input,anchor){var code=locale(),filename=templateFor(code);if(!anchor||filename===TEMPLATE)return Promise.resolve(false);
     return checkTemplate(filename).then(function(ok){if(ok&&anchor.isConnected&&locale()===code){anchor.href=issueUrl(input);return true;}return false;});}
+  function bindLink(input,anchor){
+    if(!anchor||typeof anchor.addEventListener!=='function')return false;
+    var pending=false;
+    function onIntent(){
+      if(pending)return;
+      pending=true;
+      anchor.removeEventListener('pointerenter',onIntent);
+      anchor.removeEventListener('focus',onIntent);
+      prepareLink(input,anchor);
+    }
+    anchor.addEventListener('pointerenter',onIntent);
+    anchor.addEventListener('focus',onIntent);
+    return true;
+  }
   function open(input){var url=issueUrl(input),opened=global.open(url,'_blank','noopener,noreferrer');return{url:url,opened:!!opened};}
-  W.BugReport=Object.freeze({repository:REPOSITORY,template:TEMPLATE,snapshot:snapshot,issueUrl:issueUrl,prepareLink:prepareLink,open:open});
+  W.BugReport=Object.freeze({repository:REPOSITORY,template:TEMPLATE,snapshot:snapshot,issueUrl:issueUrl,prepareLink:prepareLink,bindLink:bindLink,open:open});
 })(window);
