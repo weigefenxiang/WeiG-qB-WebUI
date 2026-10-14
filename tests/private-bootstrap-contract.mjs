@@ -14,7 +14,7 @@ for(const token of ["SEED='scripts/runtime-assets.js'","PLAN='bootstrap-plan.jso
 for(const retired of ['function loadStyles','function loadScripts','STYLE_CONCURRENCY'])assert.equal(index.includes(retired),false,'retired general bootstrap loader leaked back into index: '+retired);
 const startup=plan.phases.flatMap(phase=>phase.scripts),unique=new Set(startup);
 assert.equal(startup.length,39,'A76 Settings-only BugReport and UpdateCheck are route-demand, not startup');assert.equal(unique.size,startup.length,'bootstrap plan script inventory must be unique');
-for(const deferred of ['scripts/settings.js','scripts/rss.js','scripts/logs.js','scripts/update-check.js','scripts/bug-report.js','scripts/instance-registry.js','scripts/instance-health.js','scripts/instances-ui.js'])assert.equal(unique.has(deferred),false,'route-only module leaked into startup plan: '+deferred);
+for(const deferred of ['scripts/settings.js','scripts/rss.js','scripts/logs.js','scripts/update-check.js','scripts/bug-report.js','scripts/instance-registry.js','scripts/instance-health.js','scripts/instance-peer-bridge.js','scripts/instances-ui.js'])assert.equal(unique.has(deferred),false,'route-only module leaked into startup plan: '+deferred);
 assert.equal(unique.has('scripts/runtime-assets.js'),false,'RuntimeAssets seed must not duplicate itself inside its own plan');
 assert.ok(plan.phases.at(-1).name==='application'&&plan.phases.at(-1).scripts.length===1&&plan.phases.at(-1).scripts[0]==='scripts/app.js','App must be the final dependency phase');
 const phaseOf=name=>plan.phases.findIndex(phase=>phase.scripts.includes(name));

@@ -11,7 +11,7 @@ const routeModules=[...routeBlock.matchAll(/'([^']+\.js)'/g)].map(match=>match[1
 assert.deepEqual(routeModules.sort(),['scripts/bug-report.js','scripts/logs.js','scripts/rss.js','scripts/settings.js','scripts/update-check.js'],'route-demand module inventory drifted');
 const sidebarSource=(navigation.match(/var modules=\[([^\]]+)\];/)||[])[1]||'';
 const sidebarModules=[...sidebarSource.matchAll(/'([^']+\.js)'/g)].map(match=>match[1]);
-assert.deepEqual(sidebarModules.sort(),['scripts/instance-health.js','scripts/instance-registry.js','scripts/instances-ui.js'],
+assert.deepEqual(sidebarModules.sort(),['scripts/instance-health.js','scripts/instance-peer-bridge.js','scripts/instance-registry.js','scripts/instances-ui.js'],
   'Sidebar instance feature must retain one explicit RuntimeAssets lifecycle owner');
 
 function walk(dir){return fs.readdirSync(dir,{withFileTypes:true}).flatMap(entry=>{const file=path.join(dir,entry.name);return entry.isDirectory()?walk(file):(entry.isFile()&&file.endsWith('.js')?[file]:[]);});}
