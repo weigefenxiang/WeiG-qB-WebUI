@@ -9,6 +9,8 @@ const read=rel=>fs.readFileSync(path.join(root,rel),'utf8');
 const index=read('webui/private/index.html'),plan=JSON.parse(read('webui/private/bootstrap-plan.json')),app=read('webui/private/scripts/app.js'),brand=read('webui/private/scripts/brand.js');
 assert.ok(index.includes('data-weig-bootstrap="pending"'),'private shell must start behind the bootstrap gate');
 assert.equal(plan.schemaVersion,1);assert.equal(plan.styleConcurrency,4);assert.equal(plan.maxAttempts,3);
+assert.ok(index.includes('<link rel="preload" href="scripts/runtime-assets.js?v=__WEIG_GIT_SHA__" as="script">'),'Exact-SHA RuntimeAssets seed must start downloading early through the browser cache');
+assert.ok(index.includes('weig-bootstrap-reveal .01s linear .22s forwards')&&index.includes('html[data-weig-bootstrap="failed"] #weig-bootstrap-status{opacity:1;animation:none}'),'Short cached startups must not flash the loader while errors remain visible');
 assert.ok(!index.includes('var styles=[')&&!index.includes('var scripts=['),'index must not retain a second startup asset inventory');
 for(const token of ["SEED='scripts/runtime-assets.js'","PLAN='bootstrap-plan.json'","seedRuntime","executePlanFile(PLAN)","asset-load-failed:","__WEIG_GIT_SHA__"])assert.ok(index.includes(token),'bootstrap seed contract missing '+token);
 for(const retired of ['function loadStyles','function loadScripts','STYLE_CONCURRENCY'])assert.equal(index.includes(retired),false,'retired general bootstrap loader leaked back into index: '+retired);

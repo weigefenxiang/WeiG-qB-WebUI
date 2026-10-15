@@ -9,6 +9,7 @@
   <meta http-equiv="Pragma" content="no-cache">
   <meta http-equiv="Expires" content="0">
   <meta name="weig-build-sha" content="__WEIG_GIT_SHA__">
+  <link rel="preload" href="scripts/runtime-assets.js?v=__WEIG_GIT_SHA__" as="script">
   <link rel="icon" href="assets/Wei.G.png?v=__WEIG_GIT_SHA__">
   <title>WeiG qB WebUI</title>
   <script>try{if(sessionStorage.getItem('weig.logoutGuard')||sessionStorage.getItem('weig.loginHandshake'))document.documentElement.dataset.sessionLocked='1';}catch(_e){}</script>
@@ -16,6 +17,9 @@
   <style id="weig-bootstrap-shell">
     html[data-weig-bootstrap="pending"] #app,html[data-weig-bootstrap="failed"] #app{visibility:hidden}
     #weig-bootstrap-status{position:fixed;inset:0;z-index:2147483647;display:grid;place-items:center;padding:24px;background:#070b14;color:#e8edf7;font-family:Inter,"Segoe UI","PingFang SC","Microsoft YaHei",system-ui,sans-serif}
+    html[data-weig-bootstrap="pending"] #weig-bootstrap-status{opacity:0;animation:weig-bootstrap-reveal .01s linear .22s forwards}
+    html[data-weig-bootstrap="failed"] #weig-bootstrap-status{opacity:1;animation:none}
+    @keyframes weig-bootstrap-reveal{to{opacity:1}}
     #weig-bootstrap-status[hidden]{display:none}
     #weig-bootstrap-status>div{width:min(92vw,620px);padding:24px;border:1px solid rgba(255,255,255,.12);border-radius:16px;background:#111a2b;box-shadow:0 24px 80px rgba(0,0,0,.46)}
     #weig-bootstrap-status strong{display:block;font-size:18px;margin-bottom:8px}#weig-bootstrap-status p{margin:6px 0;color:#b8c2d9;line-height:1.55;overflow-wrap:anywhere}
