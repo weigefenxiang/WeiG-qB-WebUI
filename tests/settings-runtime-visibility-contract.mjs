@@ -41,6 +41,11 @@ for(const key of ['disk_cache','disk_cache_ttl','enable_coalesce_read_write'])
   assert.equal(S.sourcePreferenceVisible(key),false,'a source-hidden setting must be excluded from writes '+key);
 assert.equal(S.sourceControlVisible({id:'diskIOType'}),true,'unrelated upstream controls must retain normal source presentation');
 S.setRuntimeBuildInfo({libtorrent:'1.2.20.0'});
+assert.equal(S.toDisplay('disk_cache',-1),-1,'qB source Auto sentinel must remain raw -1');
+assert.equal(S.toRaw('disk_cache',-1),-1,'qB source Auto sentinel must round-trip losslessly');
+assert.equal(S.toDisplay('disk_cache',0),0,'qB source Disabled sentinel must remain zero');
+assert.equal(S.toRaw('disk_cache',256),256,'positive cache MiB value must round-trip');
+
 for(const id of ['diskCache','diskCacheExpiryInterval','coalesceReadsAndWrites'])
   assert.equal(S.sourceControlVisible({id}),true,'libtorrent 1.x must retain '+id);
 S.setRuntimeBuildInfo(null);
