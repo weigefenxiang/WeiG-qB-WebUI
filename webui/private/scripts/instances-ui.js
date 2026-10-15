@@ -191,10 +191,10 @@
       }).catch(function(error){status.textContent=error.message;});
     });
     m.body.append(list,form,file);
-    m.footer.append(
-      button(tr('exportFile'),'btn btn--ghost',function(){try{exportInstanceFile();status.textContent='';}catch(error){status.textContent=error.message;}}),
-      button(tr('importFile'),'btn btn--ghost',function(){file.click();})
-    );
+    var exportControl=button(tr('exportFile'),'btn btn--ghost',function(){try{exportInstanceFile();status.textContent='';}catch(error){status.textContent=error.message;}});
+    var importControl=button(tr('importFile'),'btn btn--ghost',function(){file.click();});
+    exportControl.dataset.instanceAction='export-json';importControl.dataset.instanceAction='import-json';
+    m.footer.append(exportControl,importControl);
     showRows();
     if(initial&&typeof initial.url==='string'){
       var existing=R.list(true).some(function(x){return x.url===initial.url;});

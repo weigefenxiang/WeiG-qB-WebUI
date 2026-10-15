@@ -146,6 +146,35 @@ async function verifyInstanceSidebar(page,q){
  return{version:q.version,collapse:'PASS',
    placement:'below-facets',theme_border:'PASS'};
 }
+async function verifyPortableInstanceBackup(page,sourceUrl){
+  // Test real Chrome file actions, not a second JS-only implementation.
+  await page.evaluate(url=>{WeiG.InstanceRegistry.add('Portable qB',url);WeiG.InstancesUI.render();},sourceUrl);
+  await page.locator('#sidebar-instances .sidebar-instances__actions button').first().click();
+  const manager=page.locator('.instance-manager-dialog').first();
+  await manager.waitFor({state:'visible',timeout:10000});
+  const downloadPromise=page.waitForEvent('download',{timeout:15000});
+  await manager.locator('[data-instance-action="export-json"]').click();
+  const download=await downloadPromise;
+  assert(download.suggestedFilename()==='weig-instances.json','Browser must export portable JSON with a fixed filename');
+  const exported=JSON.parse(fs.readFileSync(await download.path(),'utf8'));
+  assert(exported.schemaVersion===1&&exported.items.length===1
+    &&exported.items[0].name==='Portable qB'&&exported.items[0].url===sourceUrl
+    &&Object.keys(exported.items[0]).sort().join(',')==='name,url',
+    'Browser export may contain only instance names and canonical URLs');
+  await page.evaluate(url=>{WeiG.InstanceRegistry.remove(url);WeiG.InstancesUI.render();},sourceUrl);
+  await manager.locator('input[type="file"]').setInputFiles({
+    name:'weig-instances.json',mimeType:'application/json',buffer:Buffer.from(JSON.stringify(exported),'utf8')
+  });
+  const preview=page.locator('.instance-import__list');
+  await preview.waitFor({state:'visible',timeout:10000});
+  assert((await preview.innerText()).includes('Portable qB'),'Local JSON import must preview the proposed instance');
+  assert(await page.evaluate(()=>WeiG.InstanceRegistry.list(true).length)===0,'Untrusted file proposal must not auto-write the Registry');
+  await page.getByRole('button',{name:/^Import [(]1[)]$/}).click();
+  await page.waitForFunction(url=>WeiG.InstanceRegistry.list(true).some(x=>x.url===url&&x.name==='Portable qB'),sourceUrl,{timeout:10000});
+  await page.evaluate(url=>{WeiG.InstanceRegistry.remove(url);WeiG.InstancesUI.render();},sourceUrl);
+  await manager.locator('.dialog__head button').click();
+  return'PASS';
+}
 async function verifyInstanceSettings(page,q){
  await page.locator('#app-nav [data-route="settings"]').click();
  await page.waitForFunction(()=>location.hash.includes('settings'),null,{timeout:20000});
@@ -230,7 +259,7 @@ async function test(){
  }));
  assert(checks.length===2&&checks[0].sha256===checks[1].sha256,'Different static HTML served');
 
- browser=await launchBrowser();const context=await browser.newContext({viewport:{width:1280,height:800},locale:'en-US'});
+ browser=await launchBrowser();const context=await browser.newContext({viewport:{width:1280,height:800},locale:'en-US',acceptDownloads:true});
  const first=await enter(context,qbs[0]);
  assert((await context.cookies(qbs[1].url)).every(c=>c.name!==qbs[0].sessionCookieName),'First instance session cookie leaked to second qB host');
  const second=await enter(context,qbs[1]);
@@ -262,6 +291,7 @@ async function test(){
    &&peerState.label===String(amount)+'*'&&peerState.dot!=='online',
    'Destination must render the previous qB count as historical only: '+JSON.stringify(peerState));
  await second.evaluate(url=>{WeiG.InstanceRegistry.remove(url);WeiG.InstancesUI.render();},report.url);
+ const portableBackup=await verifyPortableInstanceBackup(second,qbs[0].url);
  const sidebarChecks=await Promise.all([verifyInstanceSidebar(first,qbs[0]),verifyInstanceSidebar(second,qbs[1])]);
  for(const [i,q] of qbs.entries()){
    const row=checks.find(item=>item.qb_version===q.version);
@@ -351,7 +381,7 @@ async function test(){
  assert((await context.cookies(qbs[1].url)).find(c=>c.name===qbs[1].sessionCookieName)?.value===sidB,'Handoff changed destination qB session');
  await context.close();
  fs.mkdirSync('artifacts/real-qb-full',{recursive:true});
- fs.writeFileSync('artifacts/real-qb-full/'+sha+'-shared-static.json',JSON.stringify({status:'PASS',weig_sha:sha,qb_versions:versions,scenario:'two-real-qb-one-shared-static-root',sid_isolation:'PASS',cross_origin_registry:'PASS',whole_page_switch:'PASS',return_navigation:'PASS',protected_cookie_handoff:'PASS',protected_session_probe:'PASS',no_credential_replay:'PASS',sessions_preserved:'PASS',settings_after_return:'PASS',shared_private_assets:'PASS',noncredential_handoff:'PASS',handoff_requires_consent:'PASS',navigation_http_200:'PASS',navigation_referer_suppressed:'PASS',peer_window_feasibility:'PASS',peerWindowEvidence,peer_live_consent:'PASS',peerLiveEvidence,settings_per_origin:'PASS',private_docker_network:'internal',static_sha256:checks[0].sha256,checks,settingsChecks,roundTripSettings,sidebarChecks},null,2)+'\n');
+ fs.writeFileSync('artifacts/real-qb-full/'+sha+'-shared-static.json',JSON.stringify({status:'PASS',weig_sha:sha,qb_versions:versions,scenario:'two-real-qb-one-shared-static-root',sid_isolation:'PASS',cross_origin_registry:'PASS',whole_page_switch:'PASS',return_navigation:'PASS',protected_cookie_handoff:'PASS',protected_session_probe:'PASS',no_credential_replay:'PASS',sessions_preserved:'PASS',settings_after_return:'PASS',shared_private_assets:'PASS',noncredential_handoff:'PASS',handoff_requires_consent:'PASS',portable_instance_backup:portableBackup,navigation_http_200:'PASS',navigation_referer_suppressed:'PASS',peer_window_feasibility:'PASS',peerWindowEvidence,peer_live_consent:'PASS',peerLiveEvidence,settings_per_origin:'PASS',private_docker_network:'internal',static_sha256:checks[0].sha256,checks,settingsChecks,roundTripSettings,sidebarChecks},null,2)+'\n');
  console.log('A76 real shared static and cross-instance session PASS');
 }
 try{await test();}catch(e){console.error('A76 real shared static failed: '+String(e?.message||e));process.exitCode=1;}

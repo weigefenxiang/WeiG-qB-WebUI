@@ -28,6 +28,7 @@ assert.ok(!ui.includes('localStorage.')&&!ui.includes('fetch('),'UI is a present
 assert.ok(ui.includes('R.exportList()')&&ui.includes('R.previewIncoming(raw)')&&ui.includes('R.importMissing(JSON.stringify'),'Portable JSON and consented handoff must reuse the same Registry validation and review owner');
 assert.ok(ui.includes("file.accept='.json,application/json'")&&ui.includes('selected.size>32768'),'Local import must bound file size and use the validated Registry');
 assert.ok(ui.includes("link.download='weig-instances.json'")&&ui.includes('global.URL.revokeObjectURL'),'Portable export must download nonsecret JSON without leaking object URLs');
+assert.ok(ui.includes("exportControl.dataset.instanceAction='export-json'")&&ui.includes("importControl.dataset.instanceAction='import-json'"),'Portable actions must have stable locale-independent E2E selectors');
 assert.ok(css.includes('var(--border)')&&css.includes('var(--selected-control-surface)'),'Sidebar color/selection must use shared theme tokens');
 assert.ok(css.includes('[data-state="historical"]')&&ui.includes("'historical'"),
   'Expired peer observations must use a distinct hollow historical marker');
