@@ -101,7 +101,7 @@
     return next.length!==items.length;
   }
   function defaultName(url){return new URL(url||currentUrl().href).host;}
-  function exportList(){return JSON.stringify({schemaVersion:1,items:load()});}
+  function exportList(){return JSON.stringify({schemaVersion:1,items:load(true)});}
   // All import paths share the same strict URL/schema validation and identity
   // reconciliation. Preview is read-only; incoming handoffs never rename an
   // existing entry and treat an unregistered current URL as new until it is explicitly accepted.

@@ -677,6 +677,8 @@
     "instances.importTitle": "要匯入執行個體清單嗎？",
     "instances.importHint": "外部網頁提供來自 {source} 的 {count} 個執行個體位址。儲存前請先確認；不包含密碼或工作階段資訊。",
     "instances.import": "匯入",
+    "instances.exportFile": "匯出 JSON",
+    "instances.importFile": "匯入 JSON",
     "instances.loadFailed": "無法載入執行個體管理功能。"
   }
 }

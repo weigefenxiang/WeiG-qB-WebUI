@@ -501,6 +501,8 @@
     "instances.importTitle": "インスタンス一覧を取り込みますか？",
     "instances.importHint": "外部ページから {source} のインスタンスアドレス {count} 件が提供されました。保存前に確認してください。パスワードやセッションは含まれません。",
     "instances.import": "取り込む",
+    "instances.exportFile": "JSONを書き出す",
+    "instances.importFile": "JSONを読み込む",
     "instances.loadFailed": "インスタンス管理を読み込めませんでした。"
   }
 }

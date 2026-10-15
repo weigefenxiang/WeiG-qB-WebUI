@@ -489,6 +489,8 @@
     "instances.importTitle": "Importer la liste des instances ?",
     "instances.importHint": "Une page externe propose {count} adresses d’instances depuis {source}. Vérifiez-les avant de les enregistrer. Aucun mot de passe ni session n’est inclus.",
     "instances.import": "Importer",
+    "instances.exportFile": "Exporter JSON",
+    "instances.importFile": "Importer JSON",
     "instances.loadFailed": "Impossible de charger le gestionnaire d’instances."
   }
 }

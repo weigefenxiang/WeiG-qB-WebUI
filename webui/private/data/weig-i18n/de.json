@@ -485,6 +485,8 @@
     "instances.importTitle": "Instanzliste importieren?",
     "instances.importHint": "Eine externe Seite hat {count} Instanzadressen von {source} übermittelt. Bitte vor dem Speichern prüfen. Passwörter und Sitzungen sind nicht enthalten.",
     "instances.import": "Importieren",
+    "instances.exportFile": "JSON exportieren",
+    "instances.importFile": "JSON importieren",
     "instances.loadFailed": "Instanzverwaltung konnte nicht geladen werden."
   }
 }

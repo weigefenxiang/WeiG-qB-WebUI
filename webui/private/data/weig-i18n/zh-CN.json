@@ -673,6 +673,8 @@
     "instances.importTitle": "导入实例列表？",
     "instances.importHint": "外部页面提供来自 {source} 的 {count} 个实例地址。请确认后再保存；不包含密码或会话。",
     "instances.import": "导入",
+    "instances.exportFile": "导出 JSON",
+    "instances.importFile": "导入 JSON",
     "instances.loadFailed": "实例管理模块加载失败。"
   }
 }

@@ -133,6 +133,18 @@
       }}
     ];
   }
+  function exportInstanceFile(){
+    // A portable, nonsecret file survives an incognito session; the browser cannot persist one itself.
+    var payload=R.exportList(),blob=new Blob([payload+'\n'],{type:'application/json;charset=utf-8'});
+    var objectUrl=global.URL.createObjectURL(blob),link=el('a');
+    link.href=objectUrl;link.download='weig-instances.json';link.hidden=true;
+    document.body.appendChild(link);
+    try{link.click();}
+    finally{
+      link.remove();
+      global.setTimeout(function(){global.URL.revokeObjectURL(objectUrl);},60000);
+    }
+  }
   function openManager(initial){
     var m=modal(tr('manage')),list=el('div','instance-manager__list'),form=el('form','instance-manager__fields');
     form.noValidate=true;var name=el('input','field-input'),url=el('input','field-input');
@@ -169,7 +181,21 @@
         editingUrl=null;name.value='';url.value='';status.textContent='';showRows();render();
       }catch(error){status.textContent=error.message;}
     });
-    m.body.append(list,form);showRows();
+    var file=el('input');file.type='file';file.accept='.json,application/json';file.hidden=true;
+    file.addEventListener('change',function(){
+      var selected=file.files&&file.files[0];file.value='';
+      if(!selected)return;
+      if(selected.size>32768){status.textContent='Instance list exceeds the safe import limit.';return;}
+      Promise.resolve().then(function(){return selected.text();}).then(function(raw){
+        reviewImport(raw,selected.name||'JSON',[],function(){showRows();render();});
+      }).catch(function(error){status.textContent=error.message;});
+    });
+    m.body.append(list,form,file);
+    m.footer.append(
+      button(tr('exportFile'),'btn btn--ghost',function(){try{exportInstanceFile();status.textContent='';}catch(error){status.textContent=error.message;}}),
+      button(tr('importFile'),'btn btn--ghost',function(){file.click();})
+    );
+    showRows();
     if(initial&&typeof initial.url==='string'){
       var existing=R.list(true).some(function(x){return x.url===initial.url;});
       editingUrl=existing?initial.url:null;
@@ -177,27 +203,27 @@
     }
     syncAddressHint();m.show(name);
   }
-  function offerIncoming(){
-    if(importOffered||!W.InstanceHandoff)return;
-    var proposal=W.InstanceHandoff.peek();if(!proposal)return;
-    importOffered=true;var finished=false,bridge=W.InstanceHandoff;
-    var json=JSON.stringify({schemaVersion:1,items:proposal.items}),preview;
-    try{preview=R.previewIncoming(json);}catch(error){notice(error.message);bridge.consume();return;}
-    // A fully synchronized destination does not need another consent dialog.
-    if(!preview.pending.length){if(H&&H.importReports)H.importReports(proposal.reports||[]);bridge.consume();return;}
+  // File restore and cross-origin handoff share one strict preview/consent owner.
+  function reviewImport(raw,source,reports,onDone){
+    var preview=R.previewIncoming(raw),data=JSON.parse(raw),finished=false;
+    if(!preview.pending.length){
+      if(H&&H.importReports)H.importReports(reports||[]);
+      if(onDone)onDone();
+      return false;
+    }
     var selected=new Set(preview.pending.map(function(item){return item.url;}));
     var m=modal(tr('importTitle'));
-    m.body.appendChild(el('p','text-description',tr('importHint',{count:proposal.items.length,source:proposal.source})));
+    m.body.appendChild(el('p','text-description',tr('importHint',{count:data.items.length,source:source})));
     var list=el('div','instance-import__list'),feedback=el('p','instance-manager__feedback');
     feedback.setAttribute('role','alert');m.body.append(list,feedback);
     var accept=button('','btn btn--primary',function(){
       try{
         var chosen=preview.pending.filter(function(item){return selected.has(item.url);}).map(function(item){return{name:item.name,url:item.url};});
         if(!chosen.length)return;
-        // Revalidate the selected subset at the point of the atomic write.
+        // Validate the selected subset again at the only write boundary.
         R.importMissing(JSON.stringify({schemaVersion:1,items:chosen}));
-        if(H&&H.importReports)H.importReports(proposal.reports||[]);
-        finished=true;bridge.consume();render();D.close(m.dialog,'confirm');
+        if(H&&H.importReports)H.importReports(reports||[]);
+        finished=true;if(onDone)onDone();render();D.close(m.dialog,'confirm');
       }catch(error){feedback.textContent=error.message;}
     });
     function paintPreview(){
@@ -218,9 +244,18 @@
       accept.disabled=selected.size===0;
       accept.textContent=tr('import')+' ('+selected.size+')';
     }
-    m.footer.append(button(tr('cancel'),'btn btn--ghost',function(){finished=true;bridge.consume();D.close(m.dialog,'cancel');}),accept);
-    m.dialog.addEventListener('close',function(){if(!finished)bridge.consume();});
+    m.footer.append(button(tr('cancel'),'btn btn--ghost',function(){finished=true;if(onDone)onDone();D.close(m.dialog,'cancel');}),accept);
+    m.dialog.addEventListener('close',function(){if(!finished&&onDone)onDone();});
     paintPreview();m.show(accept);
+    return true;
+  }
+  function offerIncoming(){
+    if(importOffered||!W.InstanceHandoff)return;
+    var bridge=W.InstanceHandoff,proposal=bridge.peek();if(!proposal)return;
+    importOffered=true;
+    try{
+      reviewImport(JSON.stringify({schemaVersion:1,items:proposal.items}),proposal.source,proposal.reports,function(){bridge.consume();});
+    }catch(error){notice(error.message);bridge.consume();}
   }
   function offerPeerInvitation(){
     if(!P||!P.pendingInvitation)return;

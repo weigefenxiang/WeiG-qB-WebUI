@@ -502,6 +502,8 @@
     "instances.importTitle": "인스턴스 목록을 가져올까요?",
     "instances.importHint": "외부 페이지에서 {source}의 인스턴스 주소 {count}개를 전달했습니다. 저장하기 전에 확인하세요. 비밀번호나 세션 정보는 포함되지 않습니다.",
     "instances.import": "가져오기",
+    "instances.exportFile": "JSON 내보내기",
+    "instances.importFile": "JSON 가져오기",
     "instances.loadFailed": "인스턴스 관리자를 불러오지 못했습니다."
   }
 }

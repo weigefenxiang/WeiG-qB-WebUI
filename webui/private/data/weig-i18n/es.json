@@ -498,6 +498,8 @@
     "instances.importTitle": "¿Importar la lista de instancias?",
     "instances.importHint": "Una página externa ha proporcionado {count} direcciones de instancias desde {source}. Revísalas antes de guardarlas. No se incluyen contraseñas ni sesiones.",
     "instances.import": "Importar",
+    "instances.exportFile": "Exportar JSON",
+    "instances.importFile": "Importar JSON",
     "instances.loadFailed": "No se pudo cargar el administrador de instancias."
   }
 }

@@ -498,6 +498,8 @@
     "instances.importTitle": "Importar lista de instâncias?",
     "instances.importHint": "Uma página externa forneceu {count} endereços de instâncias de {source}. Reveja-os antes de guardar. Não inclui palavras-passe nem sessões.",
     "instances.import": "Importar",
+    "instances.exportFile": "Exportar JSON",
+    "instances.importFile": "Importar JSON",
     "instances.loadFailed": "Não foi possível carregar a gestão de instâncias."
   }
 }

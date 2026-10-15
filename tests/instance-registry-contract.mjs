@@ -95,6 +95,7 @@ for(const raw of ['{unparseable',JSON.stringify({schemaVersion:2,items:[{name:'F
 const portable=I.exportList();
 const portableData=JSON.parse(portable);
 assert.equal(portableData.schemaVersion,1);
+assert.ok(source.includes('items:load(true)}'),'Export must fail closed rather than silently backing up an empty list if persistent storage is damaged');
 assert.deepEqual(portableData.items.map(x=>x.name),['NAS renamed','VPS']);
 const otherSaved=new Map(),otherWindow={location:{href:'https://vps.example/private/index.html',assign(){}},document:safeNavigationDocument([]),WeiG:{StorageRuntime:{local:{get:(k,d)=>otherSaved.has(k)?otherSaved.get(k):d,set:(k,v)=>{otherSaved.set(k,v);return true;}}}}};
 vm.runInNewContext(source,{window:otherWindow,URL});

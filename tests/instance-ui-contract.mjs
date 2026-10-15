@@ -25,6 +25,9 @@ assert.ok(health.includes("global.addEventListener('weig:app-ready'")&&health.in
 assert.ok(ui.includes('syncAddressHint')&&ui.includes('loopbackWarning'),'Loopback addresses require an explicit user-facing browser-device hint');
 assert.ok(ui.includes('bindContextMenuTrigger')&&ui.includes('R.update(')&&ui.includes('currentSuffix'),'Reuse shared ContextMenu and registry identity for rename');
 assert.ok(!ui.includes('localStorage.')&&!ui.includes('fetch('),'UI is a presentation-only consumer');
+assert.ok(ui.includes('R.exportList()')&&ui.includes('R.previewIncoming(raw)')&&ui.includes('R.importMissing(JSON.stringify'),'Portable JSON and consented handoff must reuse the same Registry validation and review owner');
+assert.ok(ui.includes("file.accept='.json,application/json'")&&ui.includes('selected.size>32768'),'Local import must bound file size and use the validated Registry');
+assert.ok(ui.includes("link.download='weig-instances.json'")&&ui.includes('global.URL.revokeObjectURL'),'Portable export must download nonsecret JSON without leaking object URLs');
 assert.ok(css.includes('var(--border)')&&css.includes('var(--selected-control-surface)'),'Sidebar color/selection must use shared theme tokens');
 assert.ok(css.includes('[data-state="historical"]')&&ui.includes("'historical'"),
   'Expired peer observations must use a distinct hollow historical marker');
@@ -167,7 +170,7 @@ const coreI18n=read('webui/private/scripts/i18n.js');
 const enMatch=coreI18n.match(/\bvar EN=(\{[^\n]+\});/);
 assert.ok(enMatch,'Canonical English WeiG dictionary must be present');
 const english=JSON.parse(enMatch[1]),instanceKeys=Object.keys(english).filter(k=>k.startsWith('instances.')).sort();
-assert.equal(instanceKeys.length,34,'The instance feature must have one complete semantic English dictionary');
+assert.equal(instanceKeys.length,36,'The instance feature must have one complete semantic English dictionary');
 const placeholders=s=>[...String(s).matchAll(/\{([a-z]+)\}/g)].map(m=>m[1]).sort();
 for(const locale of ['de','es','fr','ja','ko','pt','ru','zh-CN','zh-TW']){
   const file=JSON.parse(read('webui/private/data/weig-i18n/'+locale+'.json'));

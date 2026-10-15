@@ -505,6 +505,8 @@
     "instances.importTitle": "Импортировать список экземпляров?",
     "instances.importHint": "Внешняя страница передала {count} адресов экземпляров от {source}. Проверьте их перед сохранением. Пароли и сеансы не передаются.",
     "instances.import": "Импортировать",
+    "instances.exportFile": "Экспорт JSON",
+    "instances.importFile": "Импорт JSON",
     "instances.loadFailed": "Не удалось загрузить управление экземплярами."
   }
 }
