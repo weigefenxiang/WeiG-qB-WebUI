@@ -127,6 +127,8 @@ for(let index=0;index<matrix.length;index++){
   }
 }
 
+const visibilitySource=JSON.parse(fs.readFileSync(new URL('../webui/private/data/settings-runtime-visibility.json',import.meta.url),'utf8'));
+const capabilitySource=JSON.parse(fs.readFileSync(new URL('../webui/private/data/capabilities.json',import.meta.url),'utf8'));
 const anchor=matrix.at(-1);
 assert.ok(anchor&&anchor.qbVersion===stableLkg.latestAdmittedStable,'published upstream catalog must provide the current admitted stable anchor');
 assert.ok(anchor.preferenceKeys.length>100,`${anchor.qbVersion} upstream preference surface unexpectedly small: ${anchor.preferenceKeys.length}`);
@@ -235,18 +237,40 @@ try{
       advanced:['checking_memory_use','disk_cache_ttl','disk_io_read_mode','disk_io_write_mode','enable_coalesce_read_write','file_pool_size','memory_working_set_limit'].filter(key=>anchor.preferenceKeys.includes(key))
     };
     for(const [surface,keys] of Object.entries(routeExamples))for(const key of keys)assert.ok(Object.prototype.hasOwnProperty.call(anchorResponse.json,key),`Virtual qB ${anchor.qbVersion} must expose ${surface} preference ${key}`);
-    const expectedSurfaces=await page.evaluate(async prefs=>{
+    // Raw API key coverage is independent of official source-conditioned UI visibility.
+    const buildInfo=await api(page,'app/buildInfo');
+    assert.equal(buildInfo.status,200,'Virtual qB buildInfo is required for runtime visibility');
+    const libMatch=String(buildInfo.json?.libtorrent||'').match(/^(\d+)(?:\.\d+)*(?:[.-]|$)/);
+    const libMajor=libMatch?Number(libMatch[1]):null;
+    const sourceRelease=capabilitySource.releases.find(row=>row.qbVersion===anchor.qbVersion);
+    assert.ok(sourceRelease?.sourceSha,'latest admitted qB must retain exact official source SHA');
+    const vis=visibilitySource.releases.find(row=>row.qbVersion===anchor.qbVersion&&row.sourceSha===sourceRelease.sourceSha);
+    assert.ok(vis&&Array.isArray(vis.rules),'missing exact qB runtime visibility source');
+    const hiddenControlIds=[];
+    for(const rule of vis.rules){
+      assert.equal(rule.effect,'hidden','unknown source effect');
+      assert.equal(rule.when?.kind,'libtorrent-major-at-least','unknown source predicate');
+      assert.ok(Number.isInteger(rule.when.value),'missing source threshold');
+      if(libMajor===null||libMajor>=rule.when.value)hiddenControlIds.push(String(rule.controlId));
+    }
+    const expectedSurfaces=await page.evaluate(async ({prefs,hiddenControlIds})=>{
       const schema=window.WeiG.SettingsSchema;
       if(schema.loadCompatibility)await schema.loadCompatibility();
-      function project(surface){const sourceKeys=schema.group(surface,prefs).flatMap(group=>group.keys).sort();return{sourceKeys,controlKeys:[...sourceKeys]};}
+      const hidden=new Set(hiddenControlIds);
+      function project(surface){
+        const sourceKeys=schema.group(surface,prefs).flatMap(group=>group.keys).sort();
+        const hiddenKeys=sourceKeys.filter(key=>hidden.has(schema.sourcePreference(key)?.controlId));
+        return{sourceKeys,hiddenKeys,controlKeys:sourceKeys.filter(key=>!hiddenKeys.includes(key))};
+      }
       return Object.fromEntries(['speed','advanced'].map(surface=>[surface,project(surface)]));
-    },anchorResponse.json);
+    },{prefs:anchorResponse.json,hiddenControlIds});
+    assert.equal(expectedSurfaces.advanced.hiddenKeys.length,hiddenControlIds.length,'each source-hidden row requires unique Advanced preference ownership');
     assert.ok(expectedSurfaces.advanced.sourceKeys.length>=20,`WeiG ${anchor.qbVersion} Advanced route unexpectedly small: ${expectedSurfaces.advanced.sourceKeys.length}`);
     async function assertSettingsSurface(surface,expected,examples){
       await page.evaluate(async target=>window.WeiG.SettingsRenderer.open(target),surface);
       const renderedKeys=await page.locator('#settings-content').evaluate(root=>{const keys=new Set();root.querySelectorAll('[data-preference-key]').forEach(node=>{const key=String(node.dataset.preferenceKey||'').trim();if(key)keys.add(key);});root.querySelectorAll('[data-setting-key]').forEach(node=>{String(node.dataset.settingKey||'').split(',').map(key=>key.trim()).filter(Boolean).forEach(key=>keys.add(key));});return[...keys].sort();});
       assert.deepEqual(renderedKeys,expected.controlKeys,`WeiG ${anchor.qbVersion} ${surface} settings must render every exact source-native preference control with no stale extras`);
-      for(const key of examples){assert.ok(expected.sourceKeys.includes(key),`WeiG ${surface} route must include upstream preference ${key}`);assert.ok(renderedKeys.includes(key),`WeiG ${surface} route must render upstream preference ${key}`);}
+      for(const key of examples){assert.ok(expected.sourceKeys.includes(key),`WeiG ${surface} route must include upstream preference ${key}`);assert.equal(renderedKeys.includes(key),expected.controlKeys.includes(key),`WeiG ${surface} source visibility must decide whether to render ${key}`);}
     }
     const settingsNav=page.locator('#app-nav [data-route="settings"]');
     assert.equal(await settingsNav.count(),1,'Pages anchor must expose the user-visible Settings navigation target before pointer interaction');
