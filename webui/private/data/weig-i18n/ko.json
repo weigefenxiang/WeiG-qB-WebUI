@@ -477,7 +477,6 @@
     "instances.loopbackWarning": "127.0.0.1 / localhost는 원격 서버가 아닌 이 브라우저가 실행 중인 기기를 가리킵니다.",
     "instances.lastReported": "마지막 기록: {time}",
     "instances.add": "추가",
-    "instances.refresh": "현재 새로고침",
     "instances.connect": "연결",
     "instances.disconnect": "연결 해제",
     "instances.connectTitle": "인스턴스를 연결할까요?",

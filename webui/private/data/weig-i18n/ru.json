@@ -480,7 +480,6 @@
     "instances.loopbackWarning": "127.0.0.1 / localhost — это устройство с браузером, а не удалённый сервер.",
     "instances.lastReported": "Последние данные: {time}",
     "instances.add": "Добавить",
-    "instances.refresh": "Обновить текущий",
     "instances.connect": "Подключить",
     "instances.disconnect": "Отключить",
     "instances.connectTitle": "Подключить экземпляр?",

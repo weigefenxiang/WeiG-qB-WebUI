@@ -92,10 +92,6 @@
     });
     var actions=el('div','sidebar-instances__actions');
     actions.append(button('＋ '+tr('add'),'btn btn--ghost',function(){openManager();}));
-    actions.append(button('↻ '+tr('refresh'),'btn btn--ghost',function(){
-      if(!H)return;
-      H.checkNow().catch(function(error){notice(error.message);});
-    }));
     content.appendChild(actions);
     var error=el('p','instance-manager__feedback');error.id='sidebar-instance-error';error.setAttribute('role','status');
     content.appendChild(error);

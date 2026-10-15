@@ -652,7 +652,6 @@
     "instances.loopbackWarning": "127.0.0.1 / localhost 指瀏覽器所在裝置，並非遠端伺服器。",
     "instances.lastReported": "上次記錄：{time}",
     "instances.add": "新增",
-    "instances.refresh": "重新整理目前",
     "instances.connect": "連線",
     "instances.disconnect": "中斷連線",
     "instances.connectTitle": "連線至實例？",

@@ -473,7 +473,6 @@
     "instances.loopbackWarning": "127.0.0.1 / localhost apunta al equipo del navegador, no al servidor remoto.",
     "instances.lastReported": "Último dato registrado: {time}",
     "instances.add": "Añadir",
-    "instances.refresh": "Actualizar actual",
     "instances.connect": "Conectar",
     "instances.disconnect": "Desconectar",
     "instances.connectTitle": "¿Conectar instancia?",

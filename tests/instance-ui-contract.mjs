@@ -33,6 +33,8 @@ assert.ok(ui.includes("tr('connectTitle')")&&ui.includes("P.approveIncoming()"),
 assert.ok(!css.includes('[data-state="reachable"]')&&!css.includes('[data-state="denied"]'),'Retire unreachable legacy status styles');
 assert.ok(!health.includes('refreshShared')&&!health.includes('weig-instance-status.json')&&!health.includes('fetch('),'All collector/shared HTTP status logic must retire');
 assert.ok(!health.includes('setInterval(')&&!health.includes('setMinutes('),'No legacy remote polling timer/setting');
+assert.ok(!ui.includes("tr('refresh')")&&!ui.includes("H.checkNow().catch"),'Retired current-only refresh must not occupy Sidebar controls');
+assert.ok(health.includes('async function checkNow()')&&health.includes('samplePeer:samplePeer'),'Canonical health sampling remains active for app-ready and verified peer reporting');
 assert.ok(ui.includes("String(historical)+'*'"),'Historical count is explicitly distinguished from live');
 const saved=new Map(),registry={
   currentUrl:()=> 'https://one.example/',
@@ -165,7 +167,7 @@ const coreI18n=read('webui/private/scripts/i18n.js');
 const enMatch=coreI18n.match(/\bvar EN=(\{[^\n]+\});/);
 assert.ok(enMatch,'Canonical English WeiG dictionary must be present');
 const english=JSON.parse(enMatch[1]),instanceKeys=Object.keys(english).filter(k=>k.startsWith('instances.')).sort();
-assert.equal(instanceKeys.length,35,'The instance feature must have one complete semantic English dictionary');
+assert.equal(instanceKeys.length,34,'The instance feature must have one complete semantic English dictionary');
 const placeholders=s=>[...String(s).matchAll(/\{([a-z]+)\}/g)].map(m=>m[1]).sort();
 for(const locale of ['de','es','fr','ja','ko','pt','ru','zh-CN','zh-TW']){
   const file=JSON.parse(read('webui/private/data/weig-i18n/'+locale+'.json'));

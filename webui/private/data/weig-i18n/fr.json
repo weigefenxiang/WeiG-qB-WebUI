@@ -464,7 +464,6 @@
     "instances.loopbackWarning": "127.0.0.1 / localhost désigne l’appareil du navigateur, pas le serveur distant.",
     "instances.lastReported": "Dernier relevé : {time}",
     "instances.add": "Ajouter",
-    "instances.refresh": "Actualiser l’instance",
     "instances.connect": "Connecter",
     "instances.disconnect": "Déconnecter",
     "instances.connectTitle": "Connecter cette instance ?",

@@ -460,7 +460,6 @@
     "instances.loopbackWarning": "127.0.0.1 / localhost bezeichnet dieses Browsergerät, nicht den entfernten Server.",
     "instances.lastReported": "Zuletzt gemeldet: {time}",
     "instances.add": "Hinzufügen",
-    "instances.refresh": "Aktuelle prüfen",
     "instances.connect": "Verbinden",
     "instances.disconnect": "Verbindung trennen",
     "instances.connectTitle": "Instanz verbinden?",
