@@ -1,0 +1,541 @@
+{
+  "schemaVersion": 1,
+  "source": "qb-upstream-settings-runtime-visibility",
+  "catalogIdentity": {
+    "supportFloor": "4.1.0",
+    "latestAdmittedStable": "5.2.4",
+    "releaseCount": 66,
+    "releaseSetSha256": "eeb46091fbc94b833a4b76535f7065c85c6799a0e5b1c92d6f7ea89e93fd1809",
+    "sourceCatalogSha256": "da3ffe543f8ae53f93f736d95c4159a7c7c372be4a3c8349e05be28748bd00d8"
+  },
+  "releases": [
+    {
+      "qbVersion": "5.0.0",
+      "sourceSha": "cce295faeb27ebf9d57498ac5e35490c845b9d4f",
+      "rules": [
+        {
+          "controlId": "diskCache",
+          "rowId": "rowDiskCache",
+          "when": {
+            "kind": "libtorrent-major-at-least",
+            "value": 2
+          },
+          "effect": "hidden"
+        },
+        {
+          "controlId": "diskCacheExpiryInterval",
+          "rowId": "rowDiskCacheExpiryInterval",
+          "when": {
+            "kind": "libtorrent-major-at-least",
+            "value": 2
+          },
+          "effect": "hidden"
+        },
+        {
+          "controlId": "coalesceReadsAndWrites",
+          "rowId": "rowCoalesceReadsAndWrites",
+          "when": {
+            "kind": "libtorrent-major-at-least",
+            "value": 2
+          },
+          "effect": "hidden"
+        }
+      ]
+    },
+    {
+      "qbVersion": "5.0.1",
+      "sourceSha": "94136262a84293da0d8504724e7143df0d0baa12",
+      "rules": [
+        {
+          "controlId": "diskCache",
+          "rowId": "rowDiskCache",
+          "when": {
+            "kind": "libtorrent-major-at-least",
+            "value": 2
+          },
+          "effect": "hidden"
+        },
+        {
+          "controlId": "diskCacheExpiryInterval",
+          "rowId": "rowDiskCacheExpiryInterval",
+          "when": {
+            "kind": "libtorrent-major-at-least",
+            "value": 2
+          },
+          "effect": "hidden"
+        },
+        {
+          "controlId": "coalesceReadsAndWrites",
+          "rowId": "rowCoalesceReadsAndWrites",
+          "when": {
+            "kind": "libtorrent-major-at-least",
+            "value": 2
+          },
+          "effect": "hidden"
+        }
+      ]
+    },
+    {
+      "qbVersion": "5.0.2",
+      "sourceSha": "15b60912610d5a1e6712013079d3b2db4b78b85d",
+      "rules": [
+        {
+          "controlId": "diskCache",
+          "rowId": "rowDiskCache",
+          "when": {
+            "kind": "libtorrent-major-at-least",
+            "value": 2
+          },
+          "effect": "hidden"
+        },
+        {
+          "controlId": "diskCacheExpiryInterval",
+          "rowId": "rowDiskCacheExpiryInterval",
+          "when": {
+            "kind": "libtorrent-major-at-least",
+            "value": 2
+          },
+          "effect": "hidden"
+        },
+        {
+          "controlId": "coalesceReadsAndWrites",
+          "rowId": "rowCoalesceReadsAndWrites",
+          "when": {
+            "kind": "libtorrent-major-at-least",
+            "value": 2
+          },
+          "effect": "hidden"
+        }
+      ]
+    },
+    {
+      "qbVersion": "5.0.3",
+      "sourceSha": "0188e11dd7ece1ee8b6004145c4437d7455745d4",
+      "rules": [
+        {
+          "controlId": "diskCache",
+          "rowId": "rowDiskCache",
+          "when": {
+            "kind": "libtorrent-major-at-least",
+            "value": 2
+          },
+          "effect": "hidden"
+        },
+        {
+          "controlId": "diskCacheExpiryInterval",
+          "rowId": "rowDiskCacheExpiryInterval",
+          "when": {
+            "kind": "libtorrent-major-at-least",
+            "value": 2
+          },
+          "effect": "hidden"
+        },
+        {
+          "controlId": "coalesceReadsAndWrites",
+          "rowId": "rowCoalesceReadsAndWrites",
+          "when": {
+            "kind": "libtorrent-major-at-least",
+            "value": 2
+          },
+          "effect": "hidden"
+        }
+      ]
+    },
+    {
+      "qbVersion": "5.0.4",
+      "sourceSha": "100ee5dbe0eacfff30147ad1ee666d5c5eb35eb5",
+      "rules": [
+        {
+          "controlId": "diskCache",
+          "rowId": "rowDiskCache",
+          "when": {
+            "kind": "libtorrent-major-at-least",
+            "value": 2
+          },
+          "effect": "hidden"
+        },
+        {
+          "controlId": "diskCacheExpiryInterval",
+          "rowId": "rowDiskCacheExpiryInterval",
+          "when": {
+            "kind": "libtorrent-major-at-least",
+            "value": 2
+          },
+          "effect": "hidden"
+        },
+        {
+          "controlId": "coalesceReadsAndWrites",
+          "rowId": "rowCoalesceReadsAndWrites",
+          "when": {
+            "kind": "libtorrent-major-at-least",
+            "value": 2
+          },
+          "effect": "hidden"
+        }
+      ]
+    },
+    {
+      "qbVersion": "5.0.5",
+      "sourceSha": "4b794a9930435a8c011601365667b9f7de9d1e64",
+      "rules": [
+        {
+          "controlId": "diskCache",
+          "rowId": "rowDiskCache",
+          "when": {
+            "kind": "libtorrent-major-at-least",
+            "value": 2
+          },
+          "effect": "hidden"
+        },
+        {
+          "controlId": "diskCacheExpiryInterval",
+          "rowId": "rowDiskCacheExpiryInterval",
+          "when": {
+            "kind": "libtorrent-major-at-least",
+            "value": 2
+          },
+          "effect": "hidden"
+        },
+        {
+          "controlId": "coalesceReadsAndWrites",
+          "rowId": "rowCoalesceReadsAndWrites",
+          "when": {
+            "kind": "libtorrent-major-at-least",
+            "value": 2
+          },
+          "effect": "hidden"
+        }
+      ]
+    },
+    {
+      "qbVersion": "5.1.0",
+      "sourceSha": "da87be2b12893dfb769df8124afeb064f099dc71",
+      "rules": [
+        {
+          "controlId": "diskCache",
+          "rowId": "rowDiskCache",
+          "when": {
+            "kind": "libtorrent-major-at-least",
+            "value": 2
+          },
+          "effect": "hidden"
+        },
+        {
+          "controlId": "diskCacheExpiryInterval",
+          "rowId": "rowDiskCacheExpiryInterval",
+          "when": {
+            "kind": "libtorrent-major-at-least",
+            "value": 2
+          },
+          "effect": "hidden"
+        },
+        {
+          "controlId": "coalesceReadsAndWrites",
+          "rowId": "rowCoalesceReadsAndWrites",
+          "when": {
+            "kind": "libtorrent-major-at-least",
+            "value": 2
+          },
+          "effect": "hidden"
+        }
+      ]
+    },
+    {
+      "qbVersion": "5.1.1",
+      "sourceSha": "ea9f3800ce70ded6db66b2c9f0d2f0513399e969",
+      "rules": [
+        {
+          "controlId": "diskCache",
+          "rowId": "rowDiskCache",
+          "when": {
+            "kind": "libtorrent-major-at-least",
+            "value": 2
+          },
+          "effect": "hidden"
+        },
+        {
+          "controlId": "diskCacheExpiryInterval",
+          "rowId": "rowDiskCacheExpiryInterval",
+          "when": {
+            "kind": "libtorrent-major-at-least",
+            "value": 2
+          },
+          "effect": "hidden"
+        },
+        {
+          "controlId": "coalesceReadsAndWrites",
+          "rowId": "rowCoalesceReadsAndWrites",
+          "when": {
+            "kind": "libtorrent-major-at-least",
+            "value": 2
+          },
+          "effect": "hidden"
+        }
+      ]
+    },
+    {
+      "qbVersion": "5.1.2",
+      "sourceSha": "202ff8a099cfc1ca9421e7d30944b3c58a4a47cd",
+      "rules": [
+        {
+          "controlId": "diskCache",
+          "rowId": "rowDiskCache",
+          "when": {
+            "kind": "libtorrent-major-at-least",
+            "value": 2
+          },
+          "effect": "hidden"
+        },
+        {
+          "controlId": "diskCacheExpiryInterval",
+          "rowId": "rowDiskCacheExpiryInterval",
+          "when": {
+            "kind": "libtorrent-major-at-least",
+            "value": 2
+          },
+          "effect": "hidden"
+        },
+        {
+          "controlId": "coalesceReadsAndWrites",
+          "rowId": "rowCoalesceReadsAndWrites",
+          "when": {
+            "kind": "libtorrent-major-at-least",
+            "value": 2
+          },
+          "effect": "hidden"
+        }
+      ]
+    },
+    {
+      "qbVersion": "5.1.3",
+      "sourceSha": "6ede4e49ff1432ade8a75d37daf076b6000e2a57",
+      "rules": [
+        {
+          "controlId": "diskCache",
+          "rowId": "rowDiskCache",
+          "when": {
+            "kind": "libtorrent-major-at-least",
+            "value": 2
+          },
+          "effect": "hidden"
+        },
+        {
+          "controlId": "diskCacheExpiryInterval",
+          "rowId": "rowDiskCacheExpiryInterval",
+          "when": {
+            "kind": "libtorrent-major-at-least",
+            "value": 2
+          },
+          "effect": "hidden"
+        },
+        {
+          "controlId": "coalesceReadsAndWrites",
+          "rowId": "rowCoalesceReadsAndWrites",
+          "when": {
+            "kind": "libtorrent-major-at-least",
+            "value": 2
+          },
+          "effect": "hidden"
+        }
+      ]
+    },
+    {
+      "qbVersion": "5.1.4",
+      "sourceSha": "33e5e772200b5e2f9d23af8870ce7436ec216faa",
+      "rules": [
+        {
+          "controlId": "diskCache",
+          "rowId": "rowDiskCache",
+          "when": {
+            "kind": "libtorrent-major-at-least",
+            "value": 2
+          },
+          "effect": "hidden"
+        },
+        {
+          "controlId": "diskCacheExpiryInterval",
+          "rowId": "rowDiskCacheExpiryInterval",
+          "when": {
+            "kind": "libtorrent-major-at-least",
+            "value": 2
+          },
+          "effect": "hidden"
+        },
+        {
+          "controlId": "coalesceReadsAndWrites",
+          "rowId": "rowCoalesceReadsAndWrites",
+          "when": {
+            "kind": "libtorrent-major-at-least",
+            "value": 2
+          },
+          "effect": "hidden"
+        }
+      ]
+    },
+    {
+      "qbVersion": "5.2.0",
+      "sourceSha": "b2270f7f6fec1b10117564f642b961621ae0058a",
+      "rules": [
+        {
+          "controlId": "diskCache",
+          "rowId": "rowDiskCache",
+          "when": {
+            "kind": "libtorrent-major-at-least",
+            "value": 2
+          },
+          "effect": "hidden"
+        },
+        {
+          "controlId": "diskCacheExpiryInterval",
+          "rowId": "rowDiskCacheExpiryInterval",
+          "when": {
+            "kind": "libtorrent-major-at-least",
+            "value": 2
+          },
+          "effect": "hidden"
+        },
+        {
+          "controlId": "coalesceReadsAndWrites",
+          "rowId": "rowCoalesceReadsAndWrites",
+          "when": {
+            "kind": "libtorrent-major-at-least",
+            "value": 2
+          },
+          "effect": "hidden"
+        }
+      ]
+    },
+    {
+      "qbVersion": "5.2.1",
+      "sourceSha": "7e8db603f207fec1ee5dc192cacf44fed264452c",
+      "rules": [
+        {
+          "controlId": "diskCache",
+          "rowId": "rowDiskCache",
+          "when": {
+            "kind": "libtorrent-major-at-least",
+            "value": 2
+          },
+          "effect": "hidden"
+        },
+        {
+          "controlId": "diskCacheExpiryInterval",
+          "rowId": "rowDiskCacheExpiryInterval",
+          "when": {
+            "kind": "libtorrent-major-at-least",
+            "value": 2
+          },
+          "effect": "hidden"
+        },
+        {
+          "controlId": "coalesceReadsAndWrites",
+          "rowId": "rowCoalesceReadsAndWrites",
+          "when": {
+            "kind": "libtorrent-major-at-least",
+            "value": 2
+          },
+          "effect": "hidden"
+        }
+      ]
+    },
+    {
+      "qbVersion": "5.2.2",
+      "sourceSha": "89aad1aad9fc7d819a28db3dc01f19c6b1f1be8c",
+      "rules": [
+        {
+          "controlId": "diskCache",
+          "rowId": "rowDiskCache",
+          "when": {
+            "kind": "libtorrent-major-at-least",
+            "value": 2
+          },
+          "effect": "hidden"
+        },
+        {
+          "controlId": "diskCacheExpiryInterval",
+          "rowId": "rowDiskCacheExpiryInterval",
+          "when": {
+            "kind": "libtorrent-major-at-least",
+            "value": 2
+          },
+          "effect": "hidden"
+        },
+        {
+          "controlId": "coalesceReadsAndWrites",
+          "rowId": "rowCoalesceReadsAndWrites",
+          "when": {
+            "kind": "libtorrent-major-at-least",
+            "value": 2
+          },
+          "effect": "hidden"
+        }
+      ]
+    },
+    {
+      "qbVersion": "5.2.3",
+      "sourceSha": "0b63c3d17373f6132ea211c9dcd4241284ccdfaf",
+      "rules": [
+        {
+          "controlId": "diskCache",
+          "rowId": "rowDiskCache",
+          "when": {
+            "kind": "libtorrent-major-at-least",
+            "value": 2
+          },
+          "effect": "hidden"
+        },
+        {
+          "controlId": "diskCacheExpiryInterval",
+          "rowId": "rowDiskCacheExpiryInterval",
+          "when": {
+            "kind": "libtorrent-major-at-least",
+            "value": 2
+          },
+          "effect": "hidden"
+        },
+        {
+          "controlId": "coalesceReadsAndWrites",
+          "rowId": "rowCoalesceReadsAndWrites",
+          "when": {
+            "kind": "libtorrent-major-at-least",
+            "value": 2
+          },
+          "effect": "hidden"
+        }
+      ]
+    },
+    {
+      "qbVersion": "5.2.4",
+      "sourceSha": "a1e4649cb8ae581925acc161dbab5cbc6584c542",
+      "rules": [
+        {
+          "controlId": "diskCache",
+          "rowId": "rowDiskCache",
+          "when": {
+            "kind": "libtorrent-major-at-least",
+            "value": 2
+          },
+          "effect": "hidden"
+        },
+        {
+          "controlId": "diskCacheExpiryInterval",
+          "rowId": "rowDiskCacheExpiryInterval",
+          "when": {
+            "kind": "libtorrent-major-at-least",
+            "value": 2
+          },
+          "effect": "hidden"
+        },
+        {
+          "controlId": "coalesceReadsAndWrites",
+          "rowId": "rowCoalesceReadsAndWrites",
+          "when": {
+            "kind": "libtorrent-major-at-least",
+            "value": 2
+          },
+          "effect": "hidden"
+        }
+      ]
+    }
+  ]
+}

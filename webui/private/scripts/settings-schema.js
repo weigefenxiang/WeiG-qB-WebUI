@@ -1,6 +1,6 @@
 (function(global){
   'use strict';
-  var W=global.WeiG=global.WeiG||{},compat=null,compatTask=null,boundRelease=null,expandedCache=null;
+  var W=global.WeiG=global.WeiG||{},compat=null,compatTask=null,boundRelease=null,expandedCache=null,visibilityCatalog=null,visibilityTask=null,runtimeBuildInfo=null;
   var PREF_FIELDS=['tab','sectionId','order','titleRef','descriptionRef','controlId','semantic','attributes','options','unitRef','staticDisabled','gates','projection','structured'];
   var DESC_FIELDS=['getterPresent','setterPresent','readType','writeType','typeAgreement','writable'];
   function own(obj,key){return Object.prototype.hasOwnProperty.call(obj||{},key);}
@@ -43,7 +43,7 @@
   function dependencySatisfied(item,state,auxState){if(!item)return false;state=state||{};var legacy=!(item.gates&&item.gates.length)||item.gates.every(function(gate){return !!(gate.preferenceKey&&own(state,gate.preferenceKey)&&state[gate.preferenceKey]);});if(!legacy)return false;var graphCondition=item.graphCondition;if(!graphCondition||projectionGateCondition(item,graphCondition))return true;return predicateSatisfied(graphCondition,state,auxState);}
   function gateForControl(controlId,state){var data=expanded(),key=data.projectionGatesByControl[String(controlId||'')],item=key&&data.preferences[key];if(!key||!item)return null;state=state||{};var raw=own(state,key)?state[key]:undefined;return{key:key,enabled:projectionGateEnabled(item.projection,raw),raw:raw,disabledValue:item.projection.disabledValue,defaultValue:item.projection.defaultValue,projection:clone(item.projection)};}
   function gateValue(controlId,enabled,state){var info=gateForControl(controlId,state);if(!info)return null;if(!enabled)return{key:info.key,value:info.disabledValue};if(info.enabled)return{key:info.key,value:info.raw};if(info.defaultValue!==undefined&&info.defaultValue!==null)return{key:info.key,value:info.defaultValue};return null;}
-  function controlEnabled(control,prefs,state,auxState){if(!control||control.staticDisabled)return false;prefs=prefs||{};state=state||prefs||{};if(control.clientData)return predicateSatisfied(control.condition,state,auxState);if(control.preferenceKey&&!own(prefs,control.preferenceKey))return false;var item=control.preferenceKey&&expanded().preferences[control.preferenceKey],projection=item&&item.projection,gateId=projection&&projection.gateControlId;if(gateId&&auxState&&own(auxState,gateId))return !!auxState[gateId];if(item&&projectionGateCondition(item,control.condition))return projectionGateEnabled(projection,state[control.preferenceKey]);return predicateSatisfied(control.condition,state,auxState);}
+  function controlEnabled(control,prefs,state,auxState){if(!control||control.staticDisabled||!sourceControlVisible(control))return false;prefs=prefs||{};state=state||prefs||{};if(control.clientData)return predicateSatisfied(control.condition,state,auxState);if(control.preferenceKey&&!own(prefs,control.preferenceKey))return false;var item=control.preferenceKey&&expanded().preferences[control.preferenceKey],projection=item&&item.projection,gateId=projection&&projection.gateControlId;if(gateId&&auxState&&own(auxState,gateId))return !!auxState[gateId];if(item&&projectionGateCondition(item,control.condition))return projectionGateEnabled(projection,state[control.preferenceKey]);return predicateSatisfied(control.condition,state,auxState);}
   function sourceActionWritable(){var R=W.CapabilityRegistry;return !!(R&&typeof R.supportsWriteAction==='function'&&R.supportsWriteAction('appcontroller.h:setPreferencesAction'));}
   function clientDataForControl(controlId){var data=expanded().clientDataByControl||{},value=data[String(controlId||'')];return value?clone(value):null;}
   function clientDataForKey(key){key=String(key||'');var data=expanded().clientDataByControl||{};for(var controlId of Object.keys(data)){var value=data[controlId];if(value&&String(value.key||'')===key)return clone(value);}return null;}
@@ -54,7 +54,7 @@
   function writeOnlyForKey(key){var value=expanded().writeOnlyByKey[String(key||'')];return value?clone(value):null;}
   function writeOnlyEnabled(meta,prefs,state,auxState){if(!meta||!identityReady()||!boundRelease||boundRelease.certified!==true||!sourceActionWritable()||meta.safeWrite!==true||!meta.writeType||meta.staticDisabled===true)return false;return predicateSatisfied(meta.condition,state||prefs||{},auxState);}
   function writeOnlySafe(meta,value,prefs,state,auxState){return !!(writeOnlyEnabled(meta,prefs,state,auxState)&&typeMatches(value,meta.writeType));}
-  function writeSafe(item,value,prefs,state,auxState){var descriptor=item&&item.descriptor,projection=item&&item.projection;if(!identityReady()||!boundRelease||boundRelease.certified!==true||!sourceActionWritable()||!prefs||!own(prefs,item.key)||item.staticDisabled||!dependencySatisfied(item,state||prefs,auxState)||!descriptor||descriptor.setterPresent!==true||descriptor.writable!==true||descriptor.typeAgreement!=='EXACT'||!descriptor.writeType||!projection||projection.safeWrite!==true)return false;return typeMatches(value,descriptor.writeType);}
+  function writeSafe(item,value,prefs,state,auxState){var descriptor=item&&item.descriptor,projection=item&&item.projection;if(!identityReady()||!boundRelease||boundRelease.certified!==true||!sourceActionWritable()||!prefs||!sourcePreferenceVisible(item.key)||!own(prefs,item.key)||item.staticDisabled||!dependencySatisfied(item,state||prefs,auxState)||!descriptor||descriptor.setterPresent!==true||descriptor.writable!==true||descriptor.typeAgreement!=='EXACT'||!descriptor.writeType||!projection||projection.safeWrite!==true)return false;return typeMatches(value,descriptor.writeType);}
   function semanticKind(item,value){var semantic=String(item&&item.semantic||'');if(semantic==='checkbox')return'boolean';if(semantic==='number')return'number';if(semantic==='password')return'password';if(semantic==='textarea')return'textarea';if(semantic==='structured')return'structured';if(semantic==='select')return'select';if(semantic==='text')return'text';if(value!==null&&typeof value==='object')return'structured';return typeof value==='boolean'?'boolean':typeof value==='number'?'number':'text';}
   function coerceWrite(value,type){if(type==='string')return String(value==null?'':value);if(type==='boolean')return value===true||value==='true'||value===1||value==='1';if(type==='number'){var number=Number(value);return Number.isFinite(number)?number:value;}return value;}
   function compoundDisplay(projection,raw){var hit=(projection&&projection.values||[]).find(function(row){return String(row&&row[0])===String(raw);});return hit?hit[1]:projection&&projection.defaultValue;}
@@ -66,6 +66,43 @@
   function describeValue(key,value,prefs,state,auxState){var item=expanded().preferences[String(key||'')];if(!item)return{key:String(key||''),title:humanize(key),description:'',kind:value!==null&&typeof value==='object'?'structured':typeof value,source:'unmapped',editable:false,structured:value!==null&&typeof value==='object',meta:{},descriptor:null,projection:null,gates:[]};var kind=semanticKind(item,value),display=toDisplay(key,value),rawCandidate=toRaw(key,display,state||prefs||{},auxState),safe=writeSafe(item,rawCandidate,prefs||{},state||prefs||{},auxState),meta={attributes:clone(item.attributes||{}),enum:clone(item.options||[]),unit:item.unit&&item.unit.source||'',unitRef:clone(item.unit),controlId:item.controlId||'',semantic:item.semantic||'',structured:clone(item.structured)};return{key:item.key,title:item.title&&item.title.source||humanize(key),description:item.description&&item.description.source||'',kind:kind,source:'native',editable:safe&&(kind!=='structured'||!!item.structured),structured:kind==='structured',meta:meta,span:'1',descriptor:clone(item.descriptor),projection:clone(item.projection),gates:clone(item.gates||[]),dependencySatisfied:dependencySatisfied(item,state||prefs||{},auxState),sourceRefs:{title:clone(item.title),description:clone(item.description),unit:clone(item.unit)}};}
   function group(tab,prefs){var data=expanded(),entry=data.byTab[String(tab||'')];if(!entry)return[];prefs=prefs||{};return entry.sections.map(function(section){var keys=section.keys.filter(function(key){return own(prefs,key);});return{id:section.id,title:section.title&&section.title.source||'',sourceRef:clone(section.title),keys:keys};}).filter(function(section){return section.keys.length;});}
   function keysFor(tab,prefs){return group(tab,prefs).flatMap(function(section){return section.keys;});}
+  // Source-proven runtime visibility is distinct from WebAPI field presence and draft dependencies.
+  function loadRuntimeVisibility(){
+    if(visibilityCatalog)return Promise.resolve(visibilityCatalog);
+    if(visibilityTask)return visibilityTask;
+    var loader=W.RuntimeAssets;
+    if(!loader||typeof loader.readJson!=='function')return Promise.reject(new Error('Settings runtime visibility source is unavailable'));
+    visibilityTask=loader.readJson('data/settings-runtime-visibility.json',{namespace:'compat',identity:'build'}).then(function(next){
+      if(!compat||!next||next.schemaVersion!==1||next.source!=='qb-upstream-settings-runtime-visibility'||!next.catalogIdentity||next.catalogIdentity.releaseSetSha256!==compat.catalogIdentity.releaseSetSha256||next.catalogIdentity.sourceCatalogSha256!==compat.catalogIdentity.sourceCatalogSha256||!Array.isArray(next.releases))throw new Error('Settings runtime visibility source identity mismatch');
+      var allowed=new Map(compat.releases.map(function(row){return[String(row[0]),String(row[1])];}));
+      if(next.releases.some(function(row){return !row||allowed.get(String(row.qbVersion))!==String(row.sourceSha)||!Array.isArray(row.rules);}))throw new Error('Uncertified Settings visibility release');
+      visibilityCatalog=next;
+      return next;
+    }).finally(function(){visibilityTask=null;});
+    return visibilityTask;
+  }
+  function setRuntimeBuildInfo(info){runtimeBuildInfo=info&&typeof info==='object'&&!Array.isArray(info)?clone(info):null;}
+  function currentVisibilityRules(){
+    if(!visibilityCatalog||!boundRelease||boundRelease.certified!==true||boundRelease.fallback===true)return null;
+    var hit=visibilityCatalog.releases.find(function(row){return String(row.qbVersion)===String(boundRelease.qbVersion)&&String(row.sourceSha)===String(boundRelease.sourceSha);});
+    return hit&&Array.isArray(hit.rules)?hit.rules:null;
+  }
+  function sourceControlVisible(control){
+    var id=String(control&&control.id||''),rules=currentVisibilityRules();
+    if(!id||!rules)return true;
+    var matches=rules.filter(function(row){return row&&String(row.controlId)===id;});
+    if(!matches.length)return true;
+    // Unknown build data is not proof that a source-hidden control is usable.
+    var version=runtimeBuildInfo&&runtimeBuildInfo.libtorrent,parsed=typeof version==='string'&&version.match(/^(\d+)(?:\.\d+)*(?:[.-]|$)/),major=parsed?Number(parsed[1]):null;
+    return matches.every(function(rule){
+      if(rule.effect!=='hidden'||!rule.when||rule.when.kind!=='libtorrent-major-at-least'||!Number.isInteger(rule.when.value))return false;
+      return major!==null&&Number.isFinite(major)&&major<rule.when.value;
+    });
+  }
+  function sourcePreferenceVisible(key){
+    var item=expanded().preferences[String(key||'')];
+    return !item||sourceControlVisible({id:item.controlId});
+  }
   function bindRelease(release){boundRelease=release?clone(release):null;expandedCache=null;return api;}
   function isWritable(key,value,prefs,state,auxState){key=String(key||'');var data=expanded(),item=data.preferences[key];if(item)return writeSafe(item,value,prefs||{},state||prefs||{},auxState);var meta=data.writeOnlyByKey[key];return !!(meta&&writeOnlySafe(meta,value,prefs||{},state||prefs||{},auxState));}
   function writableDraft(draft,prefs,auxState){draft=draft||{};prefs=prefs||{};var state=Object.assign({},prefs,draft),data=expanded(),out={};Object.keys(draft).forEach(function(key){if(!isWritable(key,draft[key],prefs,state,auxState))return;var meta=data.writeOnlyByKey[String(key||'')];if(meta&&meta.omitEmpty===true&&String(draft[key]||'')==='')return;out[key]=draft[key];});return out;}
@@ -73,6 +110,6 @@
   function controlGraph(tab){var graph=expanded().controlGraph.tabs[String(tab||'')];return graph?clone(graph):null;}
   function preferenceKeyForControl(controlId){return expanded().controlToPreference[String(controlId||'')]||null;}
 
-  var api={nativeSurfaces:nativeSurfaces,tabTitle:tabTitle,tabTitleRef:tabTitleRef,describeValue:describeValue,toDisplay:toDisplay,toRaw:toRaw,group:group,keysFor:keysFor,humanize:humanize,bindRelease:bindRelease,loadCompatibility:loadCompatibility,isWritable:isWritable,writableDraft:writableDraft,sourcePreference:sourcePreference,controlGraph:controlGraph,preferenceKeyForControl:preferenceKeyForControl,writeOnlyForControl:writeOnlyForControl,writeOnlyForKey:writeOnlyForKey,writeOnlyEnabled:writeOnlyEnabled,clientDataForControl:clientDataForControl,clientDataForKey:clientDataForKey,clientDataKeys:clientDataKeys,clientDataWritable:clientDataWritable,predicateSatisfied:predicateSatisfied,controlEnabled:controlEnabled,gateForControl:gateForControl,gateValue:gateValue,projectionAuxForControl:projectionAuxForControl,projectionAuxValue:projectionAuxValue};
+  var api={nativeSurfaces:nativeSurfaces,tabTitle:tabTitle,tabTitleRef:tabTitleRef,describeValue:describeValue,toDisplay:toDisplay,toRaw:toRaw,group:group,keysFor:keysFor,humanize:humanize,bindRelease:bindRelease,loadCompatibility:loadCompatibility,loadRuntimeVisibility:loadRuntimeVisibility,setRuntimeBuildInfo:setRuntimeBuildInfo,sourceControlVisible:sourceControlVisible,sourcePreferenceVisible:sourcePreferenceVisible,isWritable:isWritable,writableDraft:writableDraft,sourcePreference:sourcePreference,controlGraph:controlGraph,preferenceKeyForControl:preferenceKeyForControl,writeOnlyForControl:writeOnlyForControl,writeOnlyForKey:writeOnlyForKey,writeOnlyEnabled:writeOnlyEnabled,clientDataForControl:clientDataForControl,clientDataForKey:clientDataForKey,clientDataKeys:clientDataKeys,clientDataWritable:clientDataWritable,predicateSatisfied:predicateSatisfied,controlEnabled:controlEnabled,gateForControl:gateForControl,gateValue:gateValue,projectionAuxForControl:projectionAuxForControl,projectionAuxValue:projectionAuxValue};
   W.SettingsSchema=api;
 })(window);
