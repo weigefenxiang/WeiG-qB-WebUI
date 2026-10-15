@@ -355,9 +355,11 @@ try{
   for(const required of ['behavior','downloads','connection','speed','bittorrent','rss','webui','advanced'])assert(seeded.tabs.includes(required),'Native Options audit lost required tab '+required);
 
   // A77: the server's current .unwanted boolean always wins over an old browser snapshot.
-  const unwanted=page.locator('[data-preference-key="use_unwanted_folder"] input[type="checkbox"]');
-  await selectTab(page,'downloads');
-  assert(await unwanted.count()===1&&!await unwanted.isChecked(),'A77: source .unwanted must begin as API false');
+  const unwanted=page.locator(preferenceRootSelector('use_unwanted_folder')+' input[type="checkbox"]');
+  await rerender(page,'downloads');
+  const unwantedCount=await unwanted.count(),unwantedRaw=await page.evaluate(()=>WeiG.SettingsState.prefs?.use_unwanted_folder);
+  assert(unwantedCount===1,'A77: native .unwanted checkbox must have one canonical Settings owner; count='+unwantedCount+' raw='+String(unwantedRaw));
+  assert(unwantedRaw===false&&!await unwanted.isChecked(),'A77: source .unwanted must begin as API false; raw='+String(unwantedRaw));
   const unwantedWrites=variants.en.writes.length,unwantedReads=variants.en.preferenceReads;
   variants.en.prefs.use_unwanted_folder=true;
   await rerender(page,'downloads');
