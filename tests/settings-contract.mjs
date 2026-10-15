@@ -262,3 +262,6 @@ assert(a75MobileCss.includes('box-sizing:border-box!important;height:calc(var(--
 assert(a75MobileCss.includes('gap:var(--mobile-torrent-card-content-gap,2px)!important')&&!a75MobileCss.includes('.torrent-mobile-card{padding-block:4px 7px!important}'),'No conflicting short-screen card padding owner may override the shared density projection');
 const a75MobileResponsive=read('webui/private/scripts/responsive.js');
 assert(a75MobileResponsive.includes('W.DensityPolicy.projectMobile(h)'),'Mobile responsive height must project card geometry via the same density owner');
+
+// Exact-source environment visibility remains part of the canonical Settings focused suite.
+await import('./settings-runtime-visibility-contract.mjs');
