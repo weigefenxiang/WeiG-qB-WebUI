@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import vm from 'node:vm';
-import {extractQbSettingsRuntimeVisibility} from '../tools/qb-settings-runtime-visibility-source.mjs';
+import {extractQbSettingsRuntimeVisibility,sourceAdmissionRuntimeVisibilityVersions} from '../tools/qb-settings-runtime-visibility-source.mjs';
 import {readSettingsRuntime} from '../tools/qb-compact-runtime.mjs';
 
 const source=fs.readFileSync(new URL('../webui/private/scripts/settings-schema.js',import.meta.url),'utf8');
@@ -16,7 +16,9 @@ for(const release of manifest.releases){
   assert.equal(release.sourceSha,byVersion.get(release.qbVersion),'runtime predicates must keep exact official source SHA');
   assert.deepEqual(release.rules.map(r=>r.controlId),['diskCache','diskCacheExpiryInterval','coalesceReadsAndWrites']);
 }
-assert.equal(manifest.releases.length,16,'all admitted 5.x source visibility profiles must be accounted for');
+const admittedVisibilityVersions=sourceAdmissionRuntimeVisibilityVersions(capabilities);
+assert.deepEqual(manifest.releases.map(row=>row.qbVersion),admittedVisibilityVersions,'source-conditional releases must be derived from the entire exact admitted catalog, never a previous manifest');
+assert.deepEqual(sourceAdmissionRuntimeVisibilityVersions({releases:[...capabilities.releases,{qbVersion:'6.0.0',sourceSha:'b'.repeat(40)}]}).slice(-1),['6.0.0'],'future exact stable must enter the source visibility inventory without a hand-maintained list');
 const fixture='<tr id="rowDiskCache"><td><input id="diskCache"></td></tr>'
   +'const buildInfo=cache.buildInfo.get();const libtorrentVersion=parseVersion(buildInfo.libtorrent);'
   +'if (libtorrentVersion.major >= 2) { document.getElementById("rowDiskCache").style.display = "none"; }';

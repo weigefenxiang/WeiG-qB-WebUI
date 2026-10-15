@@ -49,12 +49,19 @@ export function compileQbSettingsRuntimeVisibility(capabilities,qbRoot,versions)
   return{schemaVersion:1,source:'qb-upstream-settings-runtime-visibility',catalogIdentity:capabilities.catalogIdentity,releases};
 }
 
+export function sourceAdmissionRuntimeVisibilityVersions(capabilities){
+  if(!capabilities||!Array.isArray(capabilities.releases))throw Error('Missing exact qB source catalog');
+  // Derive the source-enabled family from the admitted catalog: new stable releases
+  // are never omitted merely because a previous generated manifest lacked them.
+  return capabilities.releases.filter(row=>Number(String(row.qbVersion||'').split('.')[0])>=5).map(row=>row.qbVersion);
+}
+
 if(process.argv[1]&&process.argv[1].endsWith('/qb-settings-runtime-visibility-source.mjs')){
   try{
-    const [catalogFile,qbRoot,manifestFile,outputFile]=process.argv.slice(2);
-    if(!catalogFile||!qbRoot||!manifestFile||!outputFile)throw Error('Usage: node tools/qb-settings-runtime-visibility-source.mjs <capabilities.json> <qB-root> <previous-manifest.json> <output.json>');
-    const catalog=JSON.parse(fs.readFileSync(catalogFile,'utf8')),previous=JSON.parse(fs.readFileSync(manifestFile,'utf8'));
-    const output=compileQbSettingsRuntimeVisibility(catalog,qbRoot,previous.releases.map(row=>String(row.qbVersion||'')));
+    const [catalogFile,qbRoot,outputFile]=process.argv.slice(2);
+    if(!catalogFile||!qbRoot||!outputFile)throw Error('Usage: node tools/qb-settings-runtime-visibility-source.mjs <capabilities.json> <qB-root> <output.json>');
+    const catalog=JSON.parse(fs.readFileSync(catalogFile,'utf8'));
+    const output=compileQbSettingsRuntimeVisibility(catalog,qbRoot,sourceAdmissionRuntimeVisibilityVersions(catalog));
     fs.writeFileSync(outputFile,JSON.stringify(output,null,2)+'\n','utf8');
   }catch(error){console.error(error?.message||error);process.exitCode=1;}
 }
