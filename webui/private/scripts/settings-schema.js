@@ -101,7 +101,8 @@
   }
   function sourcePreferenceVisible(key){
     var item=expanded().preferences[String(key||'')];
-    return !item||sourceControlVisible({id:item.controlId});
+    // All Advanced writes require the source visibility contract; API exposure alone is not proof.
+    return !item||(item.tab!=='advanced'||!!visibilityCatalog)&&sourceControlVisible({id:item.controlId});
   }
   function bindRelease(release){boundRelease=release?clone(release):null;expandedCache=null;return api;}
   function isWritable(key,value,prefs,state,auxState){key=String(key||'');var data=expanded(),item=data.preferences[key];if(item)return writeSafe(item,value,prefs||{},state||prefs||{},auxState);var meta=data.writeOnlyByKey[key];return !!(meta&&writeOnlySafe(meta,value,prefs||{},state||prefs||{},auxState));}

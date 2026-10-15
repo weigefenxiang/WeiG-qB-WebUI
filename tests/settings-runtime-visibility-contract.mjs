@@ -54,4 +54,17 @@ S.setRuntimeBuildInfo(null);
 assert.equal(S.sourceControlVisible({id:'diskCache'}),false,'unverified libtorrent facts must fail closed');
 S.setRuntimeBuildInfo({libtorrent:'garbled'});
 assert.equal(S.sourceControlVisible({id:'diskCache'}),false);
+const absentW={CapabilityRegistry:{ensure:async()=>compact,supportsWriteAction:()=>true},RuntimeAssets:{readJson:async()=>{throw Error('offline visibility source');}}};
+const absentBrowser={WeiG:absentW};absentBrowser.window=absentBrowser;
+vm.runInNewContext(source,{window:absentBrowser,console});
+const absentSchema=absentW.SettingsSchema;await absentSchema.loadCompatibility();
+absentSchema.bindRelease({...release,certified:true,fallback:false});
+await assert.rejects(absentSchema.loadRuntimeVisibility(),/offline visibility source/);
+for(const key of ['disk_cache','disk_cache_ttl','enable_coalesce_read_write'])
+  assert.equal(absentSchema.sourcePreferenceVisible(key),false,'Advanced write must fail closed without source visibility: '+key);
+assert.equal(absentSchema.sourcePreferenceVisible('locale'),true,'unrelated Settings tabs remain source-owned');
+const blockedPrefs={disk_cache:-1};
+assert.equal(absentSchema.isWritable('disk_cache',-1,blockedPrefs,blockedPrefs),false,'missing source visibility must block all Advanced writes');
+const rendererSource=fs.readFileSync(new URL('../webui/private/scripts/settings.js',import.meta.url),'utf8');
+assert.ok(rendererSource.includes("if(tab==='advanced'&&controller.visibilityFailure)")&&rendererSource.includes("if(controller.tab==='advanced'&&controller.visibilityFailure)return;"),'failed visibility load must block Advanced presentation and Save');
 console.log('Settings exact-source runtime visibility contract PASS');
