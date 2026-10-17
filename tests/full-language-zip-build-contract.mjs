@@ -6,7 +6,7 @@ import crypto from 'node:crypto';
 import {spawnSync} from 'node:child_process';
 import {fileURLToPath} from 'node:url';
 import {buildWebuiDist} from '../tools/build-webui-dist.mjs';
-import {expectedExtendedLocales,inspectExtendedLocaleSources,canonicalEnglishTranslationKeys,canonicalEnglishSourceSha256} from '../tools/external-weig-locale-assets.mjs';
+import {expectedExtendedLocales,inspectExtendedLocaleSources,canonicalEnglishTranslationKeys,canonicalEnglishSourceSha256,canonicalEnglishMessages} from '../tools/external-weig-locale-assets.mjs';
 
 const root=path.resolve(path.dirname(fileURLToPath(import.meta.url)),'..');
 const scratch=fs.mkdtempSync(path.join(os.tmpdir(),'weig-locale-dist-test-'));
@@ -22,11 +22,17 @@ try{
   for(const locale of expectedExtendedLocales){
     const fixture={schemaVersion:1,source:'WeiG-runtime-locale-overlay',locale,
       translationStatus:'approved',englishSourceSha256:canonicalEnglishSourceSha256,
-      messages:{'app.back':'Packaging test '+locale},
-      reviewedEnglishFallbackKeys:canonicalEnglishTranslationKeys.filter(key=>key!=='app.back')};
+      messages:Object.fromEntries(canonicalEnglishTranslationKeys.map(key=>[key,'Packaging test '+locale+': '+canonicalEnglishMessages[key]])),
+      reviewedEnglishFallbackKeys:[]};
     fs.writeFileSync(path.join(sourceDir,locale+'.json'),JSON.stringify(fixture)+'\n');
   }
   const damagedFile=path.join(sourceDir,'ca.json'),validBytes=fs.readFileSync(damagedFile);
+  const sparseApproved=JSON.parse(validBytes);
+  sparseApproved.messages={'app.back':'Packaging test ca'};
+  sparseApproved.reviewedEnglishFallbackKeys=canonicalEnglishTranslationKeys.filter(key=>key!=='app.back');
+  fs.writeFileSync(damagedFile,JSON.stringify(sparseApproved));
+  assert.throws(()=>inspectExtendedLocaleSources({sourceDir,requireComplete:true}),/10% English fallback/);
+  fs.writeFileSync(damagedFile,validBytes);
   const incomplete=JSON.parse(validBytes);
   delete incomplete.reviewedEnglishFallbackKeys;
   fs.writeFileSync(damagedFile,JSON.stringify(incomplete));

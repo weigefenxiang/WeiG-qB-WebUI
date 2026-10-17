@@ -11,6 +11,8 @@ const englishMatch=/var EN=(\{[^\n]+\});/.exec(englishSource);
 assert(englishMatch,'Canonical W.I18n English source missing');
 const english=JSON.parse(englishMatch[1]);
 export const canonicalEnglishTranslationKeys=Object.freeze(Object.keys(english));
+export const canonicalEnglishMessages=Object.freeze(english);
+const MAX_APPROVED_ENGLISH_FALLBACK_PERCENT=10;
 export const canonicalEnglishSourceSha256=createHash('sha256').update(JSON.stringify(english)).digest('hex');
 const primaryCodes=new Set(languages.filter(x=>x.primary).map(x=>x.code));
 const runtimeLocaleMatch=/var SUPPORTED_LOCALES=(\[[^\n]+\]);/.exec(englishSource);
@@ -36,6 +38,8 @@ export function validateExternalOverlay(locale,data){
   if(data.translationStatus==='approved'){
     assert.equal(data.englishSourceSha256,canonicalEnglishSourceSha256,'Approved locale English-source fingerprint mismatch: '+locale);
     assert(Array.isArray(data.reviewedEnglishFallbackKeys),'Approved locale requires explicit reviewed English fallback keys: '+locale);
+    assert(data.reviewedEnglishFallbackKeys.length*100<=canonicalEnglishTranslationKeys.length*MAX_APPROVED_ENGLISH_FALLBACK_PERCENT,
+      'Approved locale exceeds 10% English fallback review budget: '+locale);
     const accounted=new Set(Object.keys(data.messages));
     for(const key of data.reviewedEnglishFallbackKeys){
       assert(typeof key==='string'&&Object.hasOwn(english,key),'Unknown approved English fallback key: '+locale+'/'+key);

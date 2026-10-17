@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import {inspectExtendedLocaleSources,expectedExtendedLocales,validateExternalOverlay,canonicalEnglishTranslationKeys,canonicalEnglishSourceSha256} from '../tools/external-weig-locale-assets.mjs';
+import {inspectExtendedLocaleSources,expectedExtendedLocales,validateExternalOverlay,canonicalEnglishTranslationKeys,canonicalEnglishSourceSha256,canonicalEnglishMessages} from '../tools/external-weig-locale-assets.mjs';
 const status=inspectExtendedLocaleSources();
 assert.equal(status.official,61);
 assert.equal(status.primary,10);
@@ -22,11 +22,17 @@ console.log('External locale gate passed: official 61-language identity, sparse 
 assert.throws(()=>validateExternalOverlay('ca',{...valid,translationStatus:'unspecified'}),/draft or approved/);
 
 assert(canonicalEnglishTranslationKeys.length>500,'English source review set unexpectedly small');
-const approved={...valid,messages:{...valid.messages,'library.count':'{count} descàrregues'},translationStatus:'approved',englishSourceSha256:canonicalEnglishSourceSha256,
-  reviewedEnglishFallbackKeys:canonicalEnglishTranslationKeys.filter(key=>!Object.hasOwn(valid.messages,key))};
-assert.equal(validateExternalOverlay('ca',approved),2,'All canonical keys must be explicitly reviewed');
+const approvedMessages=Object.fromEntries(canonicalEnglishTranslationKeys.map(key=>[key,'Approved fixture ca: '+canonicalEnglishMessages[key]]));
+delete approvedMessages['app.back'];
+const approved={...valid,messages:approvedMessages,translationStatus:'approved',englishSourceSha256:canonicalEnglishSourceSha256,
+  reviewedEnglishFallbackKeys:['app.back']};
+assert.equal(validateExternalOverlay('ca',approved),canonicalEnglishTranslationKeys.length-1,'All canonical keys must be explicitly reviewed');
 assert.throws(()=>validateExternalOverlay('ca',{...approved,englishSourceSha256:undefined}),/fingerprint mismatch/);
 assert.throws(()=>validateExternalOverlay('ca',{...approved,englishSourceSha256:'0'.repeat(64)}),/fingerprint mismatch/);
-assert.throws(()=>validateExternalOverlay('ca',{...approved,reviewedEnglishFallbackKeys:approved.reviewedEnglishFallbackKeys.slice(1)}),/unreviewed canonical/);
+assert.throws(()=>validateExternalOverlay('ca',{...approved,reviewedEnglishFallbackKeys:[]}),/unreviewed canonical/);
 assert.throws(()=>validateExternalOverlay('ca',{...approved,reviewedEnglishFallbackKeys:[...approved.reviewedEnglishFallbackKeys,approved.reviewedEnglishFallbackKeys[0]]}),/Duplicate or overlapping/);
 assert.throws(()=>validateExternalOverlay('ca',{...approved,messages:{...approved.messages,'app.back':'Back'}}),/English-identical/);
+
+const oldSparseApproved={...valid,translationStatus:'approved',englishSourceSha256:canonicalEnglishSourceSha256,
+  messages:{'app.back':'Prova enrere'},reviewedEnglishFallbackKeys:canonicalEnglishTranslationKeys.filter(key=>key!=='app.back')};
+assert.throws(()=>validateExternalOverlay('ca',oldSparseApproved),/10% English fallback/,'One translated key cannot certify a fully localized package');

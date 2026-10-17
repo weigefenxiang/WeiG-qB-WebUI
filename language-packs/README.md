@@ -32,7 +32,11 @@ release-ready locale. An approved overlay additionally needs the SHA256 of the *
 WeiG message object** as `englishSourceSha256`, and an explicit
 `reviewedEnglishFallbackKeys` array covering every intentionally untranslated
 key. The union of translated keys and reviewed English fallback keys must equal
-the complete canonical W.I18n key inventory, with no overlap. Approval is
+the complete canonical W.I18n key inventory, with no overlap. At least 90% of
+canonical WeiG messages must carry reviewed native-locale copy; explicit
+English fallback is bounded to 10% for intentional technical/identical terms.
+This numeric guard is a minimum coverage gate, **not linguistic approval**;
+translation accuracy and native phrasing still require real review. Approval is
 invalidated whenever that English source changes. A sparse draft cannot simply
 be renamed `approved` to claim a full translation.
 
