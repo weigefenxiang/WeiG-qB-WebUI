@@ -25,8 +25,8 @@ assert(canonicalEnglishTranslationKeys.length>500,'English source review set une
 const approved={...valid,messages:{...valid.messages,'library.count':'{count} descàrregues'},translationStatus:'approved',englishSourceSha256:canonicalEnglishSourceSha256,
   reviewedEnglishFallbackKeys:canonicalEnglishTranslationKeys.filter(key=>!Object.hasOwn(valid.messages,key))};
 assert.equal(validateExternalOverlay('ca',approved),2,'All canonical keys must be explicitly reviewed');
-assert.throws(()=>validateExternalOverlay('ca',{...valid,translationStatus:'approved'}),/fingerprint mismatch/);
+assert.throws(()=>validateExternalOverlay('ca',{...approved,englishSourceSha256:undefined}),/fingerprint mismatch/);
 assert.throws(()=>validateExternalOverlay('ca',{...approved,englishSourceSha256:'0'.repeat(64)}),/fingerprint mismatch/);
 assert.throws(()=>validateExternalOverlay('ca',{...approved,reviewedEnglishFallbackKeys:approved.reviewedEnglishFallbackKeys.slice(1)}),/unreviewed canonical/);
 assert.throws(()=>validateExternalOverlay('ca',{...approved,reviewedEnglishFallbackKeys:[...approved.reviewedEnglishFallbackKeys,approved.reviewedEnglishFallbackKeys[0]]}),/Duplicate or overlapping/);
-assert.throws(()=>validateExternalOverlay('ca',{...approved,messages:{...valid.messages,'app.back':'Back'}}),/English-identical/);
+assert.throws(()=>validateExternalOverlay('ca',{...approved,messages:{...approved.messages,'app.back':'Back'}}),/English-identical/);
