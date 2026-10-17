@@ -6,7 +6,7 @@ assert.equal(status.primary,10);
 assert.equal(status.englishVariants,2);
 assert.equal(status.expected,48);
 assert.equal(status.ready+status.missing.length,48);
-for(const locale of ['ca','it','nl','vi','id','tr'])assert.ok(status.drafts.includes(locale),'All real sparse overlays must remain draft: '+locale);
+for(const locale of ['ca','it','nl','vi','id','tr','ar','fa','he'])assert.ok(status.drafts.includes(locale),'All real sparse overlays must remain draft: '+locale);
 assert.equal(new Set(expectedExtendedLocales).size,48);
 assert.equal(expectedExtendedLocales.includes('en'),false,'Core English is never an external locale');
 assert.equal(expectedExtendedLocales.includes('zh-HK'),false,'Current Hong Kong sparse overlay belongs to bundled WeiG core, not external packs');
