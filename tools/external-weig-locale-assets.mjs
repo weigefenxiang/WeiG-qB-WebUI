@@ -33,7 +33,7 @@ export function validateExternalOverlay(locale,data){
     assert(Object.hasOwn(english,key),'Unknown canonical English key '+locale+'/'+key);
     assert(typeof value==='string'&&value.trim().length>0,'Empty/invalid translation '+locale+'/'+key);
     assert.equal(placeholders(value),placeholders(english[key]),'Placeholder mismatch '+locale+'/'+key);
-    if(data.translationStatus==='approved')assert.notEqual(value,english[key],'Approved overlay must omit English-identical key and attest intentional fallback: '+locale+'/'+key);
+    assert.notEqual(value,english[key],'WeiG overlay duplicates canonical English value; omit the key to use W.I18n fallback: '+locale+'/'+key);
   }
   if(data.translationStatus==='approved'){
     assert.equal(data.englishSourceSha256,canonicalEnglishSourceSha256,'Approved locale English-source fingerprint mismatch: '+locale);

@@ -62,3 +62,8 @@ Chinese semantic reference; these are **context**, not machine translations.
 The tool never writes a locale JSON or marks anything approved. Run with
 `--limit=693` to see all unreviewed keys. Empty or identical English copies
 must be deliberately justified using the approved fallback mechanism.
+
+Do not store WeiG overlay values that exactly duplicate the canonical English
+text, including intentionally unchanged technical labels. Omit such keys and let
+W.I18n supply the English baseline. This applies to drafts as well as approved
+assets and keeps sparse coverage reporting honest.

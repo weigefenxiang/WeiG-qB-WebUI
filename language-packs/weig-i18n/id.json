@@ -40,7 +40,6 @@
     "settings.theme.system": "Ikuti sistem",
     "settings.theme.dark": "Gelap",
     "settings.theme.light": "Terang",
-    "logs.ui.normal": "Normal",
     "logs.ui.info": "Informasi",
     "logs.ui.warning": "Peringatan",
     "logs.ui.critical": "Kritis",

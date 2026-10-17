@@ -4,7 +4,7 @@ const ca=getTranslationReviewWorklist('ca');
 assert.equal(ca.schemaVersion,1);
 assert.equal(ca.status,'draft');
 assert.equal(ca.canonicalKeys,693);
-assert.equal(ca.suppliedKeys,46);
+assert.equal(ca.suppliedKeys,45);
 assert.equal(ca.unreviewedKeys,ca.canonicalKeys-ca.suppliedKeys);
 assert.ok(ca.work.length>600);
 assert.ok(ca.work.every(item=>typeof item.key==='string'&&typeof item.english==='string'));

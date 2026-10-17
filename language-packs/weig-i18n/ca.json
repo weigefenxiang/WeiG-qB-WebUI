@@ -40,7 +40,6 @@
     "settings.theme.system": "Sistema",
     "settings.theme.dark": "Fosc",
     "settings.theme.light": "Clar",
-    "logs.ui.normal": "Normal",
     "logs.ui.info": "Informació",
     "logs.ui.warning": "Avís",
     "logs.ui.critical": "Crític",

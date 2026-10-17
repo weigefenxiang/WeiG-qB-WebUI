@@ -40,7 +40,6 @@
     "settings.theme.system": "Sistem ayarı",
     "settings.theme.dark": "Koyu",
     "settings.theme.light": "Açık",
-    "logs.ui.normal": "Normal",
     "logs.ui.info": "Bilgi",
     "logs.ui.warning": "Uyarı",
     "logs.ui.critical": "Kritik",
