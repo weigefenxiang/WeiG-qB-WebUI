@@ -6,7 +6,8 @@ const root=path.resolve(path.dirname(fileURLToPath(import.meta.url)),'..');
 const pages=[
   ['translations/README.en-AU.md','README.md'],
   ['translations/README.en-GB.md','README.md'],
-  ['translations/README.zh-HK.md','translations/README.zh-TW.md']
+  ['translations/README.zh-HK.md','translations/README.zh-TW.md'],
+  ['translations/README.pt-BR.md','translations/README.pt.md']
 ];
 const withoutNavigation=text=>text.replace(/<!-- WEIG-README-LANGUAGES:START -->[\s\S]*?<!-- WEIG-README-LANGUAGES:END -->/,'');
 for(const [localized,baseline] of pages){
