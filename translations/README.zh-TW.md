@@ -303,10 +303,12 @@ qBittorrent Root Folder: /config/weig-qb-webui
 
 #### 一次更新多個既有 WebUI 目錄
 
-在 Linux / NAS 上可以重複指定 `-o`，一次下載並更新多個已存在的 WebUI 安裝位置。多目標模式不可同時使用 `-configure`、`--container` 或 `--config-root`。
+在 Linux / NAS 上可以重複指定 `-o`，這裡以 `-dev` 開發版為例，一次下載並更新多個已存在的 WebUI 安裝位置；省略 `-dev` 則使用穩定版。多目標模式不可同時使用 `-configure`、`--container` 或 `--config-root`。
 
 ```sh
-sh install.sh -o /opt/weig-qb-webui -o /srv/qb/weig-qb-webui
+sh install.sh -dev \
+  -o /root/qbittorrent/config/weig-qb-webui \
+  -o /root/qbittorrent3/config/weig-qb-webui
 ```
 
 </details>
