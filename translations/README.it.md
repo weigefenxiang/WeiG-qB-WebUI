@@ -69,7 +69,7 @@ La **cartella `weig-qb-webui` completa** costituisce la directory principale del
 Sposta l'intera cartella in una posizione da cui non venga rimossa accidentalmente. Per esempio:
 
 ```text
-Windows:D:\weig-qb-webui
+Windows: D:\weig-qb-webui
 Linux:   /opt/weig-qb-webui
 ```
 
