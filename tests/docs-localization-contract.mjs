@@ -65,3 +65,5 @@ import './readme-language-navigation-contract.mjs';
 import './extended-readme-variants-contract.mjs';
 
 import './readme-chinese-source-contract.mjs';
+
+import './language-coverage-report-contract.mjs';

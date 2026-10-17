@@ -32,3 +32,11 @@ release-ready locale. Only `translationStatus: "approved"` may enter the
 complete All Languages asset gate; publishing still requires normal SHA-bound
 CI, real-qB and user acceptance. Sparse first drafts intentionally retain
 English fallbacks and must not be described as complete translations.
+
+## Progress report
+
+Run `node tools/language-coverage-report.mjs` to inspect README coverage and
+bundled, English-inherited, draft, approved and missing interface overlays.
+Use `--details` for individual official locale records. Counts are derived
+from the current official locale inventory and canonical W.I18n owners, not
+maintained in a second hand-edited language table.
