@@ -23,3 +23,12 @@ translations. They are deliberately outside `webui/**`.
 - Source content should follow the Simplified Chinese README semantics where
   README translation is requested; WeiG interface key semantics remain anchored
   to the current English key/value source, preserving brand/technical terminology.
+
+## Native-language draft review
+
+New language files must declare `translationStatus: "draft"` until linguistic
+and semantic review is complete. A validated draft is **not** counted as a
+release-ready locale. Only `translationStatus: "approved"` may enter the
+complete All Languages asset gate; publishing still requires normal SHA-bound
+CI, real-qB and user acceptance. Sparse first drafts intentionally retain
+English fallbacks and must not be described as complete translations.

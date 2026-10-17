@@ -19,6 +19,7 @@ export function validateExternalOverlay(locale,data){
   assert(bySlug.has(locale),'Unknown/non-extended locale '+locale);
   assert(data&&data.schemaVersion===1&&data.source==='WeiG-runtime-locale-overlay'&&data.locale===locale,'Invalid extended language overlay identity '+locale);
   assert(data.messages&&typeof data.messages==='object'&&!Array.isArray(data.messages)&&Object.keys(data.messages).length>0,'Empty/invalid extended language overlay '+locale);
+  assert(data.translationStatus==='draft'||data.translationStatus==='approved','External language must declare draft or approved review status: '+locale);
   for(const [key,value] of Object.entries(data.messages)){
     assert(Object.hasOwn(english,key),'Unknown canonical English key '+locale+'/'+key);
     assert(typeof value==='string'&&value.trim().length>0,'Empty/invalid translation '+locale+'/'+key);
@@ -29,7 +30,7 @@ export function validateExternalOverlay(locale,data){
 export function inspectExtendedLocaleSources({requireComplete=false}={}){
   assert(fs.existsSync(rootOfExternalLocales),'Missing canonical external language source directory');
   const files=fs.readdirSync(rootOfExternalLocales).filter(x=>x.endsWith('.json'));
-  const present=new Set();
+  const present=new Set(),drafts=[];
   let keys=0;
   for(const filename of files){
     const locale=filename.slice(0,-5);
@@ -37,11 +38,12 @@ export function inspectExtendedLocaleSources({requireComplete=false}={}){
     assert(!present.has(locale),'Duplicate external locale '+locale);
     const data=JSON.parse(fs.readFileSync(path.join(rootOfExternalLocales,filename),'utf8'));
     keys+=validateExternalOverlay(locale,data);
-    present.add(locale);
+    if(data.translationStatus==='approved')present.add(locale);
+    else drafts.push(locale);
   }
   const missing=expectedExtendedLocales.filter(x=>!present.has(x));
   if(requireComplete)assert.equal(missing.length,0,'Full-language distribution cannot claim completion: missing '+missing.join(', '));
-  return Object.freeze({official:languages.length,primary:primaryCodes.size,englishVariants:2,expected:expectedExtendedLocales.length,ready:present.size,keys,missing});
+  return Object.freeze({official:languages.length,primary:primaryCodes.size,englishVariants:2,expected:expectedExtendedLocales.length,ready:present.size,drafts,keys,missing});
 }
 if(process.argv[1]&&path.resolve(process.argv[1])===fileURLToPath(import.meta.url)){
   const status=inspectExtendedLocaleSources({requireComplete:process.argv.includes('--require-complete')});
