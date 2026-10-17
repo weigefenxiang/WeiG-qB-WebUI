@@ -9,7 +9,8 @@ const pages=[
   ['translations/README.zh-HK.md','translations/README.zh-TW.md'],
   ['translations/README.pt-BR.md','translations/README.zh-CN.md'],
   ['translations/README.it.md','translations/README.zh-CN.md'],
-  ['translations/README.ca.md','translations/README.zh-CN.md']
+  ['translations/README.ca.md','translations/README.zh-CN.md'],
+  ['translations/README.nl.md','translations/README.zh-CN.md']
 ];
 const withoutNavigation=text=>text.replace(/<!-- WEIG-README-LANGUAGES:START -->[\s\S]*?<!-- WEIG-README-LANGUAGES:END -->/,'');
 for(const [localized,baseline] of pages){
