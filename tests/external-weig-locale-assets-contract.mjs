@@ -8,6 +8,7 @@ assert.equal(status.expected,48);
 assert.equal(status.ready+status.missing.length,48);
 assert.ok(status.drafts.includes('ca')&&status.drafts.includes('it')&&status.drafts.includes('nl'),'Real draft overlays must be tracked separately from publishable language coverage');
 assert.equal(new Set(expectedExtendedLocales).size,48);
+assert.equal(expectedExtendedLocales.includes('en'),false,'Core English is never an external locale');
 assert.equal(expectedExtendedLocales.includes('zh-HK'),false,'Current Hong Kong sparse overlay belongs to bundled WeiG core, not external packs');
 const valid={schemaVersion:1,source:'WeiG-runtime-locale-overlay',locale:'ca',translationStatus:'draft',messages:{'app.loading':'S’està carregant…','library.count':'{count} torrents'}};
 assert.equal(validateExternalOverlay('ca',valid),2);

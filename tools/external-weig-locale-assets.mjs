@@ -13,7 +13,7 @@ const primaryCodes=new Set(languages.filter(x=>x.primary).map(x=>x.code));
 const runtimeLocaleMatch=/var SUPPORTED_LOCALES=(\[[^\n]+\]);/.exec(englishSource);
 assert(runtimeLocaleMatch,'Canonical W.I18n runtime locale inventory missing');
 const bundledLocales=new Set(JSON.parse(runtimeLocaleMatch[1]));
-const extended=languages.filter(x=>!bundledLocales.has(x.slug)&&!['en_AU','en_GB'].includes(x.code));
+const extended=languages.filter(x=>!bundledLocales.has(x.slug||x.code)&&!['en_AU','en_GB'].includes(x.code));
 assert(extended.length+bundledLocales.size+2===languages.length,'Extended locale inventory overlaps current W.I18n or misses official locales');
 const bySlug=new Map(extended.map(x=>[x.slug,x]));
 export const expectedExtendedLocales=Object.freeze(extended.map(x=>x.slug));
