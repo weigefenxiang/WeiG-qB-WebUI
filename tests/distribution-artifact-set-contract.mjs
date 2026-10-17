@@ -62,3 +62,5 @@ if(process.platform==='linux'){
 // A73 Pages preview uses the canonical distribution archive and must satisfy its own
 // exact-SHA/sha256 contract without consuming an extra CI smoke command.
 await import('./pages-plan-download-alias-contract.mjs');
+
+import './external-weig-locale-assets-contract.mjs';
