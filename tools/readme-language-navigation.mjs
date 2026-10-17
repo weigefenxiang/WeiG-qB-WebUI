@@ -4,8 +4,8 @@ import {fileURLToPath} from 'node:url';
 const root=path.resolve(path.dirname(fileURLToPath(import.meta.url)),'..');
 const inventory=JSON.parse(fs.readFileSync(path.join(root,'tools/data/qb-5.2.4-readme-languages.json'),'utf8'));
 const primary=['en','zh_CN','zh_TW','ja','ko','de','fr','es','pt_PT','ru'];
-const titles={"":"Language","zh-CN":"语言","zh-TW":"語言","ja":"言語","ko":"언어","de":"Sprache","fr":"Langue","es":"Idioma","pt":"Idioma","ru":"Язык"};
-const moreTitles={"":"More languages","zh-CN":"更多语言","zh-TW":"更多語言","ja":"その他の言語","ko":"더 많은 언어","de":"Weitere Sprachen","fr":"Autres langues","es":"Más idiomas","pt":"Mais idiomas","ru":"Другие языки"};
+const titles={"":"Language","zh-CN":"语言","zh-TW":"語言","zh-HK":"語言","ja":"言語","ko":"언어","de":"Sprache","fr":"Langue","es":"Idioma","pt":"Idioma","ru":"Язык"};
+const moreTitles={"":"More languages","zh-CN":"更多语言","zh-TW":"更多語言","zh-HK":"更多語言","ja":"その他の言語","ko":"더 많은 언어","de":"Weitere Sprachen","fr":"Autres langues","es":"Más idiomas","pt":"Mais idiomas","ru":"Другие языки"};
 const start='<!-- WEIG-README-LANGUAGES:START -->';
 const end='<!-- WEIG-README-LANGUAGES:END -->';
 export function readmePath(lang){return lang.code==='en'?'README.md':'translations/README.'+lang.slug+'.md';}
@@ -22,7 +22,7 @@ export function renderNavigation(lang) {
     .sort((a,b)=>a.direction==='rtl'&&b.direction!=='rtl'?1:a.direction!=='rtl'&&b.direction==='rtl'?-1:inventory.languages.indexOf(a)-inventory.languages.indexOf(b));
   const html=rest.map(item=>{
     const text=item.direction==='rtl'?'&#x2067;'+item.name+'&#x2069;':item.name;
-    return '<a href="'+prefix+'README.'+item.slug+'.md">'+text+'</a>';
+    return item.code===lang.code?'<strong>'+text+'</strong>':'<a href="'+prefix+'README.'+item.slug+'.md">'+text+'</a>';
   }).join(' &lrm;·&lrm; ');
   return [start,'**'+(titles[lang.slug]||'Language')+'**: '+primaryMarkup,'','<details>',
     '<summary><b>🔤 '+(moreTitles[lang.slug]||'More languages')+'</b></summary>',

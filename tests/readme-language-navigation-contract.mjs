@@ -11,7 +11,8 @@ assert.equal(new Set(inventory.languages.map(readmePath)).size,61);
 assert.equal(updateAll(false),0,'generated multilingual navigation has drifted');
 for(const lang of inventory.languages){
   const markup=renderNavigation(lang);
-  assert.equal((markup.match(/<a href=/g)||[]).length,51);
+  assert.equal((markup.match(/<a href=/g)||[]).length,lang.primary?51:50);
+  if(!lang.primary)assert.match(markup,/<strong>[^<]+<\/strong>/,'Expanded locale must mark its own current language');
   assert.equal((markup.match(/&lrm;·&lrm;/g)||[]).length,50);
   assert.equal((markup.match(/&#x2067;/g)||[]).length,3);
   assert.equal((markup.match(/&#x2069;/g)||[]).length,3);
