@@ -69,3 +69,5 @@ import './readme-chinese-source-contract.mjs';
 import './language-coverage-report-contract.mjs';
 
 import './readme-executable-parity-contract.mjs';
+
+import './translation-review-worklist-contract.mjs';

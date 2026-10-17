@@ -1,0 +1,17 @@
+import assert from 'node:assert/strict';
+import {getTranslationReviewWorklist} from '../tools/translation-review-worklist.mjs';
+const ca=getTranslationReviewWorklist('ca');
+assert.equal(ca.schemaVersion,1);
+assert.equal(ca.status,'draft');
+assert.equal(ca.canonicalKeys,693);
+assert.equal(ca.suppliedKeys,46);
+assert.equal(ca.unreviewedKeys,ca.canonicalKeys-ca.suppliedKeys);
+assert.ok(ca.work.length>600);
+assert.ok(ca.work.every(item=>typeof item.key==='string'&&typeof item.english==='string'));
+assert.equal(ca.work.length,ca.unreviewedKeys);
+const missing=getTranslationReviewWorklist('vi');
+assert.equal(missing.status,'missing');
+assert.equal(missing.unreviewedKeys,missing.canonicalKeys);
+assert.throws(()=>getTranslationReviewWorklist('zh-HK'),/Unknown or already bundled/);
+assert.throws(()=>getTranslationReviewWorklist('en'),/Unknown or already bundled/);
+console.log('Translation worklist passed: source-bound English and Simplified Chinese semantic reference, no fabricated approvals.');

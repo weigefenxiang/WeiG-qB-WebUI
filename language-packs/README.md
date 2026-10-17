@@ -48,3 +48,13 @@ bundled, English-inherited, draft, approved and missing interface overlays.
 Use `--details` for individual official locale records. Counts are derived
 from the current official locale inventory and canonical W.I18n owners, not
 maintained in a second hand-edited language table.
+
+## Read-only translation review worklist
+
+Run `node tools/translation-review-worklist.mjs --locale=ca --limit=30`
+to see the next canonical WeiG messages requiring explicit native-language
+review. Each entry shows current English source and available Simplified
+Chinese semantic reference; these are **context**, not machine translations.
+The tool never writes a locale JSON or marks anything approved. Run with
+`--limit=693` to see all unreviewed keys. Empty or identical English copies
+must be deliberately justified using the approved fallback mechanism.
