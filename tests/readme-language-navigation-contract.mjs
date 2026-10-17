@@ -35,3 +35,7 @@ assert.match(arabic,/<div dir="ltr">[\s\S]*?&lrm;·&lrm;[\s\S]*?<\/div>/,'Arabic
 const persian=fs.readFileSync(path.join(base,'translations/README.fa.md'),'utf8');
 assert.match(persian,/<strong>&#x2067;فارسی&#x2069;<\/strong>/,'Persian current language must be bidi-isolated');
 assert.match(persian,/<div dir="ltr">[\s\S]*?&lrm;·&lrm;[\s\S]*?<\/div>/,'Persian more-languages separators must stay LTR');
+
+const hebrew=fs.readFileSync(path.join(base,'translations/README.he.md'),'utf8');
+assert.match(hebrew,/<strong>&#x2067;עברית&#x2069;<\/strong>/,'Hebrew active locale must retain bidi isolation');
+assert.match(hebrew,/<div dir="ltr">[\s\S]*?&lrm;·&lrm;[\s\S]*?<\/div>/,'Hebrew more-languages list must keep separators in LTR order');
