@@ -4,7 +4,7 @@ import vm from 'node:vm';
 import {fileURLToPath} from 'node:url';
 const source=fs.readFileSync(new URL('../webui/private/scripts/i18n.js',import.meta.url),'utf8');
 const builder=fs.readFileSync(new URL('../tools/build-webui-dist.mjs',import.meta.url),'utf8');
-assert.ok(builder.includes('inspectExtendedLocaleSources()')&&builder.includes('weig-qb-webui-all-languages.zip'));
+assert.ok(builder.includes('inspectExtendedLocaleSources({sourceDir:extendedLocaleDir})')&&builder.includes('weig-qb-webui-all-languages.zip'));
 assert.ok(builder.includes('allLanguagesArtifact')&&builder.includes('extendedManifestPath'));
 function setup(available){
   const reads=[];
