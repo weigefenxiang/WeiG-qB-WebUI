@@ -13,10 +13,35 @@
     });
   }
   function reportWeiGShardError(target,error){try{console.error('[WeiG i18n] locale shard load failed',target,error);}catch(_e){}}
+  var extendedLocaleInventory=null,extendedLocaleInventoryTask=null;
+  function loadExtendedLocaleInventory(){
+    if(extendedLocaleInventory!==null)return Promise.resolve(extendedLocaleInventory);
+    if(extendedLocaleInventoryTask)return extendedLocaleInventoryTask;
+    var loader=W.RuntimeAssets;
+    if(!loader||typeof loader.readJson!=='function')return Promise.resolve([]);
+    extendedLocaleInventoryTask=loader.readJson('data/weig-i18n/extended-manifest.json',{namespace:'weig-i18n',identity:'extended-manifest'}).then(function(data){
+      if(!data||data.schemaVersion!==1||data.source!=='WeiG-extended-locale-inventory'||!Array.isArray(data.locales))throw new Error('Extended WeiG locale manifest identity mismatch');
+      var unique={},out=[];
+      data.locales.forEach(function(value){var code=String(value||'');if(!/^[a-z]{2,3}(?:-[A-Za-z0-9]{2,8})?$/.test(code)||SUPPORTED_LOCALES.indexOf(code)>=0||unique[code])throw new Error('Invalid extended WeiG locale '+code);unique[code]=true;out.push(code);});
+      extendedLocaleInventory=out;return out;
+    }).catch(function(error){reportWeiGShardError('extended-manifest',error);extendedLocaleInventory=[];return extendedLocaleInventory;});
+    return extendedLocaleInventoryTask;
+  }
   function loadWeiGLocale(target){
     target=String(target||'en');
     if(target==='en'||weigLocaleComplete[target])return Promise.resolve(dicts[target]||EN);
-    if(SUPPORTED_LOCALES.indexOf(target)<0)return Promise.resolve(EN);
+    if(SUPPORTED_LOCALES.indexOf(target)<0){
+      if(weigLocaleTasks[target])return weigLocaleTasks[target];
+      var extraTask=loadExtendedLocaleInventory().then(function(available){
+        if(available.indexOf(target)<0){
+          if(target==='pt-BR')return loadWeiGLocale('pt').then(function(base){dicts[target]=base;weigLocaleComplete[target]=!!weigLocaleComplete.pt;return base;});
+          dicts[target]=EN;weigLocaleComplete[target]=true;return EN;
+        }
+        return loadWeiGShard(target).then(function(messages){dicts[target]=Object.assign({},EN,messages);weigLocaleComplete[target]=true;return dicts[target];}).catch(function(error){reportWeiGShardError(target,error);return EN;});
+      });
+      weigLocaleTasks[target]=extraTask.finally(function(){delete weigLocaleTasks[target];});
+      return weigLocaleTasks[target];
+    }
     if(weigLocaleTasks[target])return weigLocaleTasks[target];
     var task;
     if(target==='zh-HK'){
@@ -45,7 +70,7 @@
   function sameQbLocale(a,b){var x=canonicalQbTag(a),y=canonicalQbTag(b);return !!x&&!!y&&x.toLowerCase()===y.toLowerCase();}
   function hasExactLocale(value,items){return exactLocaleOption(value,items||localeOptions)!==null;}
   function matchBrowserLocale(languages,items){var values=localeOptionValues(items||localeOptions);if(!values.length)return null;var parsed=values.map(function(value){return{value:value,parts:qbLocaleParts(value)};}).filter(function(x){return x.parts&&x.parts.language;});var wanted=Array.isArray(languages)?languages:[languages];for(var i=0;i<wanted.length;i++){var bp=qbLocaleParts(wanted[i]);if(!bp||!bp.language)continue;var exact=exactLocaleOption(bp.tag,values);if(exact)return exact;var same=parsed.filter(function(x){return x.parts.language===bp.language;});if(!same.length)continue;if(bp.language==='zh'){var targets=[];if(bp.script==='Hans'||bp.region==='CN'||bp.region==='SG')targets=['zh-CN','zh'];else if(bp.region==='HK'||bp.region==='MO')targets=['zh-HK','zh-TW','zh'];else if(bp.script==='Hant'||bp.region==='TW')targets=['zh-TW','zh'];for(var z=0;z<targets.length;z++){var zh=exactLocaleOption(targets[z],values);if(zh)return zh;}}var generic=same.find(function(x){return !x.parts.explicitRegion&&!x.parts.explicitScript&&canonicalQbTag(x.value).indexOf('-')<0;});if(generic)return generic.value;if(bp.explicitScript){var scriptHits=same.filter(function(x){return x.parts.script===bp.script;});if(scriptHits.length===1)return scriptHits[0].value;}if(bp.explicitRegion){var regionHits=same.filter(function(x){return x.parts.region===bp.region;});if(regionHits.length===1)return regionHits[0].value;}if(same.length===1)return same[0].value;}return null;}
-  function normalize(tag){var raw=canonicalQbTag(tag||'en')||'en',lower=raw.toLowerCase();if(lower==='zh'||lower==='zh-cn'||lower==='zh-sg'||lower.indexOf('zh-hans')===0)return'zh-CN';if(lower==='zh-hk'||lower==='zh-mo'||lower.indexOf('zh-hant-hk')===0||lower.indexOf('zh-hant-mo')===0)return'zh-HK';if(lower==='zh-tw'||lower.indexOf('zh-hant')===0)return'zh-TW';if(lower.indexOf('ja')===0)return'ja';if(lower.indexOf('ko')===0)return'ko';if(lower.indexOf('de')===0)return'de';if(lower.indexOf('fr')===0)return'fr';if(lower.indexOf('es')===0)return'es';if(lower.indexOf('pt')===0)return'pt';if(lower.indexOf('ru')===0)return'ru';if(lower.indexOf('en')===0)return'en';return raw||'en';}
+  function normalize(tag){var raw=canonicalQbTag(tag||'en')||'en',lower=raw.toLowerCase();if(lower==='zh'||lower==='zh-cn'||lower==='zh-sg'||lower.indexOf('zh-hans')===0)return'zh-CN';if(lower==='zh-hk'||lower==='zh-mo'||lower.indexOf('zh-hant-hk')===0||lower.indexOf('zh-hant-mo')===0)return'zh-HK';if(lower==='zh-tw'||lower.indexOf('zh-hant')===0)return'zh-TW';if(lower.indexOf('ja')===0)return'ja';if(lower.indexOf('ko')===0)return'ko';if(lower.indexOf('de')===0)return'de';if(lower.indexOf('fr')===0)return'fr';if(lower.indexOf('es')===0)return'es';if(lower==='pt-br')return'pt-BR';if(lower.indexOf('pt')===0)return'pt';if(lower.indexOf('ru')===0)return'ru';if(lower.indexOf('en')===0)return'en';return raw||'en';}
   function format(value,vars){return String(value).replace(/\{([^}]+)\}/g,function(_,key){return vars&&vars[key]!==undefined?vars[key]:'{'+key+'}';});}
   function t(key,vars){var d=dicts[locale]||EN;return format(d[key]!==undefined?d[key]:(EN[key]!==undefined?EN[key]:key),vars);}
   function applyQbOwned(root){root=root||document;Array.prototype.forEach.call(root.querySelectorAll('[data-qb-owned-text]'),function(el){var key=String(el.dataset.qbOwnedText||''),fallback=String(el.dataset.qbOwnedFallback||el.textContent||'');if(key)el.textContent=qbText(key,fallback);});}

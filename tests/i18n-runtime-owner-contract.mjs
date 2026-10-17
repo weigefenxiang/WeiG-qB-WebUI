@@ -94,3 +94,5 @@ assert.ok(i18n.includes('if(changed){resetQbCopy();loadQbOwnedCopy();}'),'A66: W
 assert.ok(a66Settings.includes("global.addEventListener('weig:qbcopychange',refreshCopyPresentation)")&&a66Settings.includes("global.addEventListener('weig:languagechange',refreshCopyPresentation)"),'A66: Settings native tabs must consume both immediate locale and delayed official copy projections');
 assert.ok(a66Filter.includes("global.addEventListener('weig:languagechange',render)")&&a66Filter.includes("global.addEventListener('weig:qbcopychange',render)"),'A66: Status filter consumes locale presentation and copy-ready events, never owns the only native copy loader');
 console.log('A66 native copy locale lifecycle PASS: English wins concurrent stale Chinese load, Settings and Status share qB copy-ready owner.');
+
+await import('./extended-locale-runtime-contract.mjs');
