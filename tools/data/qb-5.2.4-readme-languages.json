@@ -1,0 +1,439 @@
+{
+  "schemaVersion": 1,
+  "kind": "weig-qb-official-readme-languages",
+  "upstream": {
+    "repository": "qbittorrent/qBittorrent",
+    "tag": "release-5.2.4",
+    "path": "src/webui/www/translations/webui_translations.qrc"
+  },
+  "notes": "README links are generated for every official locale, including not-yet-translated destinations. README.pt.md corresponds to official pt_PT.",
+  "languages": [
+    {
+      "code": "ar",
+      "slug": "ar",
+      "name": "العربية",
+      "direction": "rtl",
+      "primary": false
+    },
+    {
+      "code": "az@latin",
+      "slug": "az-Latn",
+      "name": "Azərbaycanca",
+      "direction": "ltr",
+      "primary": false
+    },
+    {
+      "code": "be",
+      "slug": "be",
+      "name": "Беларуская",
+      "direction": "ltr",
+      "primary": false
+    },
+    {
+      "code": "bg",
+      "slug": "bg",
+      "name": "Български",
+      "direction": "ltr",
+      "primary": false
+    },
+    {
+      "code": "bs",
+      "slug": "bs",
+      "name": "Bosanski",
+      "direction": "ltr",
+      "primary": false
+    },
+    {
+      "code": "ca",
+      "slug": "ca",
+      "name": "Català",
+      "direction": "ltr",
+      "primary": false
+    },
+    {
+      "code": "cs",
+      "slug": "cs",
+      "name": "Čeština",
+      "direction": "ltr",
+      "primary": false
+    },
+    {
+      "code": "da",
+      "slug": "da",
+      "name": "Dansk",
+      "direction": "ltr",
+      "primary": false
+    },
+    {
+      "code": "de",
+      "slug": "de",
+      "name": "Deutsch",
+      "direction": "ltr",
+      "primary": true
+    },
+    {
+      "code": "el",
+      "slug": "el",
+      "name": "Ελληνικά",
+      "direction": "ltr",
+      "primary": false
+    },
+    {
+      "code": "en",
+      "slug": "",
+      "name": "English",
+      "direction": "ltr",
+      "primary": true
+    },
+    {
+      "code": "en_AU",
+      "slug": "en-AU",
+      "name": "English (Australia)",
+      "direction": "ltr",
+      "primary": false
+    },
+    {
+      "code": "en_GB",
+      "slug": "en-GB",
+      "name": "English (UK)",
+      "direction": "ltr",
+      "primary": false
+    },
+    {
+      "code": "eo",
+      "slug": "eo",
+      "name": "Esperanto",
+      "direction": "ltr",
+      "primary": false
+    },
+    {
+      "code": "es",
+      "slug": "es",
+      "name": "Español",
+      "direction": "ltr",
+      "primary": true
+    },
+    {
+      "code": "et",
+      "slug": "et",
+      "name": "Eesti",
+      "direction": "ltr",
+      "primary": false
+    },
+    {
+      "code": "eu",
+      "slug": "eu",
+      "name": "Euskara",
+      "direction": "ltr",
+      "primary": false
+    },
+    {
+      "code": "fa",
+      "slug": "fa",
+      "name": "فارسی",
+      "direction": "rtl",
+      "primary": false
+    },
+    {
+      "code": "fi",
+      "slug": "fi",
+      "name": "Suomi",
+      "direction": "ltr",
+      "primary": false
+    },
+    {
+      "code": "fr",
+      "slug": "fr",
+      "name": "Français",
+      "direction": "ltr",
+      "primary": true
+    },
+    {
+      "code": "gl",
+      "slug": "gl",
+      "name": "Galego",
+      "direction": "ltr",
+      "primary": false
+    },
+    {
+      "code": "he",
+      "slug": "he",
+      "name": "עברית",
+      "direction": "rtl",
+      "primary": false
+    },
+    {
+      "code": "hi_IN",
+      "slug": "hi-IN",
+      "name": "हिन्दी",
+      "direction": "ltr",
+      "primary": false
+    },
+    {
+      "code": "hr",
+      "slug": "hr",
+      "name": "Hrvatski",
+      "direction": "ltr",
+      "primary": false
+    },
+    {
+      "code": "hu",
+      "slug": "hu",
+      "name": "Magyar",
+      "direction": "ltr",
+      "primary": false
+    },
+    {
+      "code": "hy",
+      "slug": "hy",
+      "name": "Հայերեն",
+      "direction": "ltr",
+      "primary": false
+    },
+    {
+      "code": "id",
+      "slug": "id",
+      "name": "Bahasa Indonesia",
+      "direction": "ltr",
+      "primary": false
+    },
+    {
+      "code": "is",
+      "slug": "is",
+      "name": "Íslenska",
+      "direction": "ltr",
+      "primary": false
+    },
+    {
+      "code": "it",
+      "slug": "it",
+      "name": "Italiano",
+      "direction": "ltr",
+      "primary": false
+    },
+    {
+      "code": "ja",
+      "slug": "ja",
+      "name": "日本語",
+      "direction": "ltr",
+      "primary": true
+    },
+    {
+      "code": "ka",
+      "slug": "ka",
+      "name": "ქართული",
+      "direction": "ltr",
+      "primary": false
+    },
+    {
+      "code": "kk",
+      "slug": "kk",
+      "name": "Қазақша",
+      "direction": "ltr",
+      "primary": false
+    },
+    {
+      "code": "ko",
+      "slug": "ko",
+      "name": "한국어",
+      "direction": "ltr",
+      "primary": true
+    },
+    {
+      "code": "lt",
+      "slug": "lt",
+      "name": "Lietuvių",
+      "direction": "ltr",
+      "primary": false
+    },
+    {
+      "code": "ltg",
+      "slug": "ltg",
+      "name": "Latgalīšu",
+      "direction": "ltr",
+      "primary": false
+    },
+    {
+      "code": "lv_LV",
+      "slug": "lv-LV",
+      "name": "Latviešu",
+      "direction": "ltr",
+      "primary": false
+    },
+    {
+      "code": "mn_MN",
+      "slug": "mn-MN",
+      "name": "Монгол",
+      "direction": "ltr",
+      "primary": false
+    },
+    {
+      "code": "ms_MY",
+      "slug": "ms-MY",
+      "name": "Bahasa Melayu",
+      "direction": "ltr",
+      "primary": false
+    },
+    {
+      "code": "nb",
+      "slug": "nb",
+      "name": "Norsk bokmål",
+      "direction": "ltr",
+      "primary": false
+    },
+    {
+      "code": "ne_NP",
+      "slug": "ne-NP",
+      "name": "नेपाली",
+      "direction": "ltr",
+      "primary": false
+    },
+    {
+      "code": "nl",
+      "slug": "nl",
+      "name": "Nederlands",
+      "direction": "ltr",
+      "primary": false
+    },
+    {
+      "code": "oc",
+      "slug": "oc",
+      "name": "Occitan",
+      "direction": "ltr",
+      "primary": false
+    },
+    {
+      "code": "pl",
+      "slug": "pl",
+      "name": "Polski",
+      "direction": "ltr",
+      "primary": false
+    },
+    {
+      "code": "pt_BR",
+      "slug": "pt-BR",
+      "name": "Português (Brasil)",
+      "direction": "ltr",
+      "primary": false
+    },
+    {
+      "code": "pt_PT",
+      "slug": "pt",
+      "name": "Português",
+      "direction": "ltr",
+      "primary": true
+    },
+    {
+      "code": "ro",
+      "slug": "ro",
+      "name": "Română",
+      "direction": "ltr",
+      "primary": false
+    },
+    {
+      "code": "ru",
+      "slug": "ru",
+      "name": "Русский",
+      "direction": "ltr",
+      "primary": true
+    },
+    {
+      "code": "sk",
+      "slug": "sk",
+      "name": "Slovenčina",
+      "direction": "ltr",
+      "primary": false
+    },
+    {
+      "code": "sl",
+      "slug": "sl",
+      "name": "Slovenščina",
+      "direction": "ltr",
+      "primary": false
+    },
+    {
+      "code": "sq",
+      "slug": "sq",
+      "name": "Shqip",
+      "direction": "ltr",
+      "primary": false
+    },
+    {
+      "code": "sr",
+      "slug": "sr",
+      "name": "Српски",
+      "direction": "ltr",
+      "primary": false
+    },
+    {
+      "code": "sr@latin",
+      "slug": "sr-Latn",
+      "name": "Srpski",
+      "direction": "ltr",
+      "primary": false
+    },
+    {
+      "code": "sv",
+      "slug": "sv",
+      "name": "Svenska",
+      "direction": "ltr",
+      "primary": false
+    },
+    {
+      "code": "th",
+      "slug": "th",
+      "name": "ไทย",
+      "direction": "ltr",
+      "primary": false
+    },
+    {
+      "code": "tr",
+      "slug": "tr",
+      "name": "Türkçe",
+      "direction": "ltr",
+      "primary": false
+    },
+    {
+      "code": "uk",
+      "slug": "uk",
+      "name": "Українська",
+      "direction": "ltr",
+      "primary": false
+    },
+    {
+      "code": "uz@Latn",
+      "slug": "uz-Latn",
+      "name": "Oʻzbekcha",
+      "direction": "ltr",
+      "primary": false
+    },
+    {
+      "code": "vi",
+      "slug": "vi",
+      "name": "Tiếng Việt",
+      "direction": "ltr",
+      "primary": false
+    },
+    {
+      "code": "zh_CN",
+      "slug": "zh-CN",
+      "name": "简中",
+      "direction": "ltr",
+      "primary": true
+    },
+    {
+      "code": "zh_HK",
+      "slug": "zh-HK",
+      "name": "香港繁體",
+      "direction": "ltr",
+      "primary": false
+    },
+    {
+      "code": "zh_TW",
+      "slug": "zh-TW",
+      "name": "繁中",
+      "direction": "ltr",
+      "primary": true
+    }
+  ]
+}

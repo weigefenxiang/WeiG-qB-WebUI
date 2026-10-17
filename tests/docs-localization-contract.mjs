@@ -59,3 +59,5 @@ for(const locale of locales){
   }
 }
 console.log('Localized documentation contract passed: ten README/guide pairs, current CLI, image layout and eight immutable screenshot blobs.');
+
+import './readme-language-navigation-contract.mjs';

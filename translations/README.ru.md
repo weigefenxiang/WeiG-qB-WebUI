@@ -14,7 +14,18 @@
 
 **[🌐 Онлайн-просмотр](https://weigefenxiang.github.io/WeiG-qB-WebUI/)** · **[⬇️ Скачать последнюю стабильную версию](https://github.com/weigefenxiang/WeiG-qB-WebUI/releases/latest)**
 
+<!-- WEIG-README-LANGUAGES:START -->
 **Язык**: [English](../README.md) · [简中](README.zh-CN.md) · [繁中](README.zh-TW.md) · [日本語](README.ja.md) · [한국어](README.ko.md) · [Deutsch](README.de.md) · [Français](README.fr.md) · [Español](README.es.md) · [Português](README.pt.md) · **Русский**
+
+<details>
+<summary><b>🔤 Другие языки</b></summary>
+
+<div dir="ltr">
+<a href="README.az-Latn.md">Azərbaycanca</a> &lrm;·&lrm; <a href="README.be.md">Беларуская</a> &lrm;·&lrm; <a href="README.bg.md">Български</a> &lrm;·&lrm; <a href="README.bs.md">Bosanski</a> &lrm;·&lrm; <a href="README.ca.md">Català</a> &lrm;·&lrm; <a href="README.cs.md">Čeština</a> &lrm;·&lrm; <a href="README.da.md">Dansk</a> &lrm;·&lrm; <a href="README.el.md">Ελληνικά</a> &lrm;·&lrm; <a href="README.en-AU.md">English (Australia)</a> &lrm;·&lrm; <a href="README.en-GB.md">English (UK)</a> &lrm;·&lrm; <a href="README.eo.md">Esperanto</a> &lrm;·&lrm; <a href="README.et.md">Eesti</a> &lrm;·&lrm; <a href="README.eu.md">Euskara</a> &lrm;·&lrm; <a href="README.fi.md">Suomi</a> &lrm;·&lrm; <a href="README.gl.md">Galego</a> &lrm;·&lrm; <a href="README.hi-IN.md">हिन्दी</a> &lrm;·&lrm; <a href="README.hr.md">Hrvatski</a> &lrm;·&lrm; <a href="README.hu.md">Magyar</a> &lrm;·&lrm; <a href="README.hy.md">Հայերեն</a> &lrm;·&lrm; <a href="README.id.md">Bahasa Indonesia</a> &lrm;·&lrm; <a href="README.is.md">Íslenska</a> &lrm;·&lrm; <a href="README.it.md">Italiano</a> &lrm;·&lrm; <a href="README.ka.md">ქართული</a> &lrm;·&lrm; <a href="README.kk.md">Қазақша</a> &lrm;·&lrm; <a href="README.lt.md">Lietuvių</a> &lrm;·&lrm; <a href="README.ltg.md">Latgalīšu</a> &lrm;·&lrm; <a href="README.lv-LV.md">Latviešu</a> &lrm;·&lrm; <a href="README.mn-MN.md">Монгол</a> &lrm;·&lrm; <a href="README.ms-MY.md">Bahasa Melayu</a> &lrm;·&lrm; <a href="README.nb.md">Norsk bokmål</a> &lrm;·&lrm; <a href="README.ne-NP.md">नेपाली</a> &lrm;·&lrm; <a href="README.nl.md">Nederlands</a> &lrm;·&lrm; <a href="README.oc.md">Occitan</a> &lrm;·&lrm; <a href="README.pl.md">Polski</a> &lrm;·&lrm; <a href="README.pt-BR.md">Português (Brasil)</a> &lrm;·&lrm; <a href="README.ro.md">Română</a> &lrm;·&lrm; <a href="README.sk.md">Slovenčina</a> &lrm;·&lrm; <a href="README.sl.md">Slovenščina</a> &lrm;·&lrm; <a href="README.sq.md">Shqip</a> &lrm;·&lrm; <a href="README.sr.md">Српски</a> &lrm;·&lrm; <a href="README.sr-Latn.md">Srpski</a> &lrm;·&lrm; <a href="README.sv.md">Svenska</a> &lrm;·&lrm; <a href="README.th.md">ไทย</a> &lrm;·&lrm; <a href="README.tr.md">Türkçe</a> &lrm;·&lrm; <a href="README.uk.md">Українська</a> &lrm;·&lrm; <a href="README.uz-Latn.md">Oʻzbekcha</a> &lrm;·&lrm; <a href="README.vi.md">Tiếng Việt</a> &lrm;·&lrm; <a href="README.zh-HK.md">香港繁體</a> &lrm;·&lrm; <a href="README.ar.md">&#x2067;العربية&#x2069;</a> &lrm;·&lrm; <a href="README.fa.md">&#x2067;فارسی&#x2069;</a> &lrm;·&lrm; <a href="README.he.md">&#x2067;עברית&#x2069;</a>
+</div>
+
+</details>
+<!-- WEIG-README-LANGUAGES:END -->
 
 ## Прямая загрузка
 
