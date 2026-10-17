@@ -28,7 +28,15 @@ translations. They are deliberately outside `webui/**`.
 
 New language files must declare `translationStatus: "draft"` until linguistic
 and semantic review is complete. A validated draft is **not** counted as a
-release-ready locale. Only `translationStatus: "approved"` may enter the
+release-ready locale. An approved overlay additionally needs the SHA256 of the **canonical English
+WeiG message object** as `englishSourceSha256`, and an explicit
+`reviewedEnglishFallbackKeys` array covering every intentionally untranslated
+key. The union of translated keys and reviewed English fallback keys must equal
+the complete canonical W.I18n key inventory, with no overlap. Approval is
+invalidated whenever that English source changes. A sparse draft cannot simply
+be renamed `approved` to claim a full translation.
+
+Only `translationStatus: "approved"` with this complete review evidence may enter the
 complete All Languages asset gate; publishing still requires normal SHA-bound
 CI, real-qB and user acceptance. Sparse first drafts intentionally retain
 English fallbacks and must not be described as complete translations.

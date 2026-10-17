@@ -6,7 +6,7 @@ import crypto from 'node:crypto';
 import {spawnSync} from 'node:child_process';
 import {fileURLToPath} from 'node:url';
 import {buildWebuiDist} from '../tools/build-webui-dist.mjs';
-import {expectedExtendedLocales,inspectExtendedLocaleSources} from '../tools/external-weig-locale-assets.mjs';
+import {expectedExtendedLocales,inspectExtendedLocaleSources,canonicalEnglishTranslationKeys,canonicalEnglishSourceSha256} from '../tools/external-weig-locale-assets.mjs';
 
 const root=path.resolve(path.dirname(fileURLToPath(import.meta.url)),'..');
 const scratch=fs.mkdtempSync(path.join(os.tmpdir(),'weig-locale-dist-test-'));
@@ -21,10 +21,17 @@ try{
   fs.mkdirSync(sourceDir,{recursive:true});
   for(const locale of expectedExtendedLocales){
     const fixture={schemaVersion:1,source:'WeiG-runtime-locale-overlay',locale,
-      translationStatus:'approved',messages:{'app.back':'Packaging test '+locale}};
+      translationStatus:'approved',englishSourceSha256:canonicalEnglishSourceSha256,
+      messages:{'app.back':'Packaging test '+locale},
+      reviewedEnglishFallbackKeys:canonicalEnglishTranslationKeys.filter(key=>key!=='app.back')};
     fs.writeFileSync(path.join(sourceDir,locale+'.json'),JSON.stringify(fixture)+'\n');
   }
   const damagedFile=path.join(sourceDir,'ca.json'),validBytes=fs.readFileSync(damagedFile);
+  const incomplete=JSON.parse(validBytes);
+  delete incomplete.reviewedEnglishFallbackKeys;
+  fs.writeFileSync(damagedFile,JSON.stringify(incomplete));
+  assert.throws(()=>inspectExtendedLocaleSources({sourceDir,requireComplete:true}),/reviewed English fallback/);
+  fs.writeFileSync(damagedFile,validBytes);
   fs.writeFileSync(damagedFile,'0'.repeat(5*1024*1024));
   assert.throws(()=>inspectExtendedLocaleSources({sourceDir}),/single-file limit/);
   fs.writeFileSync(damagedFile,validBytes);

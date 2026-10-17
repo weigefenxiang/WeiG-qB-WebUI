@@ -1,4 +1,5 @@
 import assert from 'node:assert/strict';
+import {createHash} from 'node:crypto';
 import fs from 'node:fs';
 import path from 'node:path';
 import {fileURLToPath} from 'node:url';
@@ -9,6 +10,8 @@ const englishSource=fs.readFileSync(path.join(root,'webui/private/scripts/i18n.j
 const englishMatch=/var EN=(\{[^\n]+\});/.exec(englishSource);
 assert(englishMatch,'Canonical W.I18n English source missing');
 const english=JSON.parse(englishMatch[1]);
+export const canonicalEnglishTranslationKeys=Object.freeze(Object.keys(english));
+export const canonicalEnglishSourceSha256=createHash('sha256').update(JSON.stringify(english)).digest('hex');
 const primaryCodes=new Set(languages.filter(x=>x.primary).map(x=>x.code));
 const runtimeLocaleMatch=/var SUPPORTED_LOCALES=(\[[^\n]+\]);/.exec(englishSource);
 assert(runtimeLocaleMatch,'Canonical W.I18n runtime locale inventory missing');
@@ -28,6 +31,18 @@ export function validateExternalOverlay(locale,data){
     assert(Object.hasOwn(english,key),'Unknown canonical English key '+locale+'/'+key);
     assert(typeof value==='string'&&value.trim().length>0,'Empty/invalid translation '+locale+'/'+key);
     assert.equal(placeholders(value),placeholders(english[key]),'Placeholder mismatch '+locale+'/'+key);
+    if(data.translationStatus==='approved')assert.notEqual(value,english[key],'Approved overlay must omit English-identical key and attest intentional fallback: '+locale+'/'+key);
+  }
+  if(data.translationStatus==='approved'){
+    assert.equal(data.englishSourceSha256,canonicalEnglishSourceSha256,'Approved locale English-source fingerprint mismatch: '+locale);
+    assert(Array.isArray(data.reviewedEnglishFallbackKeys),'Approved locale requires explicit reviewed English fallback keys: '+locale);
+    const accounted=new Set(Object.keys(data.messages));
+    for(const key of data.reviewedEnglishFallbackKeys){
+      assert(typeof key==='string'&&Object.hasOwn(english,key),'Unknown approved English fallback key: '+locale+'/'+key);
+      assert(!accounted.has(key),'Duplicate or overlapping reviewed fallback: '+locale+'/'+key);
+      accounted.add(key);
+    }
+    assert.equal(accounted.size,canonicalEnglishTranslationKeys.length,'Approved locale has unreviewed canonical WeiG messages: '+locale);
   }
   return Object.keys(data.messages).length;
 }
