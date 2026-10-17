@@ -1108,6 +1108,9 @@ jobs:
           mkdir -p release
           cp "$RUNNER_TEMP/candidate-dist/weig-qb-webui.zip" release/weig-qb-webui.zip
           cp "$RUNNER_TEMP/candidate-dist/weig-qb-webui.tar.gz" release/weig-qb-webui.tar.gz
+          if [ -f "$RUNNER_TEMP/candidate-dist/weig-qb-webui-all-languages.zip" ]; then
+            cp "$RUNNER_TEMP/candidate-dist/weig-qb-webui-all-languages.zip" release/weig-qb-webui-all-languages.zip
+          fi
           cp "$RUNNER_TEMP/candidate-dist/manifest.json" release/manifest.json
           cp "$RUNNER_TEMP/candidate-dist/SHA256SUMS" release/SHA256SUMS
           cp "$RUNNER_TEMP/candidate-dist/install.sh" release/install.sh
@@ -1139,6 +1142,7 @@ jobs:
           path: |
             release/weig-qb-webui.zip
             release/weig-qb-webui.tar.gz
+            release/weig-qb-webui-all-languages.zip
             release/manifest.json
             release/SHA256SUMS
             release/CANDIDATE_SHA

@@ -46,6 +46,17 @@ async function prepare(){
     assert(files[name].length>0,'Empty Pages file '+name);
   }
   const manifest=JSON.parse(files['manifest.json'].toString());
+  const extra=manifest.artifacts&&manifest.artifacts.allLanguagesZip;
+  if(extra){
+    assert.equal(extra.file,'weig-qb-webui-all-languages.zip');
+    assert(/^[0-9a-f]{64}$/.test(extra.sha256),'Malformed certified All Languages digest');
+    const response=await fetch(base+'/'+extra.file+'?release='+sha,{signal:AbortSignal.timeout(90000),cache:'no-store'});
+    assert(response.ok,'Pages All Languages asset unavailable HTTP '+response.status);
+    files[extra.file]=Buffer.from(await response.arrayBuffer());
+    assert.equal(hash(files[extra.file]),extra.sha256);
+    assert.equal(files[extra.file].length,extra.bytes);
+    names.push(extra.file);
+  }
   const preview=JSON.parse(files[stage.plan+'/preview.json'].toString());
   assert.equal(manifest.schemaVersion,6);
   assert.equal(manifest.kind,'materialized-webui-dist');

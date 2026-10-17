@@ -161,6 +161,7 @@ jobs:
           VERSION="$(tr -d '\r\n' < VERSION)"
           test -f candidate/weig-qb-webui.zip
           test -f candidate/weig-qb-webui.tar.gz
+          test -f candidate/weig-qb-webui-all-languages.zip
           test -f candidate/manifest.json
           test -f candidate/SHA256SUMS
           test -f candidate/CANDIDATE_SHA
@@ -213,6 +214,7 @@ jobs:
               artifact:process.env.CANDIDATE_ARTIFACT,
               packageSha256:hash('candidate/weig-qb-webui.zip'),
               tarGzSha256:hash('candidate/weig-qb-webui.tar.gz'),
+              allLanguagesZipSha256:hash('candidate/weig-qb-webui-all-languages.zip'),
               manifestSha256:hash('candidate/manifest.json'),
               sumsSha256:hash('candidate/SHA256SUMS')
             },
@@ -222,7 +224,7 @@ jobs:
               evidenceSha256:hash('evidence/candidate.json')
             }
           };
-          for(const value of [certification.candidate.packageSha256,certification.candidate.tarGzSha256,certification.candidate.manifestSha256,certification.candidate.sumsSha256,certification.deployment.evidenceSha256]){
+          for(const value of [certification.candidate.packageSha256,certification.candidate.tarGzSha256,certification.candidate.allLanguagesZipSha256,certification.candidate.manifestSha256,certification.candidate.sumsSha256,certification.deployment.evidenceSha256]){
             if(!/^[0-9a-f]{64}$/.test(value))throw new Error('Certification evidence digest is invalid.');
           }
           fs.writeFileSync('certification/release-certification.json',JSON.stringify(certification,null,2)+'\n');

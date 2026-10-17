@@ -43,6 +43,7 @@ Virtual qB Pages publishes the development installer payload under `downloads/de
 The payload includes:
 
 - `weig-qb-webui.zip`
+- `weig-qb-webui-all-languages.zip` — once the complete external WeiG locale gate passes; a future stable release must include it as the same certified exact-SHA artifact
 - `weig-qb-webui.tar.gz`
 - `manifest.json`
 - `SHA256SUMS`
