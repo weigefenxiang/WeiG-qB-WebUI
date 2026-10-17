@@ -3,29 +3,14 @@ import fs from 'node:fs';
 import path from 'node:path';
 import {fileURLToPath} from 'node:url';
 const root=path.resolve(path.dirname(fileURLToPath(import.meta.url)),'..');
-const pages=[
-  ['translations/README.en-AU.md','README.md'],
-  ['translations/README.en-GB.md','README.md'],
-  ['translations/README.zh-HK.md','translations/README.zh-TW.md'],
-  ['translations/README.pt-BR.md','translations/README.zh-CN.md'],
-  ['translations/README.it.md','translations/README.zh-CN.md'],
-  ['translations/README.ca.md','translations/README.zh-CN.md'],
-  ['translations/README.nl.md','translations/README.zh-CN.md'],
-  ['translations/README.ar.md','translations/README.zh-CN.md'],
-  ['translations/README.vi.md','translations/README.zh-CN.md'],
-  ['translations/README.id.md','translations/README.zh-CN.md'],
-  ['translations/README.tr.md','translations/README.zh-CN.md'],
-  ['translations/README.uk.md','translations/README.zh-CN.md'],
-  ['translations/README.sv.md','translations/README.zh-CN.md'],
-  ['translations/README.nb.md','translations/README.zh-CN.md'],
-  ['translations/README.da.md','translations/README.zh-CN.md'],
-  ['translations/README.fi.md','translations/README.zh-CN.md'],
-  ['translations/README.fa.md','translations/README.zh-CN.md'],
-  ['translations/README.he.md','translations/README.zh-CN.md'],
-  ['translations/README.el.md','translations/README.zh-CN.md'],
-  ['translations/README.pl.md','translations/README.zh-CN.md'],
-  ['translations/README.cs.md','translations/README.zh-CN.md']
-];
+const inventory=JSON.parse(fs.readFileSync(path.join(root,'tools/data/qb-5.2.4-readme-languages.json'),'utf8'));
+const pages=inventory.languages.filter(lang=>!lang.primary).map(lang=>{
+  const localized='translations/README.'+lang.slug+'.md';
+  const baseline=lang.code==='en_AU'||lang.code==='en_GB'?'README.md':
+    lang.code==='zh_HK'?'translations/README.zh-TW.md':'translations/README.zh-CN.md';
+  return [localized,baseline];
+}).filter(([localized])=>fs.existsSync(path.join(root,localized)));
+assert(pages.length>=21,'Previously completed expanded READMEs must not disappear');
 const withoutNavigation=text=>text.replace(/<!-- WEIG-README-LANGUAGES:START -->[\s\S]*?<!-- WEIG-README-LANGUAGES:END -->/,'');
 for(const [localized,baseline] of pages){
   const content=fs.readFileSync(path.join(root,localized),'utf8');

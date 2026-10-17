@@ -4,7 +4,10 @@ import path from 'node:path';
 import {fileURLToPath} from 'node:url';
 
 const root=path.resolve(path.dirname(fileURLToPath(import.meta.url)),'..');
-const locales=['ja','ko','de','fr','es','pt','ru','it','ca','nl','ar','vi','id','tr','uk','sv','nb','da','fi','fa','he','el','pl','cs','pt-BR','zh-CN','zh-TW','zh-HK'];
+const inventory=JSON.parse(fs.readFileSync(path.join(root,'tools/data/qb-5.2.4-readme-languages.json'),'utf8'));
+const locales=inventory.languages.filter(lang=>!['en','en_AU','en_GB'].includes(lang.code))
+  .map(lang=>lang.slug).filter(locale=>fs.existsSync(path.join(root,'translations/README.'+locale+'.md')));
+assert(locales.length>=28,'Existing localized README examples unexpectedly disappeared');
 const chinese=fs.readFileSync(path.join(root,'translations/README.zh-CN.md'),'utf8');
 const blocks=s=>(s.match(/```/g)||[]).length/2;
 for(const locale of locales){
