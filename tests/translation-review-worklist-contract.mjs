@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict';
 import {getTranslationReviewWorklist} from '../tools/translation-review-worklist.mjs';
+import {expectedExtendedLocales} from '../tools/external-weig-locale-assets.mjs';
 const ca=getTranslationReviewWorklist('ca');
 assert.equal(ca.schemaVersion,1);
 assert.equal(ca.status,'draft');
@@ -9,7 +10,9 @@ assert.equal(ca.unreviewedKeys,ca.canonicalKeys-ca.suppliedKeys);
 assert.ok(ca.work.length>600);
 assert.ok(ca.work.every(item=>typeof item.key==='string'&&typeof item.english==='string'));
 assert.equal(ca.work.length,ca.unreviewedKeys);
-const missing=getTranslationReviewWorklist('fi');
+const missingLocale=expectedExtendedLocales.find(locale=>getTranslationReviewWorklist(locale).status==='missing');
+assert.ok(missingLocale,'A missing-locale fixture is unavailable: all extended locales now have sources');
+const missing=getTranslationReviewWorklist(missingLocale);
 assert.equal(missing.status,'missing');
 assert.equal(missing.unreviewedKeys,missing.canonicalKeys);
 assert.throws(()=>getTranslationReviewWorklist('zh-HK'),/Unknown or already bundled/);
