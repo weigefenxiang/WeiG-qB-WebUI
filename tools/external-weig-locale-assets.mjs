@@ -36,7 +36,9 @@ export function inspectExtendedLocaleSources({requireComplete=false,sourceDir=ro
     const locale=filename.slice(0,-5);
     assert(bySlug.has(locale),'Unknown external overlay '+filename);
     assert(!present.has(locale),'Duplicate external locale '+locale);
-    const data=JSON.parse(fs.readFileSync(path.join(sourceDir,filename),'utf8'));
+    const sourceFile=path.join(sourceDir,filename),bytes=fs.statSync(sourceFile).size;
+    assert(bytes>2&&bytes<5*1024*1024,'Extended WeiG locale asset exceeds runtime single-file limit: '+filename);
+    const data=JSON.parse(fs.readFileSync(sourceFile,'utf8'));
     keys+=validateExternalOverlay(locale,data);
     if(data.translationStatus==='approved')present.add(locale);
     else drafts.push(locale);

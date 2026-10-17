@@ -24,6 +24,10 @@ try{
       translationStatus:'approved',messages:{'app.back':'Packaging test '+locale}};
     fs.writeFileSync(path.join(sourceDir,locale+'.json'),JSON.stringify(fixture)+'\n');
   }
+  const damagedFile=path.join(sourceDir,'ca.json'),validBytes=fs.readFileSync(damagedFile);
+  fs.writeFileSync(damagedFile,'0'.repeat(5*1024*1024));
+  assert.throws(()=>inspectExtendedLocaleSources({sourceDir}),/single-file limit/);
+  fs.writeFileSync(damagedFile,validBytes);
   const inspection=inspectExtendedLocaleSources({sourceDir,requireComplete:true});
   assert.equal(inspection.ready,49);
   const built=buildWebuiDist({webuiRoot:path.join(root,'webui'),outDir,sha,version,extendedLocaleDir:sourceDir});
