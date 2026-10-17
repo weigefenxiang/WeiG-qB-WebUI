@@ -18,7 +18,7 @@ translations. They are deliberately outside `webui/**`.
   substitute placeholders, untranslated Chinese/English or machine-literal text
   merely to make the asset count green.
 - English regional variants (`en_AU`, `en_GB`) may correctly reuse the
-  English baseline. All other 49 extended official locales require an actual
+  English baseline. The remaining 48 extended official locales require an actual
   reviewed WeiG-owned overlay before a package may claim full language coverage.
 - Source content should follow the Simplified Chinese README semantics where
   README translation is requested; WeiG interface key semantics remain anchored

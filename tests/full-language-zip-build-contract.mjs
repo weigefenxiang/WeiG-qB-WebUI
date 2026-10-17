@@ -29,7 +29,7 @@ try{
   assert.throws(()=>inspectExtendedLocaleSources({sourceDir}),/single-file limit/);
   fs.writeFileSync(damagedFile,validBytes);
   const inspection=inspectExtendedLocaleSources({sourceDir,requireComplete:true});
-  assert.equal(inspection.ready,49);
+  assert.equal(inspection.ready,48);
   const built=buildWebuiDist({webuiRoot:path.join(root,'webui'),outDir,sha,version,extendedLocaleDir:sourceDir});
   const allZip=path.join(outDir,'weig-qb-webui-all-languages.zip');
   assert(fs.existsSync(built.zipPath)&&fs.existsSync(allZip));
@@ -37,8 +37,8 @@ try{
   const stdLocales=JSON.parse(readEntry(built.zipPath,'private/data/weig-i18n/extended-manifest.json'));
   const allLocales=JSON.parse(readEntry(allZip,'private/data/weig-i18n/extended-manifest.json'));
   assert.deepEqual(stdLocales.locales,[]);
-  assert.equal(allLocales.locales.length,49);
-  assert.equal(manifest.artifacts.allLanguagesZip.extendedLocaleCount,49);
+  assert.equal(allLocales.locales.length,48);
+  assert.equal(manifest.artifacts.allLanguagesZip.extendedLocaleCount,48);
   assert.equal(readEntry(allZip,'GIT_SHA').trim(),sha);
   assert.equal(readEntry(allZip,'VERSION').trim(),version);
   assert.match(readEntry(allZip,'private/data/weig-i18n/ca.json'),/Packaging test ca/);
@@ -49,7 +49,7 @@ try{
   assert.equal(manifest.artifacts.allLanguagesZip.sha256,digest);
   assert.equal(manifest.artifacts.allLanguagesZip.bytes,fs.statSync(allZip).size);
   assert(fs.readFileSync(path.join(outDir,'SHA256SUMS'),'utf8').includes(digest+'  weig-qb-webui-all-languages.zip'));
-  console.log('Full ZIP isolated build gate passed: 49 generated test assets, exact identity, manifest and checksum.');
+  console.log('Full ZIP isolated build gate passed: 48 generated test assets, exact identity, manifest and checksum.');
 }finally{
   fs.rmSync(scratch,{recursive:true,force:true});
 }
