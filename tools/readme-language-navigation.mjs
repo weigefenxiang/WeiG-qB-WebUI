@@ -4,8 +4,8 @@ import {fileURLToPath} from 'node:url';
 const root=path.resolve(path.dirname(fileURLToPath(import.meta.url)),'..');
 const inventory=JSON.parse(fs.readFileSync(path.join(root,'tools/data/qb-5.2.4-readme-languages.json'),'utf8'));
 const primary=['en','zh_CN','zh_TW','ja','ko','de','fr','es','pt_PT','ru'];
-const titles={"":"Language","zh-CN":"语言","zh-TW":"語言","zh-HK":"語言","ja":"言語","ko":"언어","de":"Sprache","fr":"Langue","es":"Idioma","pt":"Idioma","ru":"Язык","pt-BR":"Idioma","it":"Lingua","ca":"Idioma","nl":"Taal","ar":"اللغة","vi":"Ngôn ngữ","id":"Bahasa","tr":"Dil","uk":"Мова"};
-const moreTitles={"":"More languages","zh-CN":"更多语言","zh-TW":"更多語言","zh-HK":"更多語言","ja":"その他の言語","ko":"더 많은 언어","de":"Weitere Sprachen","fr":"Autres langues","es":"Más idiomas","pt":"Mais idiomas","ru":"Другие языки","pt-BR":"Mais idiomas","it":"Altre lingue","ca":"Més llengües","nl":"Meer talen","ar":"لغات أخرى","vi":"Ngôn ngữ khác","id":"Bahasa lainnya","tr":"Diğer diller","uk":"Інші мови"};
+const titles={"":"Language","zh-CN":"语言","zh-TW":"語言","zh-HK":"語言","ja":"言語","ko":"언어","de":"Sprache","fr":"Langue","es":"Idioma","pt":"Idioma","ru":"Язык","pt-BR":"Idioma","it":"Lingua","ca":"Idioma","nl":"Taal","ar":"اللغة","vi":"Ngôn ngữ","id":"Bahasa","tr":"Dil","uk":"Мова","sv":"Språk"};
+const moreTitles={"":"More languages","zh-CN":"更多语言","zh-TW":"更多語言","zh-HK":"更多語言","ja":"その他の言語","ko":"더 많은 언어","de":"Weitere Sprachen","fr":"Autres langues","es":"Más idiomas","pt":"Mais idiomas","ru":"Другие языки","pt-BR":"Mais idiomas","it":"Altre lingue","ca":"Més llengües","nl":"Meer talen","ar":"لغات أخرى","vi":"Ngôn ngữ khác","id":"Bahasa lainnya","tr":"Diğer diller","uk":"Інші мови","sv":"Fler språk"};
 const start='<!-- WEIG-README-LANGUAGES:START -->';
 const end='<!-- WEIG-README-LANGUAGES:END -->';
 export function readmePath(lang){return lang.code==='en'?'README.md':'translations/README.'+lang.slug+'.md';}
