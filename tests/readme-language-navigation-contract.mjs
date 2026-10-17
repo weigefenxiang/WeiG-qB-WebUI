@@ -31,3 +31,7 @@ console.log('Official qB 5.2.4 README locale navigation passed: 61 official vari
 const arabic=fs.readFileSync(path.join(base,'translations/README.ar.md'),'utf8');
 assert.match(arabic,/<strong>&#x2067;العربية&#x2069;<\/strong>/,'Arabic README must preserve self-link isolate');
 assert.match(arabic,/<div dir="ltr">[\s\S]*?&lrm;·&lrm;[\s\S]*?<\/div>/,'Arabic language links must remain visually LTR with single separators');
+
+const persian=fs.readFileSync(path.join(base,'translations/README.fa.md'),'utf8');
+assert.match(persian,/<strong>&#x2067;فارسی&#x2069;<\/strong>/,'Persian current language must be bidi-isolated');
+assert.match(persian,/<div dir="ltr">[\s\S]*?&lrm;·&lrm;[\s\S]*?<\/div>/,'Persian more-languages separators must stay LTR');
