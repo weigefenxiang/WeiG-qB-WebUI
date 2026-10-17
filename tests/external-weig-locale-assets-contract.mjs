@@ -22,7 +22,7 @@ console.log('External locale gate passed: official 61-language identity, sparse 
 assert.throws(()=>validateExternalOverlay('ca',{...valid,translationStatus:'unspecified'}),/draft or approved/);
 
 assert(canonicalEnglishTranslationKeys.length>500,'English source review set unexpectedly small');
-const approved={...valid,translationStatus:'approved',englishSourceSha256:canonicalEnglishSourceSha256,
+const approved={...valid,messages:{...valid.messages,'library.count':'{count} descàrregues'},translationStatus:'approved',englishSourceSha256:canonicalEnglishSourceSha256,
   reviewedEnglishFallbackKeys:canonicalEnglishTranslationKeys.filter(key=>!Object.hasOwn(valid.messages,key))};
 assert.equal(validateExternalOverlay('ca',approved),2,'All canonical keys must be explicitly reviewed');
 assert.throws(()=>validateExternalOverlay('ca',{...valid,translationStatus:'approved'}),/fingerprint mismatch/);
