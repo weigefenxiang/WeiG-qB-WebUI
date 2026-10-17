@@ -31,3 +31,18 @@ await basic.I.loadWeiGLocale('ca');
 assert.equal(basic.I.t('settings.save'),'Save','Unshipped locales fail closed to English');
 assert.equal(basic.reads.filter(x=>x.endsWith('/ca.json')).length,0,'Standard archive must not probe missing external overlay');
 console.log('Extended W.I18n runtime gate passed: optional packaged inventory, lazy current shard, variant fallback, standard-safe behavior.');
+
+const official=JSON.parse(fs.readFileSync(new URL('../tools/data/qb-5.2.4-readme-languages.json',import.meta.url),'utf8')).languages;
+assert.equal(official.length,61);
+for(const record of official){
+  const expected=['en','en_AU','en_GB'].includes(record.code)?'en':record.slug;
+  assert.equal(rich.I.normalize(record.code),expected,
+    'qB 5.2.4 official locale must reach its exact bundled/extended WeiG shard: '+record.code);
+}
+for(const [input,want] of [
+  ['sr@latin','sr-Latn'],['sr_Latn','sr-Latn'],['pt_BR','pt-BR'],['pt_PT','pt'],
+  ['zh_HK','zh-HK'],['zh_Hant_HK','zh-HK'],['zh_Hans','zh-CN'],
+  ['en_GB','en'],['en_AU','en']]){
+  assert.equal(rich.I.normalize(input),want,'Native qB locale alias mismatch: '+input);
+}
+console.log('Canonical 5.2.4 locale-to-WeiG shard routing passed: all 61 source locale IDs and script/region variants.');
