@@ -4,7 +4,8 @@
   "upstream": {
     "repository": "qbittorrent/qBittorrent",
     "tag": "release-5.2.4",
-    "path": "src/webui/www/translations/webui_translations.qrc"
+    "path": "src/webui/www/translations/webui_translations.qrc",
+    "sourceSha": "a1e4649cb8ae581925acc161dbab5cbc6584c542"
   },
   "notes": "README links are generated for every official locale, including not-yet-translated destinations. README.pt.md corresponds to official pt_PT.",
   "languages": [
