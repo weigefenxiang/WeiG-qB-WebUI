@@ -4,7 +4,7 @@ import path from 'node:path';
 import {fileURLToPath} from 'node:url';
 
 const root=path.resolve(path.dirname(fileURLToPath(import.meta.url)),'..');
-const locales=['ja','ko','de','fr','es','pt','ru','it','pt-BR','zh-CN','zh-TW','zh-HK'];
+const locales=['ja','ko','de','fr','es','pt','ru','it','ca','pt-BR','zh-CN','zh-TW','zh-HK'];
 const chinese=fs.readFileSync(path.join(root,'translations/README.zh-CN.md'),'utf8');
 const blocks=s=>(s.match(/```/g)||[]).length/2;
 for(const locale of locales){
