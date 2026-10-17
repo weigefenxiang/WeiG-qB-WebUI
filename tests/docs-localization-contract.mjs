@@ -63,3 +63,5 @@ console.log('Localized documentation contract passed: ten README/guide pairs, cu
 import './readme-language-navigation-contract.mjs';
 
 import './extended-readme-variants-contract.mjs';
+
+import './readme-chinese-source-contract.mjs';

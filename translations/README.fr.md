@@ -184,51 +184,86 @@ Le programme d'installation essaie de détecter automatiquement le conteneur et 
 
 #### Lister les conteneurs
 
+Affichez les conteneurs qBittorrent détectés :
+
 ```sh
 sh install.sh --list-containers
 ```
 
-Ou :
+Ou consultez directement Docker :
 
 ```sh
 docker ps
 ```
 
-Choisir explicitement un conteneur :
+Si le conteneur s'appelle par exemple :
+
+```text
+qbittorrent
+```
+
+Sélectionnez-le explicitement :
 
 ```sh
 sh install.sh --container=qbittorrent -configure
 ```
-
-S'il y a plusieurs conteneurs qBittorrent, le programme d'installation refuse d'en choisir un au hasard.
 
 #### Choisir le bon conteneur lorsque plusieurs tournent
 
-L’installateur ne sélectionne pas arbitrairement un conteneur qBittorrent. Affichez la liste, puis lancez la commande pour chaque conteneur souhaité :
+Par exemple, pour une instance principale et une instance de test :
+
+```text
+qbittorrent
+qbittorrent-test
+```
+
+Commencez par afficher la liste :
 
 ```sh
 sh install.sh --list-containers
+```
+
+Pour l'instance principale :
+
+```sh
 sh install.sh --container=qbittorrent -configure
+```
+
+Pour l'instance de test :
+
+```sh
 sh install.sh --container=qbittorrent-test -configure
 ```
 
+L'installateur ne choisit jamais un conteneur au hasard.
+
 #### Indiquer le chemin hôte correspondant à `/config`
+
+Si le répertoire de configuration qBittorrent de l'hôte se trouve ici :
+
+```text
+/root/qbittorrent/config
+```
+
+Indiquez directement ce chemin :
 
 ```sh
 sh install.sh --config-root=/root/qbittorrent/config -configure
 ```
 
-Synology :
+Sur un NAS Synology :
 
 ```sh
 sh install.sh --config-root=/volume1/docker/qbittorrent -configure
 ```
 
-Autre NAS :
+Sur un autre NAS :
 
 ```sh
 sh install.sh --config-root=/share/Container/qbittorrent -configure
 ```
+
+Adaptez ces exemples au chemin réel du dossier `/config` sur l'hôte.
 
 #### Choisir le chemin WebUI
 
@@ -241,7 +276,9 @@ sh install.sh --container=qbittorrent -o /config/weig-qb-webui -configure
 Sur Linux ou un NAS, répétez `-o` pour mettre à jour plusieurs installations existantes avec un seul téléchargement. Dans ce mode, n’utilisez pas `-configure`, `--container` ni `--config-root`.
 
 ```sh
-sh install.sh -o /opt/weig-qb-webui -o /srv/qb/weig-qb-webui
+sh install.sh -dev \
+  -o /root/qbittorrent/config/weig-qb-webui \
+  -o /root/qbittorrent3/config/weig-qb-webui
 ```
 
 #### Vérifier les chemins après l’installation

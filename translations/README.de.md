@@ -186,51 +186,86 @@ Der Installer versucht Container und `/config`-Mount automatisch zu erkennen.
 
 #### Container anzeigen
 
+Zeige zuerst alle erkannten qBittorrent-Container an:
+
 ```sh
 sh install.sh --list-containers
 ```
 
-Oder:
+Oder prüfe laufende Container direkt mit Docker:
 
 ```sh
 docker ps
 ```
 
-Einen Container ausdrücklich wählen:
+Wenn der Container beispielsweise so heißt:
+
+```text
+qbittorrent
+```
+
+Wähle ihn ausdrücklich aus:
 
 ```sh
 sh install.sh --container=qbittorrent -configure
 ```
-
-Bei mehreren qBittorrent-Containern wählt der Installer nicht automatisch einen aus.
 
 #### Mehrere qBittorrent-Container gezielt auswählen
 
-Wenn mehrere Container laufen, entscheidet der Installer nicht selbst, welchen er ändern soll. Liste sie auf und führe den Befehl jeweils für den gewünschten Container aus:
+Wenn sowohl eine produktive als auch eine Testinstanz vorhanden ist:
+
+```text
+qbittorrent
+qbittorrent-test
+```
+
+Lass dir zunächst alle Container auflisten:
 
 ```sh
 sh install.sh --list-containers
+```
+
+Für die produktive Instanz:
+
+```sh
 sh install.sh --container=qbittorrent -configure
+```
+
+Für die Testinstanz:
+
+```sh
 sh install.sh --container=qbittorrent-test -configure
 ```
 
+Bei mehreren Treffern trifft der Installer keine willkürliche Auswahl.
+
 #### Host-Pfad für `/config` angeben
+
+Wenn das qBittorrent-Konfigurationsverzeichnis auf dem Host so lautet:
+
+```text
+/root/qbittorrent/config
+```
+
+Gib das Host-Verzeichnis direkt an:
 
 ```sh
 sh install.sh --config-root=/root/qbittorrent/config -configure
 ```
 
-Synology-Beispiel:
+Auf Synology könnte der Pfad so aussehen:
 
 ```sh
 sh install.sh --config-root=/volume1/docker/qbittorrent -configure
 ```
 
-Anderes NAS:
+Auf einem anderen NAS beispielsweise so:
 
 ```sh
 sh install.sh --config-root=/share/Container/qbittorrent -configure
 ```
+
+Ersetze die Beispielpfade durch den tatsächlichen Host-Pfad von qBittorrent.
 
 #### WebUI-Zielpfad festlegen
 
@@ -243,7 +278,9 @@ sh install.sh --container=qbittorrent -o /config/weig-qb-webui -configure
 Unter Linux und auf NAS-Systemen kannst du `-o` mehrfach angeben, um mehrere bestehende Installationen mit einem einzigen Download zu aktualisieren. Dabei lassen sich `-configure`, `--container` und `--config-root` nicht kombinieren.
 
 ```sh
-sh install.sh -o /opt/weig-qb-webui -o /srv/qb/weig-qb-webui
+sh install.sh -dev \
+  -o /root/qbittorrent/config/weig-qb-webui \
+  -o /root/qbittorrent3/config/weig-qb-webui
 ```
 
 #### Installationspfade nach dem Setup prüfen

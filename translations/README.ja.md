@@ -204,6 +204,12 @@ docker ps
 
 名前が `qbittorrent` の場合：
 
+```text
+qbittorrent
+```
+
+この名前のコンテナーを指定して実行します。
+
 ```sh
 sh install.sh --container=qbittorrent -configure
 ```
@@ -237,6 +243,14 @@ sh install.sh --container=qbittorrent-test -configure
 
 #### ホスト側の `/config` ディレクトリが分かっている場合
 
+ホスト側の qBittorrent 設定ディレクトリが次の場所なら：
+
+```text
+/root/qbittorrent/config
+```
+
+そのディレクトリを明示してインストールできます。
+
 ```sh
 sh install.sh --config-root=/root/qbittorrent/config -configure
 ```
@@ -268,7 +282,9 @@ sh install.sh --container=qbittorrent -o /config/weig-qb-webui -configure
 Linux / NAS では `-o` を繰り返して、既存の複数の WebUI を一度のダウンロードで更新できます。複数指定時は `-configure`、`--container`、`--config-root` を併用できません。
 
 ```sh
-sh install.sh -o /opt/weig-qb-webui -o /srv/qb/weig-qb-webui
+sh install.sh -dev \
+  -o /root/qbittorrent/config/weig-qb-webui \
+  -o /root/qbittorrent3/config/weig-qb-webui
 ```
 
 #### インストール後のパスを確認する

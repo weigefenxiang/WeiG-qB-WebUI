@@ -188,51 +188,86 @@ curl -fsSL https://weigefenxiang.github.io/WeiG-qB-WebUI/downloads/dev/install.s
 
 #### 컨테이너 목록 보기
 
+먼저 사용 가능한 qBittorrent 컨테이너 목록을 확인하세요.
+
 ```sh
 sh install.sh --list-containers
 ```
 
-또는:
+Docker 명령으로 직접 확인할 수도 있습니다.
 
 ```sh
 docker ps
 ```
 
-`qbittorrent`를 명시적으로 선택:
+컨테이너 이름이 다음과 같다면:
+
+```text
+qbittorrent
+```
+
+해당 컨테이너를 명시적으로 선택합니다.
 
 ```sh
 sh install.sh --container=qbittorrent -configure
 ```
-
-여러 컨테이너가 있으면 설치기는 임의로 선택하지 않습니다.
 
 #### qBittorrent 컨테이너가 여러 개인 경우
 
-설치 프로그램은 여러 컨테이너 중 하나를 임의로 선택하지 않습니다. 목록을 확인한 뒤 설정할 컨테이너를 각각 명시해 실행하세요.
+운영용과 테스트용 인스턴스가 각각 있다면:
+
+```text
+qbittorrent
+qbittorrent-test
+```
+
+먼저 목록을 조회한 다음:
 
 ```sh
 sh install.sh --list-containers
+```
+
+운영용 인스턴스는 다음과 같이 설치합니다.
+
+```sh
 sh install.sh --container=qbittorrent -configure
+```
+
+테스트용 인스턴스는 다음과 같이 설치합니다.
+
+```sh
 sh install.sh --container=qbittorrent-test -configure
 ```
 
+컨테이너가 여러 개일 때 설치 프로그램은 임의로 하나를 선택하지 않습니다.
+
 #### 호스트의 `/config` 경로를 알고 있는 경우
+
+호스트에서 qBittorrent의 설정 폴더가 다음 위치라면:
+
+```text
+/root/qbittorrent/config
+```
+
+해당 호스트 경로를 직접 지정할 수 있습니다.
 
 ```sh
 sh install.sh --config-root=/root/qbittorrent/config -configure
 ```
 
-Synology 예시:
+Synology NAS의 경우:
 
 ```sh
 sh install.sh --config-root=/volume1/docker/qbittorrent -configure
 ```
 
-다른 NAS 예시:
+다른 NAS의 경우:
 
 ```sh
 sh install.sh --config-root=/share/Container/qbittorrent -configure
 ```
+
+예시 경로 대신 실제 호스트의 qBittorrent `/config` 경로를 입력하세요.
 
 #### WebUI 경로 지정
 
@@ -245,7 +280,9 @@ sh install.sh --container=qbittorrent -o /config/weig-qb-webui -configure
 Linux / NAS에서는 `-o` 옵션을 반복해 기존 WebUI 설치 경로 여러 곳을 한 번의 다운로드로 업데이트할 수 있습니다. 여러 경로를 지정할 때는 `-configure`, `--container`, `--config-root`를 함께 사용할 수 없습니다.
 
 ```sh
-sh install.sh -o /opt/weig-qb-webui -o /srv/qb/weig-qb-webui
+sh install.sh -dev \
+  -o /root/qbittorrent/config/weig-qb-webui \
+  -o /root/qbittorrent3/config/weig-qb-webui
 ```
 
 #### 설치 후 경로 확인
