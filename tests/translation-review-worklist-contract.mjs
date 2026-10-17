@@ -9,7 +9,7 @@ assert.equal(ca.unreviewedKeys,ca.canonicalKeys-ca.suppliedKeys);
 assert.ok(ca.work.length>600);
 assert.ok(ca.work.every(item=>typeof item.key==='string'&&typeof item.english==='string'));
 assert.equal(ca.work.length,ca.unreviewedKeys);
-const missing=getTranslationReviewWorklist('vi');
+const missing=getTranslationReviewWorklist('fi');
 assert.equal(missing.status,'missing');
 assert.equal(missing.unreviewedKeys,missing.canonicalKeys);
 assert.throws(()=>getTranslationReviewWorklist('zh-HK'),/Unknown or already bundled/);

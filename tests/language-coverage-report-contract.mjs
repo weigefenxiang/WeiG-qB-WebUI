@@ -10,5 +10,5 @@ assert.equal(report.extendedOverlays.approved+report.extendedOverlays.draft+repo
 assert.equal(report.records.find(item=>item.code==='zh_HK')?.overlayStatus,'bundled','Hong Kong overlay is part of standard product, not external pack');
 assert.equal(report.records.find(item=>item.code==='en')?.readme,'README.md');
 assert.equal(report.records.find(item=>item.code==='pt_BR')?.readmeReady,true);
-for(const locale of ['it','ca','nl'])assert.equal(report.records.find(item=>item.locale===locale)?.overlayStatus,'draft');
+for(const locale of ['it','ca','nl','vi','id','tr'])assert.equal(report.records.find(item=>item.locale===locale)?.overlayStatus,'draft');
 console.log('Official locale progress contract passed:',JSON.stringify({readmes:report.readmes,extended:report.extendedOverlays}));
