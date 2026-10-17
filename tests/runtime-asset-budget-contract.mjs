@@ -78,6 +78,8 @@ try{
   for(const old of plan.styles)assert.equal(packageEntries.stdout.split('\n').includes('weig-qb-webui/private/'+old),false,'Source CSS must be retired from materialized ZIP/TAR runtime: '+old);
 
   assert.equal(manifest.weigLocaleFiles,10);assert.equal(manifest.weigLocaleBytes,localeBytes);assert.equal(manifest.sizeReport.weigLocaleFiles,10);assert.equal(manifest.sizeReport.weigLocaleBytes,localeBytes);
+  const extended=JSON.parse(tar('private/data/weig-i18n/extended-manifest.json'));
+  assert.equal(extended.schemaVersion,1);assert.equal(extended.source,'WeiG-extended-locale-inventory');assert.deepEqual(extended.locales,[],'Standard ZIP must not claim missing externally reviewed language overlays');
   assert.equal(manifest.sizeReport.redundantBytes,0);assert.ok(manifest.sizeReport.zipBytes>0&&manifest.sizeReport.tarGzBytes>0);
   assert.equal(manifest.ownedCopyLayout,'private/data/qb-copy-{routes,bindings,fallback}');assert.equal(manifest.ownedCopyCompression,'gzip-routes+fallback');const sourceCopyGroups=[['qb-copy-routes',/\.json\.gz$/],['qb-copy-bindings',/\.txt$/],['qb-copy-fallback',/\.json\.gz$/]];
   const sourceCopyCounts=sourceCopyGroups.map(([name,extension])=>{
