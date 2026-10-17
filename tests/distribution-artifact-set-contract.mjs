@@ -66,3 +66,5 @@ await import('./pages-plan-download-alias-contract.mjs');
 import './external-weig-locale-assets-contract.mjs';
 
 assert.ok(builder.includes('weig-qb-webui-all-languages.zip')&&builder.includes('allLanguagesArtifact')&&builder.includes('inspectExtendedLocaleSources()'),'Unified builder must create optional All Languages from full reviewed external inventory');
+
+await import('./full-language-zip-build-contract.mjs');

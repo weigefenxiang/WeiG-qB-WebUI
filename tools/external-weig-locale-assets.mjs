@@ -27,16 +27,16 @@ export function validateExternalOverlay(locale,data){
   }
   return Object.keys(data.messages).length;
 }
-export function inspectExtendedLocaleSources({requireComplete=false}={}){
-  assert(fs.existsSync(rootOfExternalLocales),'Missing canonical external language source directory');
-  const files=fs.readdirSync(rootOfExternalLocales).filter(x=>x.endsWith('.json'));
+export function inspectExtendedLocaleSources({requireComplete=false,sourceDir=rootOfExternalLocales}={}){
+  assert(fs.existsSync(sourceDir),'Missing extended language source directory');
+  const files=fs.readdirSync(sourceDir).filter(x=>x.endsWith('.json'));
   const present=new Set(),drafts=[];
   let keys=0;
   for(const filename of files){
     const locale=filename.slice(0,-5);
     assert(bySlug.has(locale),'Unknown external overlay '+filename);
     assert(!present.has(locale),'Duplicate external locale '+locale);
-    const data=JSON.parse(fs.readFileSync(path.join(rootOfExternalLocales,filename),'utf8'));
+    const data=JSON.parse(fs.readFileSync(path.join(sourceDir,filename),'utf8'));
     keys+=validateExternalOverlay(locale,data);
     if(data.translationStatus==='approved')present.add(locale);
     else drafts.push(locale);
