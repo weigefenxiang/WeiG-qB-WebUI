@@ -27,3 +27,7 @@ for(const lang of inventory.languages){
   if(lang.primary)assert.ok(fs.existsSync(path.join(base,target)));
 }
 console.log('Official qB 5.2.4 README locale navigation passed: 61 official variants, 10 primary, 51 complete links and RTL isolates.');
+
+const arabic=fs.readFileSync(path.join(base,'translations/README.ar.md'),'utf8');
+assert.match(arabic,/<strong>&#x2067;العربية&#x2069;<\/strong>/,'Arabic README must preserve self-link isolate');
+assert.match(arabic,/<div dir="ltr">[\s\S]*?&lrm;·&lrm;[\s\S]*?<\/div>/,'Arabic language links must remain visually LTR with single separators');
