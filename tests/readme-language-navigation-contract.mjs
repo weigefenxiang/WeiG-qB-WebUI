@@ -39,3 +39,14 @@ assert.match(persian,/<div dir="ltr">[\s\S]*?&lrm;·&lrm;[\s\S]*?<\/div>/,'Persi
 const hebrew=fs.readFileSync(path.join(base,'translations/README.he.md'),'utf8');
 assert.match(hebrew,/<strong>&#x2067;עברית&#x2069;<\/strong>/,'Hebrew active locale must retain bidi isolation');
 assert.match(hebrew,/<div dir="ltr">[\s\S]*?&lrm;·&lrm;[\s\S]*?<\/div>/,'Hebrew more-languages list must keep separators in LTR order');
+
+// Serbian script variants share canonical commands, but technical identifiers stay ASCII.
+const serbianLatin=fs.readFileSync(path.join(base,'translations/README.sr-Latn.md'),'utf8');
+const serbianCyrillic=fs.readFileSync(path.join(base,'translations/README.sr.md'),'utf8');
+assert.match(serbianLatin, /<strong>Srpski<\/strong>/, 'Serbian Latin README must select its script');
+assert.match(serbianCyrillic, /<strong>Српски<\/strong>/, 'Serbian Cyrillic README must select its script');
+assert.match(serbianCyrillic, /^# WeiG qB WebUI/m, 'Serbian script must not transliterate the product name');
+assert.match(serbianCyrillic, /\[\*\*weig-qb-webui\.zip\*\*\]/, 'Serbian script must preserve artifact filenames');
+assert.match(serbianCyrillic, /GitHub Releases/, 'Serbian script must preserve release platform name');
+assert.match(serbianCyrillic, /Dev Pages/, 'Serbian script must preserve official Dev Pages name');
+assert.doesNotMatch(serbianCyrillic, /qБ|Линуx|Wиндоwс|Доцкер|Гит СХА|Пагес|Релеасес|wеиг-qб-wебуи/, 'Serbian script must not corrupt technical identifiers');
