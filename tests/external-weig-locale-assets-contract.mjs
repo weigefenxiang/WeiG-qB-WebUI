@@ -16,6 +16,10 @@ assert.equal(expectedExtendedLocales.includes('en'),false,'Core English is never
 assert.equal(expectedExtendedLocales.includes('zh-HK'),false,'Current Hong Kong sparse overlay belongs to bundled WeiG core, not external packs');
 const valid={schemaVersion:1,source:'WeiG-runtime-locale-overlay',locale:'ca',translationStatus:'draft',messages:{'app.loading':'S’està carregant…','library.count':'{count} descàrregues'}};
 assert.equal(validateExternalOverlay('ca',valid),2);
+const boundaryValid={...valid,messages:{'library.refreshFailedPrefix':'No es poden actualitzar els torrents: ','instances.currentSuffix':' (actual)'}};
+assert.equal(validateExternalOverlay('ca',boundaryValid),2,'Source-proven error prefixes and suffixes preserve whitespace boundaries');
+assert.throws(()=>validateExternalOverlay('ca',{...boundaryValid,messages:{...boundaryValid.messages,'library.refreshFailedPrefix':'No es poden actualitzar els torrents:'}}),/Trailing whitespace mismatch/);
+assert.throws(()=>validateExternalOverlay('ca',{...boundaryValid,messages:{...boundaryValid.messages,'instances.currentSuffix':'(actual)'}}),/Leading whitespace mismatch/);
 assert.throws(()=>validateExternalOverlay('ca',{...valid,messages:{'library.count':'torrents'}}),/Placeholder mismatch/);
 assert.throws(()=>validateExternalOverlay('ca',{...valid,locale:'fr'}),/identity/);
 assert.throws(()=>validateExternalOverlay('ca',{...valid,messages:{'unknown.key':'test'}}),/Unknown canonical English key/);
@@ -38,7 +42,10 @@ assert.throws(()=>validateExternalOverlay('ca',{...reviewedDraft,englishSourceSh
 
 
 assert(canonicalEnglishTranslationKeys.length>500,'English source review set unexpectedly small');
-const approvedMessages=Object.fromEntries(canonicalEnglishTranslationKeys.map(key=>[key,'Approved fixture ca: '+canonicalEnglishMessages[key]]));
+const approvedMessages=Object.fromEntries(canonicalEnglishTranslationKeys.map(key=>{
+  const source=canonicalEnglishMessages[key];
+  return [key,source.replace(/^(\s*)/,(_whole,leading)=>leading+'Approved fixture ca: ')];
+}));
 delete approvedMessages['app.back'];
 const approved={...valid,messages:approvedMessages,translationStatus:'approved',englishSourceSha256:canonicalEnglishSourceSha256,
   reviewedEnglishFallbackKeys:['app.back']};
