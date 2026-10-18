@@ -653,6 +653,20 @@
     "rss.rule.refresh": "Абнавіць правілы",
     "rss.rule.downloaderUnavailable": "Загрузчык RSS недаступны ў гэтым асяроддзі qBittorrent.",
     "rss.rule.compatLoadFailed": "Не ўдалося загрузіць звесткі пра сумяшчальнасць загрузчыка RSS.",
-    "rss.rule.downloaderUnproven": "Загрузчык RSS не пацверджаны зыходным кодам для гэтага асяроддзя qBittorrent."
+    "rss.rule.downloaderUnproven": "Загрузчык RSS не пацверджаны зыходным кодам для гэтага асяроддзя qBittorrent.",
+    "library.refreshFailedPrefix": "Не ўдалося абнавіць спіс торэнтаў: ",
+    "detail.sourceValuePromptPrefix": "Выберыце адно са значэнняў, пацверджаных зыходным кодам: ",
+    "detail.requiredParameterEmptyPrefix": "Абавязковы параметр, пацверджаны зыходным кодам, пусты: ",
+    "detail.unsafeParameterPrefix": "Дзеянне, пацверджанае зыходным кодам, патрабуе параметр, які немагчыма бяспечна вызначыць: ",
+    "torrent.addFailedPrefix": "Не ўдалося дадаць: ",
+    "detail.collapseFolder": "Згарнуць папку",
+    "detail.expandFolder": "Разгарнуць папку",
+    "rss.addDialogTitle": "Дадаць стужку RSS",
+    "runtime.clientNotReady": "Кліент qBittorrent яшчэ не гатовы.",
+    "settings.readFailedPrefix": "Не ўдалося прачытаць налады: ",
+    "settings.saveFailedPrefix": "Не ўдалося захаваць: ",
+    "search.startFailedPrefix": "Не ўдалося запусціць пошук: ",
+    "search.readFailedPrefix": "Не ўдалося атрымаць вынікі пошуку: ",
+    "torrent.commandFailedTitle": "Каманда завяршылася памылкай"
   }
 }
