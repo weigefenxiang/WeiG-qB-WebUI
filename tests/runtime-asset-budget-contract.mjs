@@ -59,7 +59,7 @@ try{
   const result=buildWebuiDist({webuiRoot:path.join(root,'webui'),outDir:out,sha:'f'.repeat(40),version});
   const manifest=JSON.parse(fs.readFileSync(path.join(out,'manifest.json'),'utf8'));
   const tar=rel=>{
-    const result=spawnSync('tar',['-xOzf',path.join(out,'weig-qb-webui.tar.gz'),'weig-qb-webui/'+rel],{encoding:'utf8'});
+    const result=spawnSync('tar',['-xOzf','weig-qb-webui.tar.gz','weig-qb-webui/'+rel],{cwd:out,encoding:'utf8'});
     assert.equal(result.status,0,'Materialized tar must contain '+rel+': '+result.stderr);
     return result.stdout;
   };
@@ -73,7 +73,7 @@ try{
     const body=tar('private/'+name);
     assert.ok(body.startsWith('@charset "UTF-8";\n')&&(body.match(/@charset/g)||[]).length===1,'Bundled UTF-8 stylesheet must retain one first-byte charset');
   }
-  const packageEntries=spawnSync('tar',['-tzf',path.join(out,'weig-qb-webui.tar.gz')],{encoding:'utf8'});
+  const packageEntries=spawnSync('tar',['-tzf','weig-qb-webui.tar.gz'],{cwd:out,encoding:'utf8'});
   assert.equal(packageEntries.status,0);
   for(const old of plan.styles)assert.equal(packageEntries.stdout.split('\n').includes('weig-qb-webui/private/'+old),false,'Source CSS must be retired from materialized ZIP/TAR runtime: '+old);
 

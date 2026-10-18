@@ -35,18 +35,24 @@ export function validateExternalOverlay(locale,data){
     assert.equal(placeholders(value),placeholders(english[key]),'Placeholder mismatch '+locale+'/'+key);
     assert.notEqual(value,english[key],'WeiG overlay duplicates canonical English value; omit the key to use W.I18n fallback: '+locale+'/'+key);
   }
-  if(data.translationStatus==='approved'){
-    assert.equal(data.englishSourceSha256,canonicalEnglishSourceSha256,'Approved locale English-source fingerprint mismatch: '+locale);
-    assert(Array.isArray(data.reviewedEnglishFallbackKeys),'Approved locale requires explicit reviewed English fallback keys: '+locale);
-    assert(data.reviewedEnglishFallbackKeys.length*100<=canonicalEnglishTranslationKeys.length*MAX_APPROVED_ENGLISH_FALLBACK_PERCENT,
-      'Approved locale exceeds 10% English fallback review budget: '+locale);
+  // Review progress is source-bound even while a locale remains draft.
+  // Unvalidated draft fallbacks would otherwise silently disappear from worklists.
+  const reviewedFallback=data.reviewedEnglishFallbackKeys;
+  if(reviewedFallback!==undefined||data.translationStatus==='approved'){
+    assert(Array.isArray(reviewedFallback),'reviewed English fallback keys must be an array: '+locale);
+    assert.equal(data.englishSourceSha256,canonicalEnglishSourceSha256,
+      'Reviewed locale English-source fingerprint mismatch: '+locale);
     const accounted=new Set(Object.keys(data.messages));
-    for(const key of data.reviewedEnglishFallbackKeys){
-      assert(typeof key==='string'&&Object.hasOwn(english,key),'Unknown approved English fallback key: '+locale+'/'+key);
+    for(const key of reviewedFallback){
+      assert(typeof key==='string'&&Object.hasOwn(english,key),'Unknown reviewed English fallback key: '+locale+'/'+key);
       assert(!accounted.has(key),'Duplicate or overlapping reviewed fallback: '+locale+'/'+key);
       accounted.add(key);
     }
-    assert.equal(accounted.size,canonicalEnglishTranslationKeys.length,'Approved locale has unreviewed canonical WeiG messages: '+locale);
+    if(data.translationStatus==='approved'){
+      assert(reviewedFallback.length*100<=canonicalEnglishTranslationKeys.length*MAX_APPROVED_ENGLISH_FALLBACK_PERCENT,
+        'Approved locale exceeds 10% English fallback review budget: '+locale);
+      assert.equal(accounted.size,canonicalEnglishTranslationKeys.length,'Approved locale has unreviewed canonical WeiG messages: '+locale);
+    }
   }
   return Object.keys(data.messages).length;
 }

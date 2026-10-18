@@ -4,6 +4,7 @@ const builder=fs.readFileSync(new URL('../tools/build-webui-dist.mjs',import.met
 const sh=fs.readFileSync(new URL('../installers/install.sh',import.meta.url),'utf8');
 const site=fs.readFileSync(new URL('../simulator/build/build-site.mjs',import.meta.url),'utf8');
 assert.ok(builder.includes("rootFolder='weig-qb-webui'"));
+assert.ok(builder.includes("spawnSync('tar',['-czf','../'+rootFolder+'.tar.gz',rootFolder],{cwd:stage,stdio:'inherit'})"),'GNU/BSD tar must use a relative archive path from the staging directory (no Windows drive-letter operand)');
 assert.ok(builder.includes("${rootFolder}.zip")&&builder.includes("${rootFolder}.tar.gz"));
 assert.ok(builder.includes("schemaVersion:6")&&builder.includes("unixArchive:")&&builder.includes("zipArchive:")&&builder.includes("preferred:{unix:'tar.gz',windows:'zip'}"));
 assert.ok(builder.includes("artifacts:{tarGz:")&&builder.includes("manifest.json")&&builder.includes("SHA256SUMS"));
