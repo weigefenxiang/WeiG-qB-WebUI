@@ -6,6 +6,22 @@ assert.equal(report.officialLanguages,61);
 assert.equal(report.readmes.ready+report.readmes.missing,61);
 assert.ok(report.readmes.ready>=34,'Already translated README languages must not disappear');
 assert.equal(report.extendedOverlays.expected,48);
+const ledger=report.weiGUiKeyCoverage;
+assert.equal(ledger.canonicalPerLocale,693);
+assert.equal(ledger.expectedSlots,48*693);
+assert.equal(ledger.supplied+ledger.reviewedEnglishFallback+ledger.unreviewed,ledger.expectedSlots);
+assert.ok(ledger.supplied>=5979,'Previously supplied locale translations disappeared');
+assert.ok(ledger.unreviewed>0,'Sparse draft locales must not appear fully reviewed');
+const externalRecords=report.records.filter(item=>item.translationKeys!==null);
+assert.equal(externalRecords.length,48);
+assert.equal(externalRecords.reduce((n,item)=>n+item.translationKeys.supplied,0),ledger.supplied);
+assert.equal(externalRecords.reduce((n,item)=>n+item.translationKeys.reviewedEnglishFallback,0),ledger.reviewedEnglishFallback);
+assert.equal(externalRecords.reduce((n,item)=>n+item.translationKeys.unreviewed,0),ledger.unreviewed);
+for(const record of externalRecords){
+  assert.equal(record.translationKeys.supplied+record.translationKeys.reviewedEnglishFallback+
+    record.translationKeys.unreviewed,ledger.canonicalPerLocale);
+  assert.ok(['draft','approved','missing'].includes(record.overlayStatus));
+}
 assert.equal(report.extendedOverlays.approved+report.extendedOverlays.draft+report.extendedOverlays.missing,48);
 assert.equal(report.records.find(item=>item.code==='zh_HK')?.overlayStatus,'bundled','Hong Kong overlay is part of standard product, not external pack');
 assert.equal(report.records.find(item=>item.code==='en')?.readme,'README.md');
