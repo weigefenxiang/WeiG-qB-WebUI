@@ -7,14 +7,20 @@ assert.equal(report.readmes.ready+report.readmes.missing,61);
 assert.equal(report.readmes.missing,0,'Completed official README coverage must not regress');
 assert.equal(report.readmes.ready,61,'Every official README must exist after A78 documentation completion');
 assert.equal(report.extendedOverlays.expected,48);
+assert.equal(report.extendedOverlays.missing,0,'All 48 external language source files must remain present');
 const ledger=report.weiGUiKeyCoverage;
 assert.equal(ledger.canonicalPerLocale,693);
 assert.equal(ledger.expectedSlots,48*693);
 assert.equal(ledger.supplied+ledger.reviewedEnglishFallback+ledger.unreviewed,ledger.expectedSlots);
-assert.ok(ledger.supplied>=5979,'Previously supplied locale translations disappeared');
+assert.ok(ledger.supplied>=6605,'A78-160 cumulative external UI translations must not regress');
 assert.ok(ledger.unreviewed>0,'Sparse draft locales must not appear fully reviewed');
 const externalRecords=report.records.filter(item=>item.translationKeys!==null);
 assert.equal(externalRecords.length,48);
+for(const [locale,min] of [['oc',127],['eu',151],['hy',135],['ka',135],['kk',135],['mn_MN',135],['ltg',93]]){
+  const record=externalRecords.find(item=>item.locale===locale||item.locale===locale.replace('_','-'));
+  assert.ok(record,'Missing official language progress record for '+locale);
+  assert.ok(record.translationKeys.supplied>=min,'Previously supplied translations for '+locale+' must not disappear');
+}
 assert.equal(externalRecords.reduce((n,item)=>n+item.translationKeys.supplied,0),ledger.supplied);
 assert.equal(externalRecords.reduce((n,item)=>n+item.translationKeys.reviewedEnglishFallback,0),ledger.reviewedEnglishFallback);
 assert.equal(externalRecords.reduce((n,item)=>n+item.translationKeys.unreviewed,0),ledger.unreviewed);

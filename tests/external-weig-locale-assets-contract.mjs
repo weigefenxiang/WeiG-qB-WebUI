@@ -8,6 +8,7 @@ assert.equal(status.primary,10);
 assert.equal(status.englishVariants,2);
 assert.equal(status.expected,48);
 assert.equal(status.ready+status.missing.length,48);
+assert.equal(status.ready+status.drafts.length,48,'All 48 external overlays must have source files');
 assert.ok(status.ready+status.drafts.length>=17,'Previously authored extended locale sources must not disappear, whether draft or approved');
 assert.equal(new Set(expectedExtendedLocales).size,48);
 assert.ok(fs.existsSync(path.join(rootOfExternalLocales,'sk.json')),'Previously authored Slovak overlay must not disappear during approval');
