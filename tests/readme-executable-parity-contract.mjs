@@ -26,5 +26,5 @@ for(const lang of inventory.languages){
     'Installer command, Docker mapping or PowerShell example changed in '+lang.code+'; localize prose, never CLI bytes');
   pages++;
 }
-assert(pages>=31,'Previously completed language READMEs must remain present');
+assert(pages>=32,'Previously completed language READMEs must remain present');
 console.log('README executable provenance passed for '+pages+' official languages: 24 canonical sh/PowerShell/YAML examples each.');
