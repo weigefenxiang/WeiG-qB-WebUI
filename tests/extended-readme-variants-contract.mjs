@@ -16,7 +16,15 @@ for(const [localized,baseline] of pages){
   const content=fs.readFileSync(path.join(root,localized),'utf8');
   const original=fs.readFileSync(path.join(root,baseline),'utf8');
   assert.equal((content.match(/```/g)||[]).length,(original.match(/```/g)||[]).length,'New regional README must preserve executable example blocks: '+localized);
-  assert.equal((withoutNavigation(content).match(/^## /gm)||[]).length,(withoutNavigation(original).match(/^## /gm)||[]).length,'New regional README must preserve complete sections: '+localized);
+  // Official English can introduce substantive sections before older locale baselines
+  // adopt them. Requiring an identical count incorrectly rejects translations that
+  // include the newer section, while omitting a baseline section must still fail.
+  const baselineHeadings=[...withoutNavigation(original).matchAll(/^## (.+)$/gm)].map(m=>m[1].trim());
+  const localizedHeadings=[...withoutNavigation(content).matchAll(/^## (.+)$/gm)].map(m=>m[1].trim());
+  assert.ok(localizedHeadings.length>=baselineHeadings.length,
+    'New regional README must preserve complete sections: '+localized);
+  assert.equal(new Set(localizedHeadings).size,localizedHeadings.length,
+    'New regional README must not duplicate section headings: '+localized);
   assert.ok(content.includes('<strong>'),'Expanded-region README must highlight its own native language: '+localized);
   for(const match of content.matchAll(/src="([^"]+)"/g)){
     if(/^https?:/.test(match[1]))continue;
