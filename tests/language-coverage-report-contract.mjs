@@ -14,8 +14,8 @@ assert.equal(report.records.find(item=>item.code==='sk')?.readmeReady,true,'Comp
 assert.equal(report.records.find(item=>item.code==='hr')?.readmeReady,true,'Completed Croatian README must be retained');
 assert.equal(report.records.find(item=>item.code==='ro')?.readmeReady,true,'Completed Romanian README must be retained');
 assert.ok(['draft','approved'].includes(report.records.find(item=>item.code==='sk')?.overlayStatus),'Slovak external overlay must remain present through draft and approval');
-assert.ok(report.extendedOverlays.approved+report.extendedOverlays.draft>=19,'Previously authored external locale sources must not disappear');
-for(const code of ['hr','ro'])assert.ok(['draft','approved'].includes(report.records.find(item=>item.code===code)?.overlayStatus),'Reviewed initial overlay missing for '+code);
+assert.ok(report.extendedOverlays.approved+report.extendedOverlays.draft>=20,'Previously authored external locale sources must not disappear');
+for(const code of ['hr','ro','sl'])assert.ok(['draft','approved'].includes(report.records.find(item=>item.code===code)?.overlayStatus),'Reviewed initial overlay missing for '+code);
 for(const record of report.records){
   if(record.overlayStatus==='draft'||record.overlayStatus==='approved')assert.ok(record.locale,'External locale must have canonical slug');
 }
