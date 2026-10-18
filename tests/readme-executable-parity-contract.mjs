@@ -20,11 +20,11 @@ assert.equal(baseline.reduce((sum,[,n])=>sum+n,0),24,'Canonical Chinese installe
 let pages=0;
 for(const lang of inventory.languages){
   const target=path.join(root,readmePath(lang));
-  if(!fs.existsSync(target))continue; // Requested links intentionally precede the real translated README.
+  assert.ok(fs.existsSync(target), 'Missing completed official README: '+target);
   const text=fs.readFileSync(target,'utf8');
   assert.deepEqual(executableExamples(text),baseline,
     'Installer command, Docker mapping or PowerShell example changed in '+lang.code+'; localize prose, never CLI bytes');
   pages++;
 }
-assert(pages>=32,'Previously completed language READMEs must remain present');
+assert.equal(pages,61,'All 61 official language READMEs must preserve executable examples');
 console.log('README executable provenance passed for '+pages+' official languages: 24 canonical sh/PowerShell/YAML examples each.');

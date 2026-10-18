@@ -24,7 +24,7 @@ for(const lang of inventory.languages){
   assert.match(markup,/<div dir="ltr">/);
   const target=readmePath(lang);
   assert.ok(target==='README.md'||target.startsWith('translations/README.'));
-  if(lang.primary)assert.ok(fs.existsSync(path.join(base,target)));
+  assert.ok(fs.existsSync(path.join(base,target)), 'All 61 official README documents must exist: '+target);
 }
 console.log('Official qB 5.2.4 README locale navigation passed: 61 official variants, 10 primary, 51 complete links and RTL isolates.');
 

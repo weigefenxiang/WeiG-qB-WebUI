@@ -11,13 +11,13 @@ const pages=inventory.languages.filter(lang=>!lang.primary).map(lang=>{
     lang.code==='zh_HK'?'translations/README.zh-TW.md':'translations/README.zh-CN.md';
   return [localized,baseline];
 }).filter(([localized])=>fs.existsSync(path.join(root,localized)));
-assert(pages.length>=21,'Previously completed expanded READMEs must not disappear');
+assert.equal(pages.length,51,'All 51 expanded official README variants must be present');
 const executableFences=markdown=>[...markdown.matchAll(new RegExp('^'+String.fromCharCode(96).repeat(3)+'(sh|bash|powershell|yaml|yml)\\r?\\n([\\s\\S]*?)^'+String.fromCharCode(96).repeat(3),'gm'))].map(m=>[m[1],m[2]]);
 const expectedExecutables=executableFences(fs.readFileSync(path.join(root,'README.md'),'utf8'));
 assert.equal(expectedExecutables.length,24,'English README executable example inventory changed');
 const existingReadmes=inventory.languages.map(readmePath)
   .filter(readme=>fs.existsSync(path.join(root,readme)));
-assert.ok(existingReadmes.length>=45,'Previously completed translated READMEs must not disappear');
+assert.equal(existingReadmes.length,61,'All 61 official README documents must be present');
 for(const readme of existingReadmes){
   assert.deepEqual(executableFences(fs.readFileSync(path.join(root,readme),'utf8')),expectedExecutables,
     'README executable commands must exactly match English: '+readme);
