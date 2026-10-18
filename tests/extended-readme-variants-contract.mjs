@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import path from 'node:path';
 import {fileURLToPath} from 'node:url';
+import {readmePath} from '../tools/readme-language-navigation.mjs';
 const root=path.resolve(path.dirname(fileURLToPath(import.meta.url)),'..');
 const inventory=JSON.parse(fs.readFileSync(path.join(root,'tools/data/qb-5.2.4-readme-languages.json'),'utf8'));
 const pages=inventory.languages.filter(lang=>!lang.primary).map(lang=>{
@@ -14,12 +15,18 @@ assert(pages.length>=21,'Previously completed expanded READMEs must not disappea
 const executableFences=markdown=>[...markdown.matchAll(new RegExp('^'+String.fromCharCode(96).repeat(3)+'(sh|bash|powershell|yaml|yml)\\r?\\n([\\s\\S]*?)^'+String.fromCharCode(96).repeat(3),'gm'))].map(m=>[m[1],m[2]]);
 const expectedExecutables=executableFences(fs.readFileSync(path.join(root,'README.md'),'utf8'));
 assert.equal(expectedExecutables.length,24,'English README executable example inventory changed');
+const existingReadmes=inventory.languages.map(readmePath)
+  .filter(readme=>fs.existsSync(path.join(root,readme)));
+assert.ok(existingReadmes.length>=45,'Previously completed translated READMEs must not disappear');
+for(const readme of existingReadmes){
+  assert.deepEqual(executableFences(fs.readFileSync(path.join(root,readme),'utf8')),expectedExecutables,
+    'README executable commands must exactly match English: '+readme);
+}
 const withoutNavigation=text=>text.replace(/<!-- WEIG-README-LANGUAGES:START -->[\s\S]*?<!-- WEIG-README-LANGUAGES:END -->/,'');
 for(const [localized,baseline] of pages){
   const content=fs.readFileSync(path.join(root,localized),'utf8');
   const original=fs.readFileSync(path.join(root,baseline),'utf8');
   assert.equal((content.match(/```/g)||[]).length,(original.match(/```/g)||[]).length,'New regional README must preserve executable example blocks: '+localized);
-  assert.deepEqual(executableFences(content),expectedExecutables,'Translated README commands must exactly match English: '+localized);
   // Official English can introduce substantive sections before older locale baselines
   // adopt them. Requiring an identical count incorrectly rejects translations that
   // include the newer section, while omitting a baseline section must still fail.
@@ -40,4 +47,4 @@ for(const [localized,baseline] of pages){
     assert(fs.existsSync(path.resolve(root,path.dirname(localized),href)),'Regional README non-language link is broken: '+localized+' -> '+href);
   }
 }
-console.log('Expanded README variants passed: exact section/fenced-example parity and existing non-language link targets.');
+console.log('README variants passed: all available locales preserve 24 exact commands; expanded locales retain sections, fences and links.');
