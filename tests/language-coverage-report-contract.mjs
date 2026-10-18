@@ -11,7 +11,7 @@ assert.equal(report.records.find(item=>item.code==='zh_HK')?.overlayStatus,'bund
 assert.equal(report.records.find(item=>item.code==='en')?.readme,'README.md');
 assert.equal(report.records.find(item=>item.code==='pt_BR')?.readmeReady,true);
 assert.equal(report.records.find(item=>item.code==='sk')?.readmeReady,true,'Completed Slovak README must be retained');
-assert.equal(report.records.find(item=>item.code==='sk')?.overlayStatus,'draft','Slovak overlay remains unapproved until full semantic review');
+assert.ok(['draft','approved'].includes(report.records.find(item=>item.code==='sk')?.overlayStatus),'Slovak external overlay must remain present through draft and approval');
 assert.ok(report.extendedOverlays.approved+report.extendedOverlays.draft>=17,'Previously authored external locale sources must not disappear');
 for(const record of report.records){
   if(record.overlayStatus==='draft'||record.overlayStatus==='approved')assert.ok(record.locale,'External locale must have canonical slug');

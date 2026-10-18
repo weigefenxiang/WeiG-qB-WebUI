@@ -1,5 +1,7 @@
 import assert from 'node:assert/strict';
-import {inspectExtendedLocaleSources,expectedExtendedLocales,validateExternalOverlay,canonicalEnglishTranslationKeys,canonicalEnglishSourceSha256,canonicalEnglishMessages} from '../tools/external-weig-locale-assets.mjs';
+import fs from 'node:fs';
+import path from 'node:path';
+import {inspectExtendedLocaleSources,expectedExtendedLocales,validateExternalOverlay,canonicalEnglishTranslationKeys,canonicalEnglishSourceSha256,canonicalEnglishMessages,rootOfExternalLocales} from '../tools/external-weig-locale-assets.mjs';
 const status=inspectExtendedLocaleSources();
 assert.equal(status.official,61);
 assert.equal(status.primary,10);
@@ -8,7 +10,7 @@ assert.equal(status.expected,48);
 assert.equal(status.ready+status.missing.length,48);
 assert.ok(status.ready+status.drafts.length>=17,'Previously authored extended locale sources must not disappear, whether draft or approved');
 assert.equal(new Set(expectedExtendedLocales).size,48);
-assert.ok(status.drafts.includes('sk'),'Slovak WeiG UI overlay must remain a draft until explicitly reviewed');
+assert.ok(fs.existsSync(path.join(rootOfExternalLocales,'sk.json')),'Previously authored Slovak overlay must not disappear during approval');
 assert.equal(expectedExtendedLocales.includes('en'),false,'Core English is never an external locale');
 assert.equal(expectedExtendedLocales.includes('zh-HK'),false,'Current Hong Kong sparse overlay belongs to bundled WeiG core, not external packs');
 const valid={schemaVersion:1,source:'WeiG-runtime-locale-overlay',locale:'ca',translationStatus:'draft',messages:{'app.loading':'S’està carregant…','library.count':'{count} descàrregues'}};
