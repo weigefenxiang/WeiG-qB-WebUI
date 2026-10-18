@@ -11,7 +11,7 @@ assert.equal(ca.work.length,ca.unreviewedKeys);
 assert.ok(ca.work.every(item=>typeof item.key==='string'&&typeof item.english==='string'));
 const czech=getTranslationReviewWorklist('cs');
 assert.ok(['draft','approved'].includes(czech.status));
-assert.ok(czech.suppliedKeys>=127,'Czech reviewed translation entries were lost');
+assert.ok(czech.suppliedKeys>=236,'Czech reviewed translation entries were lost');
 assert.equal(czech.unreviewedKeys,czech.canonicalKeys-czech.suppliedKeys-czech.reviewedEnglishFallbackCount);
 const slovak=getTranslationReviewWorklist('sk');
 assert.ok(['draft','approved'].includes(slovak.status),'Slovak must progress from draft to approved without breaking regression');
