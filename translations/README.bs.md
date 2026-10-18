@@ -81,7 +81,7 @@ Otvorite **Alati → Opcije → WebUI** u qBittorrentu. Nazivi opcija mogu se ra
 
 1. Označite **Koristi alternativni web-interfejs** (*Use alternative WebUI*).
 2. Pronađite polje **Lokacija datoteka** (*Files location*).
-3. Unesite put do mape `weig-qb-webui`.
+3. Unesite putanju do foldera `weig-qb-webui`.
 
 Primjer za Windows:
 
@@ -96,11 +96,11 @@ Primjer za Linux:
 ```
 
 4. Kliknite **OK** kako biste spremili promjene.
-5. Ponovno učitajte stranicu qBittorrenta. Ako se i dalje prikazuje staro interfejs, pritisnite `Ctrl + F5` za prisilno osvježavanje.
+5. Ponovno učitajte stranicu qBittorrenta. Ako se i dalje prikazuje stari interfejs, pritisnite `Ctrl + F5` za prisilno osvježavanje.
 
 > **Kako provjeriti putanju?** U odabranom folderu moraju se direktno nalaziti `public`, `private` i `VERSION`. Ako prvo morate otvoriti još jedan folder `weig-qb-webui`, odabrali ste pogrešan nivo direktorija.
 
-> **Koristite Docker?** qBittorrent se pokreće **unutar kontejnera**. Zato u njegove postavke morate unijeti put koji je dostupan unutar kontejnera, a ne put koji postoji samo na računaru domaćinu. Objašnjenje slijedi u nastavku.
+> **Koristite Docker?** qBittorrent se pokreće **unutar kontejnera**. Zato u njegove postavke morate unijeti put koji je dostupan unutar kontejnera, a ne put koji postoji samo na računaru domaćina. Objašnjenje slijedi u nastavku.
 
 </details>
 
@@ -164,7 +164,7 @@ volumes:
   - /root/qbittorrent/config:/config
 ```
 
-Put **lijevo od dvotočke** pripada **domaćinu**, a put **desno** označava lokaciju **unutar kontejnera**.
+Putanja **lijevo od dvotačke** pripada **domaćinu**, a put **desno** označava lokaciju **unutar kontejnera**.
 
 Ako je WeiG instaliran na domaćinu ovdje:
 
