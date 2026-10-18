@@ -672,6 +672,7 @@
     "instances.import": "Importar",
     "instances.exportFile": "Exportar JSON",
     "instances.importFile": "Importar JSON",
-    "instances.loadFailed": "Não foi possível carregar o gerenciador de instâncias."
+    "instances.loadFailed": "Não foi possível carregar o gerenciador de instâncias.",
+    "dialog.action.title": "Ação"
   }
 }
