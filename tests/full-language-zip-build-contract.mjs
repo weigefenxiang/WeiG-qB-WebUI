@@ -22,7 +22,10 @@ try{
   for(const locale of expectedExtendedLocales){
     const fixture={schemaVersion:1,source:'WeiG-runtime-locale-overlay',locale,
       translationStatus:'approved',englishSourceSha256:canonicalEnglishSourceSha256,
-      messages:Object.fromEntries(canonicalEnglishTranslationKeys.map(key=>[key,'Packaging test '+locale+': '+canonicalEnglishMessages[key]])),
+      messages:Object.fromEntries(canonicalEnglishTranslationKeys.map(key=>{
+        const source=canonicalEnglishMessages[key];
+        return [key,source.replace(/^(\s*)/,(_match,leading)=>leading+'Packaging test '+locale+': ')];
+      })),
       reviewedEnglishFallbackKeys:[]};
     fs.writeFileSync(path.join(sourceDir,locale+'.json'),JSON.stringify(fixture)+'\n');
   }
