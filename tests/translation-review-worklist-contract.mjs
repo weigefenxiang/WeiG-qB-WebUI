@@ -381,6 +381,20 @@ assert.equal(armenianScope.counts.qb_owned,7);
 assert.equal(armenianScope.unresolvedKeys,0);
 assert.equal(armenianScope.draftScopeComplete,true);
 assert.equal(armenianScope.humanApproved,false,'Armenian draft is not native-language approval');
+
+const occitanScope=getTranslationDraftScopeWorklist('oc');
+assert.equal(occitanScope.referenceKeys,673);
+assert.equal(occitanScope.canonicalEnglishKeys,693);
+assert.equal(occitanScope.counts.localized,656);
+assert.equal(occitanScope.counts.intentional_english,10);
+assert.equal(occitanScope.counts.qb_owned,7);
+assert.equal(occitanScope.unresolvedKeys,0);
+assert.equal(occitanScope.draftScopeComplete,true);
+assert.equal(occitanScope.humanApproved,false,'Occitan AI draft is not native-language approval');
+for(const field of ['name','size','progress','download','upload','status','categoryColumn']){
+  assert.equal(occitanScope.items.find(item=>item.key==='torrent.'+field)?.classification,'qb_owned',
+    'qBittorrent source owns Occitan torrent column '+field);
+}
 for(const field of ['name','size','progress','download','upload','status','categoryColumn']){
   assert.equal(armenianScope.items.find(item=>item.key==='torrent.'+field)?.classification,'qb_owned');
 }
