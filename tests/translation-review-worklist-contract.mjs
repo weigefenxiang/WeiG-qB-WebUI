@@ -33,7 +33,8 @@ assert.throws(()=>getTranslationReviewWorklist('en'),/Unknown or already bundled
 
 const roScope=getTranslationDraftScopeWorklist('ro');
 const slScope=getTranslationDraftScopeWorklist('sl');
-for(const scope of [roScope,slScope]){
+const caScope=getTranslationDraftScopeWorklist('ca');
+for(const scope of [roScope,slScope,caScope]){
   assert.equal(scope.referenceKeys,673,'Reference source contains 673 Simplified Chinese keys');
   assert.equal(scope.canonicalEnglishKeys,693,'Approval source must remain 693 English keys');
   assert.equal(scope.englishOnlyOutOfScope,20);
@@ -51,16 +52,23 @@ assert.equal(roScope.counts.qb_owned,0);
 assert.equal(roScope.unresolvedKeys,0);
 assert.equal(roScope.draftScopeComplete,true);
 assert.equal(roScope.humanApproved,false,'Completed draft scope is not human approval');
-assert.equal(slScope.counts.localized,152);
-assert.equal(slScope.unresolvedKeys,521);
-const slMissing=slScope.work.find(x=>x.key==='instances.currentSuffix');
-const qbMissing=slScope.work.find(x=>x.key==='torrent.name');
-assert.ok(slMissing&&qbMissing,'Synthetic decisions use still-untranslated Slovenian keys');
+assert.equal(slScope.counts.localized,666);
+assert.equal(slScope.counts.intentional_english,7);
+assert.equal(slScope.counts.qb_owned,0);
+assert.equal(slScope.unresolvedKeys,0);
+assert.equal(slScope.draftScopeComplete,true);
+assert.equal(slScope.humanApproved,false,'Completed Slovenian draft does not imply native review');
+assert.equal(caScope.counts.localized,45);
+assert.equal(caScope.unresolvedKeys,628);
+assert.equal(caScope.draftScopeComplete,false);
+const caMissing=caScope.work.find(x=>x.key==='instances.currentSuffix');
+const qbMissing=caScope.work.find(x=>x.key==='torrent.name');
+assert.ok(caMissing&&qbMissing,'Synthetic decisions use genuinely missing Catalan draft keys');
 const decisionsBase={schemaVersion:1,source:'WeiG-locale-draft-scope-decisions',
-  locale:'sl',englishSourceSha256:canonicalEnglishSourceSha256,
+  locale:'ca',englishSourceSha256:canonicalEnglishSourceSha256,
   simplifiedChineseSourceSha256:simplifiedChineseReferenceSha256,decisions:{}};
 const evidenced={...decisionsBase,decisions:{
-  [slMissing.key]:{classification:'intentional_english',
+  [caMissing.key]:{classification:'intentional_english',
     reason:'Synthetic test: preserve native technical label',
     evidence:'Synthetic UI terminology check, not an actual reviewer approval'},
   [qbMissing.key]:{classification:'qb_owned',
@@ -69,31 +77,31 @@ const evidenced={...decisionsBase,decisions:{
     ownerFile:'webui/private/scripts/torrent-fields.js',
     caller:"qbText('column.'+key, sourceCaption)"}
 }};
-const classified=getTranslationDraftScopeWorklist('sl',{decisions:evidenced});
-assert.equal(classified.counts.localized,152);
+const classified=getTranslationDraftScopeWorklist('ca',{decisions:evidenced});
+assert.equal(classified.counts.localized,45);
 assert.equal(classified.counts.intentional_english,1);
 assert.equal(classified.counts.qb_owned,1);
-assert.equal(classified.unresolvedKeys,519);
+assert.equal(classified.unresolvedKeys,626);
 assert.equal(classified.draftScopeComplete,false);
 assert.equal(classified.humanApproved,false);
-assert.equal(getTranslationReviewWorklist('sl').unreviewedKeys,541,
+assert.equal(getTranslationReviewWorklist('ca').unreviewedKeys,648,
   'Draft scope decisions cannot edit the 693-key formal review ledger');
-assert.throws(()=>getTranslationDraftScopeWorklist('sl',{decisions:{
+assert.throws(()=>getTranslationDraftScopeWorklist('ca',{decisions:{
   ...evidenced,englishSourceSha256:'stale'}}),/Stale English fingerprint/);
-assert.throws(()=>getTranslationDraftScopeWorklist('sl',{decisions:{
+assert.throws(()=>getTranslationDraftScopeWorklist('ca',{decisions:{
   ...evidenced,simplifiedChineseSourceSha256:'stale'}}),/Stale Simplified Chinese fingerprint/);
-assert.throws(()=>getTranslationDraftScopeWorklist('sl',{decisions:{
+assert.throws(()=>getTranslationDraftScopeWorklist('ca',{decisions:{
   ...evidenced,decisions:{'nav.rss':{classification:'intentional_english',
     reason:'Unrelated English-only field',evidence:'Synthetic out of scope'}}}}),
   /Non-reference key/);
-assert.throws(()=>getTranslationDraftScopeWorklist('sl',{decisions:{
+assert.throws(()=>getTranslationDraftScopeWorklist('ca',{decisions:{
   ...evidenced,decisions:{'app.back':{classification:'intentional_english',
     reason:'Already translated in original Romanian',
     evidence:'Synthetic conflicting decision fixture'}}}}),/overlaps translated value/);
-assert.throws(()=>getTranslationDraftScopeWorklist('sl',{decisions:{
-  ...evidenced,decisions:{[slMissing.key]:{classification:'intentional_english',
+assert.throws(()=>getTranslationDraftScopeWorklist('ca',{decisions:{
+  ...evidenced,decisions:{[caMissing.key]:{classification:'intentional_english',
     reason:'No actual supporting source',evidence:''}}}}),/verifiable evidence/);
-assert.throws(()=>getTranslationDraftScopeWorklist('sl',{decisions:{
+assert.throws(()=>getTranslationDraftScopeWorklist('ca',{decisions:{
   ...evidenced,decisions:{[qbMissing.key]:{classification:'qb_owned',
     reason:'Unverified claimed qB label',
     evidence:'Synthetic missing caller / owner file'}}}}),/runtime owner file/);

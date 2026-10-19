@@ -1,0 +1,44 @@
+{
+  "schemaVersion": 1,
+  "source": "WeiG-locale-draft-scope-decisions",
+  "locale": "sl",
+  "englishSourceSha256": "d0d6412654389081013f556747436862ef4c65ec6cc3410c267596055fd88959",
+  "simplifiedChineseSourceSha256": "fcaf060489856126fe909890100b8f3246c16231f139c86ddfaa8ee4a41eb627",
+  "decisions": {
+    "settings.weig.unit.secondShort": {
+      "classification": "intentional_english",
+      "reason": "s is the internationally standardized symbol for seconds, also in Slovenian.",
+      "evidence": "Source: webui/private/scripts/i18n.js settings.weig.unit.secondShort is the unit symbol s."
+    },
+    "common.na": {
+      "classification": "intentional_english",
+      "reason": "N/A is the neutral compact status for missing or non-applicable data.",
+      "evidence": "Source: webui/private/scripts/i18n.js common.na is the general status marker N/A."
+    },
+    "header.blog": {
+      "classification": "intentional_english",
+      "reason": "WeiG Share Blog is the proper name of the linked publication.",
+      "evidence": "Source: webui/private/scripts/i18n.js header.blog contains the official title WeiG Share Blog."
+    },
+    "connection.environment.qb": {
+      "classification": "intentional_english",
+      "reason": "The qBittorrent name and dynamic status placeholder are product identifiers.",
+      "evidence": "Source: webui/private/scripts/i18n.js connection.environment.qb is qBittorrent: {value}."
+    },
+    "connection.environment.webapi": {
+      "classification": "intentional_english",
+      "reason": "WebAPI is a technical interface acronym and not a translatable label.",
+      "evidence": "Source: webui/private/scripts/i18n.js connection.environment.webapi is WebAPI: {value}."
+    },
+    "language.zh-TW": {
+      "classification": "intentional_english",
+      "reason": "The native Chinese self-name in the locale picker must preserve its original script.",
+      "evidence": "Source: webui/private/scripts/i18n.js language.zh-TW uses the native autonym 繁體中文."
+    },
+    "language.zh-HK": {
+      "classification": "intentional_english",
+      "reason": "The native Hong Kong Chinese self-name should not be retranslated.",
+      "evidence": "Source: webui/private/scripts/i18n.js language.zh-HK uses the autonym 香港正體字."
+    }
+  }
+}
