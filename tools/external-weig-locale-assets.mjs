@@ -14,7 +14,18 @@ export const canonicalEnglishTranslationKeys=Object.freeze(Object.keys(english))
 export const canonicalEnglishMessages=Object.freeze(english);
 const MAX_APPROVED_ENGLISH_FALLBACK_PERCENT=10;
 // Standalone canonical technical/UI labels intentionally use English fallback, not translated overlays.
-export const SOURCE_PRESERVED_UI_LABELS=Object.freeze({'torrent.eta':'ETA','settings.about.version':'Version'});
+export const SOURCE_PRESERVED_UI_LABELS=Object.freeze({
+  'torrent.eta':'ETA',
+  'settings.about.version':'Version',
+  'nav.rss':'RSS',
+  'rss.title':'RSS',
+  'capability.rss.title':'RSS',
+  'settings.weig.title':'WeiG WebUI',
+  'language.en':'English',
+  'language.zh-CN':'简体中文',
+  'language.ja':'日本語',
+  'language.ko':'한국어'
+});
 for(const [key,source] of Object.entries(SOURCE_PRESERVED_UI_LABELS)){
   assert.equal(english[key],source,'Canonical fixed English UI label changed: '+key);
 }

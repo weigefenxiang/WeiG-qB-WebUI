@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import path from 'node:path';
-import {inspectExtendedLocaleSources,expectedExtendedLocales,validateExternalOverlay,canonicalEnglishTranslationKeys,canonicalEnglishSourceSha256,canonicalEnglishMessages,rootOfExternalLocales} from '../tools/external-weig-locale-assets.mjs';
+import {inspectExtendedLocaleSources,expectedExtendedLocales,validateExternalOverlay,canonicalEnglishTranslationKeys,canonicalEnglishSourceSha256,canonicalEnglishMessages,rootOfExternalLocales,SOURCE_PRESERVED_UI_LABELS} from '../tools/external-weig-locale-assets.mjs';
 const status=inspectExtendedLocaleSources();
 assert.equal(status.official,61);
 assert.equal(status.primary,10);
@@ -16,7 +16,8 @@ assert.equal(expectedExtendedLocales.includes('en'),false,'Core English is never
 assert.equal(expectedExtendedLocales.includes('zh-HK'),false,'Current Hong Kong sparse overlay belongs to bundled WeiG core, not external packs');
 const valid={schemaVersion:1,source:'WeiG-runtime-locale-overlay',locale:'ca',translationStatus:'draft',messages:{'app.loading':'S’està carregant…','library.count':'{count} descàrregues'}};
 assert.equal(validateExternalOverlay('ca',valid),2);
-for(const [key,unwanted] of [['torrent.eta','Temps restant estimat'],['settings.about.version','Versió']]){
+for(const key of Object.keys(SOURCE_PRESERVED_UI_LABELS)){
+  const unwanted='Localized forbidden label: '+key;
   assert.throws(()=>validateExternalOverlay('ca',{...valid,messages:{[key]:unwanted}}),
     /Standalone English UI label must use W.I18n fallback/,'Independent English UI labels cannot be translated: '+key);
 }
