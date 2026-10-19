@@ -54,7 +54,7 @@ const qbMissing=roScope.work.find(x=>x.key==='torrent.name');
 assert.ok(roMissing&&qbMissing,'Semantic test keys must be absent from the Romanian source');
 const decisionsBase={schemaVersion:1,source:'WeiG-locale-draft-scope-decisions',
   locale:'ro',englishSourceSha256:canonicalEnglishSourceSha256,
-  simplifiedChineseSourceSha256,decisions:{}};
+  simplifiedChineseSourceSha256:simplifiedChineseReferenceSha256,decisions:{}};
 const evidenced={...decisionsBase,decisions:{
   [roMissing.key]:{classification:'intentional_english',
     reason:'Synthetic test: preserve native technical label',
