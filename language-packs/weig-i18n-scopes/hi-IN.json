@@ -1,0 +1,103 @@
+{
+  "schemaVersion": 1,
+  "source": "WeiG-locale-draft-scope-decisions",
+  "locale": "hi-IN",
+  "englishSourceSha256": "d0d6412654389081013f556747436862ef4c65ec6cc3410c267596055fd88959",
+  "simplifiedChineseSourceSha256": "fcaf060489856126fe909890100b8f3246c16231f139c86ddfaa8ee4a41eb627",
+  "decisions": {
+    "torrent.name": {
+      "classification": "qb_owned",
+      "reason": "qBittorrent owns this locale/version-aware torrent table and column-selector label.",
+      "evidence": "TorrentFieldRegistry FIELDS includes field.key='name' and label(field) calls qbText('column.'+field.key,fallback).",
+      "ownerFile": "webui/private/scripts/torrent-fields.js",
+      "caller": "label(field) -> qbText('column.'+field.key,fallback), field.key='name'"
+    },
+    "torrent.size": {
+      "classification": "qb_owned",
+      "reason": "qBittorrent owns this locale/version-aware torrent table and column-selector label.",
+      "evidence": "TorrentFieldRegistry FIELDS includes field.key='size' and label(field) calls qbText('column.'+field.key,fallback).",
+      "ownerFile": "webui/private/scripts/torrent-fields.js",
+      "caller": "label(field) -> qbText('column.'+field.key,fallback), field.key='size'"
+    },
+    "torrent.progress": {
+      "classification": "qb_owned",
+      "reason": "qBittorrent owns this locale/version-aware torrent table and column-selector label.",
+      "evidence": "TorrentFieldRegistry FIELDS includes field.key='progress' and label(field) calls qbText('column.'+field.key,fallback).",
+      "ownerFile": "webui/private/scripts/torrent-fields.js",
+      "caller": "label(field) -> qbText('column.'+field.key,fallback), field.key='progress'"
+    },
+    "torrent.download": {
+      "classification": "qb_owned",
+      "reason": "qBittorrent owns this locale/version-aware torrent table and column-selector label.",
+      "evidence": "TorrentFieldRegistry FIELDS includes field.key='dlspeed' and label(field) calls qbText('column.'+field.key,fallback).",
+      "ownerFile": "webui/private/scripts/torrent-fields.js",
+      "caller": "label(field) -> qbText('column.'+field.key,fallback), field.key='dlspeed'"
+    },
+    "torrent.upload": {
+      "classification": "qb_owned",
+      "reason": "qBittorrent owns this locale/version-aware torrent table and column-selector label.",
+      "evidence": "TorrentFieldRegistry FIELDS includes field.key='upspeed' and label(field) calls qbText('column.'+field.key,fallback).",
+      "ownerFile": "webui/private/scripts/torrent-fields.js",
+      "caller": "label(field) -> qbText('column.'+field.key,fallback), field.key='upspeed'"
+    },
+    "torrent.status": {
+      "classification": "qb_owned",
+      "reason": "qBittorrent owns this locale/version-aware torrent table and column-selector label.",
+      "evidence": "TorrentFieldRegistry FIELDS includes field.key='state' and label(field) calls qbText('column.'+field.key,fallback).",
+      "ownerFile": "webui/private/scripts/torrent-fields.js",
+      "caller": "label(field) -> qbText('column.'+field.key,fallback), field.key='state'"
+    },
+    "torrent.categoryColumn": {
+      "classification": "qb_owned",
+      "reason": "qBittorrent owns this locale/version-aware torrent table and column-selector label.",
+      "evidence": "TorrentFieldRegistry FIELDS includes field.key='category' and label(field) calls qbText('column.'+field.key,fallback).",
+      "ownerFile": "webui/private/scripts/torrent-fields.js",
+      "caller": "label(field) -> qbText('column.'+field.key,fallback), field.key='category'"
+    },
+    "settings.weig.unit.secondShort": {
+      "classification": "intentional_english",
+      "reason": "The SI seconds symbol s is unchanged in Hindi technical timing labels; it is a measurement symbol rather than a word.",
+      "evidence": "Current canonical English settings.weig.unit.secondShort = \"s\". The SI seconds symbol s is unchanged in Hindi technical timing labels; it is a measurement symbol rather than a word. Verifiable owner: webui/private/scripts/i18n.js and native locale selector / SI or runtime display contract."
+    },
+    "common.na": {
+      "classification": "intentional_english",
+      "reason": "N/A is a compact diagnostic marker for unavailable or inapplicable values and is not sentence copy.",
+      "evidence": "Current canonical English common.na = \"N/A\". N/A is a compact diagnostic marker for unavailable or inapplicable values and is not sentence copy. Verifiable owner: webui/private/scripts/i18n.js and native locale selector / SI or runtime display contract."
+    },
+    "header.blog": {
+      "classification": "intentional_english",
+      "reason": "WeiG Share Blog is the proper official publication name and is kept verbatim.",
+      "evidence": "Current canonical English header.blog = \"WeiG Share Blog\". WeiG Share Blog is the proper official publication name and is kept verbatim. Verifiable owner: webui/private/scripts/i18n.js and native locale selector / SI or runtime display contract."
+    },
+    "connection.environment.qb": {
+      "classification": "intentional_english",
+      "reason": "qBittorrent is the exact product identifier prefix for the {value} diagnostic; do not translate the product name.",
+      "evidence": "Current canonical English connection.environment.qb = \"qBittorrent: {value}\". qBittorrent is the exact product identifier prefix for the {value} diagnostic; do not translate the product name. Verifiable owner: webui/private/scripts/i18n.js and native locale selector / SI or runtime display contract."
+    },
+    "connection.environment.webapi": {
+      "classification": "intentional_english",
+      "reason": "WebAPI is the exact API identity prefix for the {value} diagnostic; do not translate the interface name.",
+      "evidence": "Current canonical English connection.environment.webapi = \"WebAPI: {value}\". WebAPI is the exact API identity prefix for the {value} diagnostic; do not translate the interface name. Verifiable owner: webui/private/scripts/i18n.js and native locale selector / SI or runtime display contract."
+    },
+    "settings.update.channelDev": {
+      "classification": "intentional_english",
+      "reason": "Dev is the exact identifier for the development release channel, not a translatable description.",
+      "evidence": "Current canonical English settings.update.channelDev = \"Dev\". Dev is the exact identifier for the development release channel, not a translatable description. Verifiable owner: webui/private/scripts/i18n.js and native locale selector / SI or runtime display contract."
+    },
+    "library.range": {
+      "classification": "intentional_english",
+      "reason": "This is a placeholder-only numeric range {start}–{end} / {total}; retain the punctuation and tokens exactly across locales.",
+      "evidence": "Current canonical English library.range = \"{start}–{end} / {total}\". This is a placeholder-only numeric range {start}–{end} / {total}; retain the punctuation and tokens exactly across locales. Verifiable owner: webui/private/scripts/i18n.js and native locale selector / SI or runtime display contract."
+    },
+    "language.zh-TW": {
+      "classification": "intentional_english",
+      "reason": "The language picker shows the Traditional Chinese locale's written self-name in Chinese rather than a Hindi exonym.",
+      "evidence": "Current canonical English language.zh-TW = \"繁體中文\". The language picker shows the Traditional Chinese locale's written self-name in Chinese rather than a Hindi exonym. Verifiable owner: webui/private/scripts/i18n.js and native locale selector / SI or runtime display contract."
+    },
+    "language.zh-HK": {
+      "classification": "intentional_english",
+      "reason": "The language picker shows the Hong Kong Chinese locale's native written self-name, not translated Hindi text.",
+      "evidence": "Current canonical English language.zh-HK = \"香港正體字\". The language picker shows the Hong Kong Chinese locale's native written self-name, not translated Hindi text. Verifiable owner: webui/private/scripts/i18n.js and native locale selector / SI or runtime display contract."
+    }
+  }
+}

@@ -308,6 +308,15 @@ assert.equal(uzbekScope.counts.qb_owned,7);
 assert.equal(uzbekScope.unresolvedKeys,0);
 assert.equal(uzbekScope.draftScopeComplete,true);
 assert.equal(uzbekScope.humanApproved,false,'Uzbek AI draft is not native-language approval');
+const hindiScope=getTranslationDraftScopeWorklist('hi-IN');
+assert.equal(hindiScope.referenceKeys,673);
+assert.equal(hindiScope.canonicalEnglishKeys,693);
+assert.equal(hindiScope.counts.localized,657);
+assert.equal(hindiScope.counts.intentional_english,9);
+assert.equal(hindiScope.counts.qb_owned,7);
+assert.equal(hindiScope.unresolvedKeys,0);
+assert.equal(hindiScope.draftScopeComplete,true);
+assert.equal(hindiScope.humanApproved,false,'Hindi AI draft is not native-language approval');
 for(const field of ['name','size','progress','download','upload','status','categoryColumn']){
   assert.equal(uzbekScope.items.find(item=>item.key==='torrent.'+field)?.classification,'qb_owned',
     'The qBittorrent source must own torrent column '+field);
