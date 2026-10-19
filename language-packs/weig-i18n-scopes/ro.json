@@ -1,0 +1,54 @@
+{
+  "schemaVersion": 1,
+  "source": "WeiG-locale-draft-scope-decisions",
+  "locale": "ro",
+  "englishSourceSha256": "d0d6412654389081013f556747436862ef4c65ec6cc3410c267596055fd88959",
+  "simplifiedChineseSourceSha256": "fcaf060489856126fe909890100b8f3246c16231f139c86ddfaa8ee4a41eb627",
+  "decisions": {
+    "settings.size.standard": {
+      "classification": "intentional_english",
+      "reason": "The standard size preset uses Standard as an established Romanian UI loanword.",
+      "evidence": "English canonical settings.size.standard is a UI size preset, not explanatory English prose."
+    },
+    "settings.weig.unit.secondShort": {
+      "classification": "intentional_english",
+      "reason": "The SI symbol s for seconds remains unchanged in Romanian.",
+      "evidence": "English canonical settings.weig.unit.secondShort is the international abbreviated unit s."
+    },
+    "common.na": {
+      "classification": "intentional_english",
+      "reason": "The compact N/A marker intentionally leaves ambiguity between unavailable and not applicable.",
+      "evidence": "English canonical common.na is a standalone generic status marker, not a full sentence."
+    },
+    "header.blog": {
+      "classification": "intentional_english",
+      "reason": "WeiG Share Blog is the branded publication name; translating it changes the brand.",
+      "evidence": "English canonical header.blog contains the product-linked proper name WeiG Share Blog."
+    },
+    "connection.environment.qb": {
+      "classification": "intentional_english",
+      "reason": "qBittorrent is a product name followed by a dynamic interpolation; retain its label.",
+      "evidence": "English canonical connection.environment.qb uses the product name and {value} exactly."
+    },
+    "connection.environment.webapi": {
+      "classification": "intentional_english",
+      "reason": "WebAPI is a technical identifier that remains unchanged with the dynamic value.",
+      "evidence": "English canonical connection.environment.webapi is WebAPI: {value}, a technical name and placeholder."
+    },
+    "language.zh-TW": {
+      "classification": "intentional_english",
+      "reason": "The native Chinese language self-name should remain in its original script.",
+      "evidence": "English canonical language.zh-TW is the original autonym 繁體中文."
+    },
+    "language.zh-HK": {
+      "classification": "intentional_english",
+      "reason": "The Hong Kong Chinese autonym should remain in its original script.",
+      "evidence": "English canonical language.zh-HK is the original autonym 香港正體字."
+    },
+    "instances.online": {
+      "classification": "intentional_english",
+      "reason": "Online is an established Romanian software UI connectivity term, not proof of login.",
+      "evidence": "English canonical instances.online labels an instance visibility status; copying a login term would change its meaning."
+    }
+  }
+}
