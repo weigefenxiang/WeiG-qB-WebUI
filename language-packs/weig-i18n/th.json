@@ -621,7 +621,7 @@
     "settings.about.reportBug": "รายงานปัญหา",
     "library.range": "รายการ {start}–{end} จากทั้งหมด {total}",
     "dialog.add.eyebrow": "เพิ่มทอร์เรนต์",
-    "dialog.delete.eyebrow": "การดำเนินการที่มีความเสี่ยง",
+    "dialog.delete.eyebrow": "อันตราย",
     "dialog.action.eyebrow": "การดำเนินการ",
     "settings.weig.option.small": "เล็ก (-2px)",
     "settings.weig.option.xsmall": "เล็กมาก (-3px)",
