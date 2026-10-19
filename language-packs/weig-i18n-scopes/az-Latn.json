@@ -1,0 +1,64 @@
+{
+  "schemaVersion": 1,
+  "source": "WeiG-locale-draft-scope-decisions",
+  "locale": "az-Latn",
+  "englishSourceSha256": "d0d6412654389081013f556747436862ef4c65ec6cc3410c267596055fd88959",
+  "simplifiedChineseSourceSha256": "fcaf060489856126fe909890100b8f3246c16231f139c86ddfaa8ee4a41eb627",
+  "decisions": {
+    "logs.ui.normal": {
+      "classification": "intentional_english",
+      "reason": "Normal is an established Azerbaijani technical severity label and need not be duplicated.",
+      "evidence": "English canonical logs.ui.normal = \"Normal\"; preserving an exact established technical marker, brand, language autonym or named release channel."
+    },
+    "file.normal": {
+      "classification": "intentional_english",
+      "reason": "Normal is an established Azerbaijani priority label.",
+      "evidence": "English canonical file.normal = \"Normal\"; preserving an exact established technical marker, brand, language autonym or named release channel."
+    },
+    "settings.weig.unit.secondShort": {
+      "classification": "intentional_english",
+      "reason": "The SI unit s for seconds is language-neutral.",
+      "evidence": "English canonical settings.weig.unit.secondShort = \"s\"; preserving an exact established technical marker, brand, language autonym or named release channel."
+    },
+    "common.na": {
+      "classification": "intentional_english",
+      "reason": "N/A is a neutral unavailable-value diagnostic symbol.",
+      "evidence": "English canonical common.na = \"N/A\"; preserving an exact established technical marker, brand, language autonym or named release channel."
+    },
+    "header.blog": {
+      "classification": "intentional_english",
+      "reason": "WeiG Share Blog is an exact branded site name.",
+      "evidence": "English canonical header.blog = \"WeiG Share Blog\"; preserving an exact established technical marker, brand, language autonym or named release channel."
+    },
+    "connection.environment.qb": {
+      "classification": "intentional_english",
+      "reason": "The qBittorrent brand is a diagnostic label followed by the runtime value.",
+      "evidence": "English canonical connection.environment.qb = \"qBittorrent: {value}\"; preserving an exact established technical marker, brand, language autonym or named release channel."
+    },
+    "connection.environment.webapi": {
+      "classification": "intentional_english",
+      "reason": "WebAPI is the exact diagnostic protocol/API identifier.",
+      "evidence": "English canonical connection.environment.webapi = \"WebAPI: {value}\"; preserving an exact established technical marker, brand, language autonym or named release channel."
+    },
+    "settings.update.channelDev": {
+      "classification": "intentional_english",
+      "reason": "Dev is the canonical named development release channel.",
+      "evidence": "English canonical settings.update.channelDev = \"Dev\"; preserving an exact established technical marker, brand, language autonym or named release channel."
+    },
+    "language.zh-TW": {
+      "classification": "intentional_english",
+      "reason": "The language selector preserves the native Traditional Chinese autonym.",
+      "evidence": "English canonical language.zh-TW = \"繁體中文\"; preserving an exact established technical marker, brand, language autonym or named release channel."
+    },
+    "language.zh-HK": {
+      "classification": "intentional_english",
+      "reason": "The language selector preserves the native Hong Kong Traditional Chinese autonym.",
+      "evidence": "English canonical language.zh-HK = \"香港正體字\"; preserving an exact established technical marker, brand, language autonym or named release channel."
+    },
+    "settings.weig.density.torrentExample": {
+      "classification": "intentional_english",
+      "reason": "Torrent is an accepted Azerbaijani technical loanword and unchanged sample noun.",
+      "evidence": "English canonical settings.weig.density.torrentExample = \"Torrent\"; preserving an exact established technical marker, brand, language autonym or named release channel."
+    }
+  }
+}
