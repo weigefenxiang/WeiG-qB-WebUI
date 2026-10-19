@@ -1,0 +1,44 @@
+{
+  "schemaVersion": 1,
+  "source": "WeiG-locale-draft-scope-decisions",
+  "locale": "th",
+  "englishSourceSha256": "d0d6412654389081013f556747436862ef4c65ec6cc3410c267596055fd88959",
+  "simplifiedChineseSourceSha256": "fcaf060489856126fe909890100b8f3246c16231f139c86ddfaa8ee4a41eb627",
+  "decisions": {
+    "settings.weig.unit.secondShort": {
+      "classification": "intentional_english",
+      "reason": "The SI seconds symbol 's' is unchanged in Thai software readouts.",
+      "evidence": "English canonical settings.weig.unit.secondShort is the standalone universal SI duration symbol s."
+    },
+    "common.na": {
+      "classification": "intentional_english",
+      "reason": "N/A is a language-neutral technical missing/not-applicable value marker, while Thai alternatives imply a narrower meaning.",
+      "evidence": "English canonical common.na is exactly N/A in technical diagnostic contexts without a stated distinction."
+    },
+    "header.blog": {
+      "classification": "intentional_english",
+      "reason": "WeiG Share Blog is a proper publication name linked from the header and should retain its identity.",
+      "evidence": "English canonical header.blog names the linked WeiG Share Blog brand rather than generic 'Blog' UI text."
+    },
+    "connection.environment.qb": {
+      "classification": "intentional_english",
+      "reason": "qBittorrent is the exact application brand identifier, followed by a diagnostics field value.",
+      "evidence": "English canonical connection.environment.qb is qBittorrent: {value}, the qBittorrent product name followed by a raw value."
+    },
+    "connection.environment.webapi": {
+      "classification": "intentional_english",
+      "reason": "WebAPI is the exact API name and field marker, followed by an unmodified diagnostic variable.",
+      "evidence": "English canonical connection.environment.webapi is WebAPI: {value}, preserving the API's technical identity."
+    },
+    "language.zh-TW": {
+      "classification": "intentional_english",
+      "reason": "Language self-names remain in their own traditional Chinese script in the language chooser.",
+      "evidence": "English canonical language.zh-TW is the native label 繁體中文, not English prose."
+    },
+    "language.zh-HK": {
+      "classification": "intentional_english",
+      "reason": "The Hong Kong Chinese autonym must remain in its native-script original form.",
+      "evidence": "English canonical language.zh-HK is 香港正體字, the native script label for this selectable language."
+    }
+  }
+}
