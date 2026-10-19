@@ -1,0 +1,138 @@
+{
+  "schemaVersion": 1,
+  "source": "WeiG-locale-draft-scope-decisions",
+  "locale": "sv",
+  "englishSourceSha256": "d0d6412654389081013f556747436862ef4c65ec6cc3410c267596055fd88959",
+  "simplifiedChineseSourceSha256": "fcaf060489856126fe909890100b8f3246c16231f139c86ddfaa8ee4a41eb627",
+  "decisions": {
+    "torrent.name": {
+      "classification": "qb_owned",
+      "reason": "The version- and locale-aware qBittorrent torrent-column translation owner provides this column caption in the table and column picker; duplicating it in WeiG would override that owner.",
+      "evidence": "Current TorrentFieldRegistry FIELDS has 'name' and label(field) calls qbText('column.'+field.key,fallback).",
+      "ownerFile": "webui/private/scripts/torrent-fields.js",
+      "caller": "label(field) -> qbText('column.'+field.key,fallback), field.key='name'"
+    },
+    "torrent.size": {
+      "classification": "qb_owned",
+      "reason": "The version- and locale-aware qBittorrent torrent-column translation owner provides this column caption in the table and column picker; duplicating it in WeiG would override that owner.",
+      "evidence": "Current TorrentFieldRegistry FIELDS has 'size' and label(field) calls qbText('column.'+field.key,fallback).",
+      "ownerFile": "webui/private/scripts/torrent-fields.js",
+      "caller": "label(field) -> qbText('column.'+field.key,fallback), field.key='size'"
+    },
+    "torrent.progress": {
+      "classification": "qb_owned",
+      "reason": "The version- and locale-aware qBittorrent torrent-column translation owner provides this column caption in the table and column picker; duplicating it in WeiG would override that owner.",
+      "evidence": "Current TorrentFieldRegistry FIELDS has 'progress' and label(field) calls qbText('column.'+field.key,fallback).",
+      "ownerFile": "webui/private/scripts/torrent-fields.js",
+      "caller": "label(field) -> qbText('column.'+field.key,fallback), field.key='progress'"
+    },
+    "torrent.download": {
+      "classification": "qb_owned",
+      "reason": "The version- and locale-aware qBittorrent torrent-column translation owner provides this column caption in the table and column picker; duplicating it in WeiG would override that owner.",
+      "evidence": "Current TorrentFieldRegistry FIELDS has 'dlspeed' and label(field) calls qbText('column.'+field.key,fallback).",
+      "ownerFile": "webui/private/scripts/torrent-fields.js",
+      "caller": "label(field) -> qbText('column.'+field.key,fallback), field.key='dlspeed'"
+    },
+    "torrent.upload": {
+      "classification": "qb_owned",
+      "reason": "The version- and locale-aware qBittorrent torrent-column translation owner provides this column caption in the table and column picker; duplicating it in WeiG would override that owner.",
+      "evidence": "Current TorrentFieldRegistry FIELDS has 'upspeed' and label(field) calls qbText('column.'+field.key,fallback).",
+      "ownerFile": "webui/private/scripts/torrent-fields.js",
+      "caller": "label(field) -> qbText('column.'+field.key,fallback), field.key='upspeed'"
+    },
+    "torrent.status": {
+      "classification": "qb_owned",
+      "reason": "The version- and locale-aware qBittorrent torrent-column translation owner provides this column caption in the table and column picker; duplicating it in WeiG would override that owner.",
+      "evidence": "Current TorrentFieldRegistry FIELDS has 'state' and label(field) calls qbText('column.'+field.key,fallback).",
+      "ownerFile": "webui/private/scripts/torrent-fields.js",
+      "caller": "label(field) -> qbText('column.'+field.key,fallback), field.key='state'"
+    },
+    "torrent.categoryColumn": {
+      "classification": "qb_owned",
+      "reason": "The version- and locale-aware qBittorrent torrent-column translation owner provides this column caption in the table and column picker; duplicating it in WeiG would override that owner.",
+      "evidence": "Current TorrentFieldRegistry FIELDS has 'category' and label(field) calls qbText('column.'+field.key,fallback).",
+      "ownerFile": "webui/private/scripts/torrent-fields.js",
+      "caller": "label(field) -> qbText('column.'+field.key,fallback), field.key='category'"
+    },
+    "logs.ui.normal": {
+      "classification": "intentional_english",
+      "reason": "Normal is also the naturally used Swedish short severity/appearance label; replacing it would distort this preset.",
+      "evidence": "English canonical logs.ui.normal = \"Normal\"; Swedish software/technical UI intentionally uses the identical form or native autonym, avoiding an invented translation."
+    },
+    "file.normal": {
+      "classification": "intentional_english",
+      "reason": "Normal is a conventional Swedish priority label, unchanged in spelling.",
+      "evidence": "English canonical file.normal = \"Normal\"; Swedish software/technical UI intentionally uses the identical form or native autonym, avoiding an invented translation."
+    },
+    "settings.size.standard": {
+      "classification": "intentional_english",
+      "reason": "Standard is the common unchanged Swedish preset for the default font size.",
+      "evidence": "English canonical settings.size.standard = \"Standard\"; Swedish software/technical UI intentionally uses the identical form or native autonym, avoiding an invented translation."
+    },
+    "settings.density.standard": {
+      "classification": "intentional_english",
+      "reason": "Standard is the natural short Swedish density preset.",
+      "evidence": "English canonical settings.density.standard = \"Standard\"; Swedish software/technical UI intentionally uses the identical form or native autonym, avoiding an invented translation."
+    },
+    "settings.weig.option.standard": {
+      "classification": "intentional_english",
+      "reason": "Standard is the conventional Swedish UI preset word.",
+      "evidence": "English canonical settings.weig.option.standard = \"Standard\"; Swedish software/technical UI intentionally uses the identical form or native autonym, avoiding an invented translation."
+    },
+    "settings.weig.unit.secondShort": {
+      "classification": "intentional_english",
+      "reason": "The SI symbol s for seconds is invariant in Swedish technical durations.",
+      "evidence": "English canonical settings.weig.unit.secondShort = \"s\"; Swedish software/technical UI intentionally uses the identical form or native autonym, avoiding an invented translation."
+    },
+    "common.na": {
+      "classification": "intentional_english",
+      "reason": "N/A is a neutral technical no-value marker; a Swedish paraphrase would impose an unstated cause.",
+      "evidence": "English canonical common.na = \"N/A\"; Swedish software/technical UI intentionally uses the identical form or native autonym, avoiding an invented translation."
+    },
+    "header.blog": {
+      "classification": "intentional_english",
+      "reason": "WeiG Share Blog is the linked branded publication title.",
+      "evidence": "English canonical header.blog = \"WeiG Share Blog\"; Swedish software/technical UI intentionally uses the identical form or native autonym, avoiding an invented translation."
+    },
+    "connection.environment.qb": {
+      "classification": "intentional_english",
+      "reason": "qBittorrent is an exact product name in the diagnostic prefix followed by a value.",
+      "evidence": "English canonical connection.environment.qb = \"qBittorrent: {value}\"; Swedish software/technical UI intentionally uses the identical form or native autonym, avoiding an invented translation."
+    },
+    "connection.environment.webapi": {
+      "classification": "intentional_english",
+      "reason": "WebAPI is the API's proper identifier preceding a diagnostic value.",
+      "evidence": "English canonical connection.environment.webapi = \"WebAPI: {value}\"; Swedish software/technical UI intentionally uses the identical form or native autonym, avoiding an invented translation."
+    },
+    "feedback.info": {
+      "classification": "intentional_english",
+      "reason": "Information is a naturally identical Swedish notification heading.",
+      "evidence": "English canonical feedback.info = \"Information\"; Swedish software/technical UI intentionally uses the identical form or native autonym, avoiding an invented translation."
+    },
+    "settings.update.channelDev": {
+      "classification": "intentional_english",
+      "reason": "Dev is the exact concise name of the development release channel, not generic prose.",
+      "evidence": "English canonical settings.update.channelDev = \"Dev\"; Swedish software/technical UI intentionally uses the identical form or native autonym, avoiding an invented translation."
+    },
+    "language.zh-TW": {
+      "classification": "intentional_english",
+      "reason": "The language chooser retains the traditional-Chinese language option's autonym in its own script.",
+      "evidence": "English canonical language.zh-TW = \"繁體中文\"; Swedish software/technical UI intentionally uses the identical form or native autonym, avoiding an invented translation."
+    },
+    "language.zh-HK": {
+      "classification": "intentional_english",
+      "reason": "The Hong Kong Chinese autonym must stay in its original Chinese script.",
+      "evidence": "English canonical language.zh-HK = \"香港正體字\"; Swedish software/technical UI intentionally uses the identical form or native autonym, avoiding an invented translation."
+    },
+    "settings.weig.density.torrentExample": {
+      "classification": "intentional_english",
+      "reason": "Torrent is also the established Swedish BitTorrent loanword in a one-word example.",
+      "evidence": "English canonical settings.weig.density.torrentExample = \"Torrent\"; Swedish software/technical UI intentionally uses the identical form or native autonym, avoiding an invented translation."
+    },
+    "instances.online": {
+      "classification": "intentional_english",
+      "reason": "Online is a standard unchanged Swedish connectivity-status label.",
+      "evidence": "English canonical instances.online = \"Online\"; Swedish software/technical UI intentionally uses the identical form or native autonym, avoiding an invented translation."
+    }
+  }
+}
