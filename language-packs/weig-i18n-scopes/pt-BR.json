@@ -1,0 +1,79 @@
+{
+  "schemaVersion": 1,
+  "source": "WeiG-locale-draft-scope-decisions",
+  "locale": "pt-BR",
+  "englishSourceSha256": "d0d6412654389081013f556747436862ef4c65ec6cc3410c267596055fd88959",
+  "simplifiedChineseSourceSha256": "fcaf060489856126fe909890100b8f3246c16231f139c86ddfaa8ee4a41eb627",
+  "decisions": {
+    "nav.torrents": {
+      "classification": "intentional_english",
+      "reason": "Torrents is the commonly used Brazilian Portuguese BitTorrent item name.",
+      "evidence": "English canonical nav.torrents is the standalone category term Torrents, also used unchanged in Brazilian Portuguese UI."
+    },
+    "sidebar.torrents": {
+      "classification": "intentional_english",
+      "reason": "TORRENTS is the native borrowed technical label in uppercase navigation.",
+      "evidence": "English canonical sidebar.torrents contains the uppercase technical loanword TORRENTS."
+    },
+    "logs.ui.normal": {
+      "classification": "intentional_english",
+      "reason": "Normal is the correct Brazilian Portuguese adjective for this display option.",
+      "evidence": "English canonical logs.ui.normal is a compact display-setting adjective Normal."
+    },
+    "stats.torrent": {
+      "classification": "intentional_english",
+      "reason": "Torrents is already the standard Brazilian Portuguese BitTorrent plural.",
+      "evidence": "English canonical stats.torrent labels torrent count using Torrents."
+    },
+    "file.normal": {
+      "classification": "intentional_english",
+      "reason": "Normal is the correct Brazilian Portuguese file-priority label.",
+      "evidence": "English canonical file.normal is a standalone priority choice Normal."
+    },
+    "settings.interface": {
+      "classification": "intentional_english",
+      "reason": "Interface is identically spelled and idiomatic in Brazilian Portuguese.",
+      "evidence": "English canonical settings.interface is the common Portuguese UI noun Interface."
+    },
+    "settings.weig.interface.title": {
+      "classification": "intentional_english",
+      "reason": "Interface is already the common Portuguese heading for display controls.",
+      "evidence": "English canonical settings.weig.interface.title is the heading Interface."
+    },
+    "settings.weig.unit.secondShort": {
+      "classification": "intentional_english",
+      "reason": "The SI seconds unit symbol s remains unchanged in Portuguese.",
+      "evidence": "English canonical settings.weig.unit.secondShort is the universal unit symbol s."
+    },
+    "common.na": {
+      "classification": "intentional_english",
+      "reason": "N/A is a widely recognized technical no-data marker and avoids narrowing its meaning.",
+      "evidence": "English canonical common.na is the generic technical marker N/A."
+    },
+    "header.blog": {
+      "classification": "intentional_english",
+      "reason": "WeiG Share Blog is the proper brand name of the publication.",
+      "evidence": "English canonical header.blog contains the linked publication's branded name."
+    },
+    "connection.environment.qb": {
+      "classification": "intentional_english",
+      "reason": "The branded qBittorrent label followed by a value should stay unchanged.",
+      "evidence": "English canonical connection.environment.qb is qBittorrent: {value}."
+    },
+    "connection.environment.webapi": {
+      "classification": "intentional_english",
+      "reason": "WebAPI is a technical API identifier followed by a value.",
+      "evidence": "English canonical connection.environment.webapi is WebAPI: {value}."
+    },
+    "language.zh-TW": {
+      "classification": "intentional_english",
+      "reason": "Language autonyms should remain in their original Chinese script.",
+      "evidence": "English canonical language.zh-TW is the original autonym 繁體中文."
+    },
+    "language.zh-HK": {
+      "classification": "intentional_english",
+      "reason": "The Hong Kong Chinese autonym must retain its native orthography.",
+      "evidence": "English canonical language.zh-HK is 香港正體字."
+    }
+  }
+}
