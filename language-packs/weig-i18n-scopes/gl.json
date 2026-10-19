@@ -1,0 +1,143 @@
+{
+  "schemaVersion": 1,
+  "source": "WeiG-locale-draft-scope-decisions",
+  "locale": "gl",
+  "englishSourceSha256": "d0d6412654389081013f556747436862ef4c65ec6cc3410c267596055fd88959",
+  "simplifiedChineseSourceSha256": "fcaf060489856126fe909890100b8f3246c16231f139c86ddfaa8ee4a41eb627",
+  "decisions": {
+    "torrent.name": {
+      "classification": "qb_owned",
+      "reason": "qBittorrent owns this locale/version-aware torrent table and column-selector label.",
+      "evidence": "TorrentFieldRegistry FIELDS includes field.key='name' and label(field) calls qbText('column.'+field.key,fallback).",
+      "ownerFile": "webui/private/scripts/torrent-fields.js",
+      "caller": "label(field) -> qbText('column.'+field.key,fallback), field.key='name'"
+    },
+    "torrent.size": {
+      "classification": "qb_owned",
+      "reason": "qBittorrent owns this locale/version-aware torrent table and column-selector label.",
+      "evidence": "TorrentFieldRegistry FIELDS includes field.key='size' and label(field) calls qbText('column.'+field.key,fallback).",
+      "ownerFile": "webui/private/scripts/torrent-fields.js",
+      "caller": "label(field) -> qbText('column.'+field.key,fallback), field.key='size'"
+    },
+    "torrent.progress": {
+      "classification": "qb_owned",
+      "reason": "qBittorrent owns this locale/version-aware torrent table and column-selector label.",
+      "evidence": "TorrentFieldRegistry FIELDS includes field.key='progress' and label(field) calls qbText('column.'+field.key,fallback).",
+      "ownerFile": "webui/private/scripts/torrent-fields.js",
+      "caller": "label(field) -> qbText('column.'+field.key,fallback), field.key='progress'"
+    },
+    "torrent.download": {
+      "classification": "qb_owned",
+      "reason": "qBittorrent owns this locale/version-aware torrent table and column-selector label.",
+      "evidence": "TorrentFieldRegistry FIELDS includes field.key='dlspeed' and label(field) calls qbText('column.'+field.key,fallback).",
+      "ownerFile": "webui/private/scripts/torrent-fields.js",
+      "caller": "label(field) -> qbText('column.'+field.key,fallback), field.key='dlspeed'"
+    },
+    "torrent.upload": {
+      "classification": "qb_owned",
+      "reason": "qBittorrent owns this locale/version-aware torrent table and column-selector label.",
+      "evidence": "TorrentFieldRegistry FIELDS includes field.key='upspeed' and label(field) calls qbText('column.'+field.key,fallback).",
+      "ownerFile": "webui/private/scripts/torrent-fields.js",
+      "caller": "label(field) -> qbText('column.'+field.key,fallback), field.key='upspeed'"
+    },
+    "torrent.status": {
+      "classification": "qb_owned",
+      "reason": "qBittorrent owns this locale/version-aware torrent table and column-selector label.",
+      "evidence": "TorrentFieldRegistry FIELDS includes field.key='state' and label(field) calls qbText('column.'+field.key,fallback).",
+      "ownerFile": "webui/private/scripts/torrent-fields.js",
+      "caller": "label(field) -> qbText('column.'+field.key,fallback), field.key='state'"
+    },
+    "torrent.categoryColumn": {
+      "classification": "qb_owned",
+      "reason": "qBittorrent owns this locale/version-aware torrent table and column-selector label.",
+      "evidence": "TorrentFieldRegistry FIELDS includes field.key='category' and label(field) calls qbText('column.'+field.key,fallback).",
+      "ownerFile": "webui/private/scripts/torrent-fields.js",
+      "caller": "label(field) -> qbText('column.'+field.key,fallback), field.key='category'"
+    },
+    "nav.torrents": {
+      "classification": "intentional_english",
+      "reason": "Torrents is the established Galician technical borrowing already used throughout the original gl UI as a category name.",
+      "evidence": "English canonical nav.torrents = \"Torrents\"; preserved term is an exact technical loanword, native-identical Galician label, SI symbol, brand, diagnostic marker, API identifier, named channel or original-language autonym. For torrents, existing gl.json uses 'torrents' in its originally authored navigation and library descriptions."
+    },
+    "sidebar.torrents": {
+      "classification": "intentional_english",
+      "reason": "TORRENTS is the same conventional borrowing in the all-caps torrent-navigation sidebar label.",
+      "evidence": "English canonical sidebar.torrents = \"TORRENTS\"; preserved term is an exact technical loanword, native-identical Galician label, SI symbol, brand, diagnostic marker, API identifier, named channel or original-language autonym. For torrents, existing gl.json uses 'torrents' in its originally authored navigation and library descriptions."
+    },
+    "logs.ui.normal": {
+      "classification": "intentional_english",
+      "reason": "Normal is also the natural Galician status adjective with exactly the same spelling as English.",
+      "evidence": "English canonical logs.ui.normal = \"Normal\"; preserved term is an exact technical loanword, native-identical Galician label, SI symbol, brand, diagnostic marker, API identifier, named channel or original-language autonym. For torrents, existing gl.json uses 'torrents' in its originally authored navigation and library descriptions."
+    },
+    "file.normal": {
+      "classification": "intentional_english",
+      "reason": "Normal is the native Galician adjective for the ordinary file-priority tier, identical to English.",
+      "evidence": "English canonical file.normal = \"Normal\"; preserved term is an exact technical loanword, native-identical Galician label, SI symbol, brand, diagnostic marker, API identifier, named channel or original-language autonym. For torrents, existing gl.json uses 'torrents' in its originally authored navigation and library descriptions."
+    },
+    "settings.interface": {
+      "classification": "intentional_english",
+      "reason": "Interface is the Galician UI term and has the same exact spelling as the English source.",
+      "evidence": "English canonical settings.interface = \"Interface\"; preserved term is an exact technical loanword, native-identical Galician label, SI symbol, brand, diagnostic marker, API identifier, named channel or original-language autonym. For torrents, existing gl.json uses 'torrents' in its originally authored navigation and library descriptions."
+    },
+    "settings.weig.interface.title": {
+      "classification": "intentional_english",
+      "reason": "Interface is the native Galician settings heading and intentionally shares the English spelling.",
+      "evidence": "English canonical settings.weig.interface.title = \"Interface\"; preserved term is an exact technical loanword, native-identical Galician label, SI symbol, brand, diagnostic marker, API identifier, named channel or original-language autonym. For torrents, existing gl.json uses 'torrents' in its originally authored navigation and library descriptions."
+    },
+    "settings.weig.unit.secondShort": {
+      "classification": "intentional_english",
+      "reason": "The SI symbol s for seconds is unchanged in Galician technical readouts.",
+      "evidence": "English canonical settings.weig.unit.secondShort = \"s\"; preserved term is an exact technical loanword, native-identical Galician label, SI symbol, brand, diagnostic marker, API identifier, named channel or original-language autonym. For torrents, existing gl.json uses 'torrents' in its originally authored navigation and library descriptions."
+    },
+    "common.na": {
+      "classification": "intentional_english",
+      "reason": "N/A is the unchanged diagnostic marker for missing or inapplicable values.",
+      "evidence": "English canonical common.na = \"N/A\"; preserved term is an exact technical loanword, native-identical Galician label, SI symbol, brand, diagnostic marker, API identifier, named channel or original-language autonym. For torrents, existing gl.json uses 'torrents' in its originally authored navigation and library descriptions."
+    },
+    "detail.secondary.total": {
+      "classification": "intentional_english",
+      "reason": "Total is also the naturally spelled Galician summary-label word.",
+      "evidence": "English canonical detail.secondary.total = \"total\"; preserved term is an exact technical loanword, native-identical Galician label, SI symbol, brand, diagnostic marker, API identifier, named channel or original-language autonym. For torrents, existing gl.json uses 'torrents' in its originally authored navigation and library descriptions."
+    },
+    "header.blog": {
+      "classification": "intentional_english",
+      "reason": "WeiG Share Blog is the branded publication name, not a phrase to translate.",
+      "evidence": "English canonical header.blog = \"WeiG Share Blog\"; preserved term is an exact technical loanword, native-identical Galician label, SI symbol, brand, diagnostic marker, API identifier, named channel or original-language autonym. For torrents, existing gl.json uses 'torrents' in its originally authored navigation and library descriptions."
+    },
+    "connection.environment.qb": {
+      "classification": "intentional_english",
+      "reason": "qBittorrent is the exact product-name prefix preceding {value}, not ordinary UI prose.",
+      "evidence": "English canonical connection.environment.qb = \"qBittorrent: {value}\"; preserved term is an exact technical loanword, native-identical Galician label, SI symbol, brand, diagnostic marker, API identifier, named channel or original-language autonym. For torrents, existing gl.json uses 'torrents' in its originally authored navigation and library descriptions."
+    },
+    "connection.environment.webapi": {
+      "classification": "intentional_english",
+      "reason": "WebAPI is the exact interface-name prefix preceding {value}.",
+      "evidence": "English canonical connection.environment.webapi = \"WebAPI: {value}\"; preserved term is an exact technical loanword, native-identical Galician label, SI symbol, brand, diagnostic marker, API identifier, named channel or original-language autonym. For torrents, existing gl.json uses 'torrents' in its originally authored navigation and library descriptions."
+    },
+    "settings.update.channelDev": {
+      "classification": "intentional_english",
+      "reason": "Dev is the canonical named development update channel, distinct from translated development-build prose.",
+      "evidence": "English canonical settings.update.channelDev = \"Dev\"; preserved term is an exact technical loanword, native-identical Galician label, SI symbol, brand, diagnostic marker, API identifier, named channel or original-language autonym. For torrents, existing gl.json uses 'torrents' in its originally authored navigation and library descriptions."
+    },
+    "language.zh-TW": {
+      "classification": "intentional_english",
+      "reason": "The language picker retains the Traditional Chinese language's own original written autonym.",
+      "evidence": "English canonical language.zh-TW = \"繁體中文\"; preserved term is an exact technical loanword, native-identical Galician label, SI symbol, brand, diagnostic marker, API identifier, named channel or original-language autonym. For torrents, existing gl.json uses 'torrents' in its originally authored navigation and library descriptions."
+    },
+    "language.zh-HK": {
+      "classification": "intentional_english",
+      "reason": "The language picker retains the Hong Kong Chinese original written autonym.",
+      "evidence": "English canonical language.zh-HK = \"香港正體字\"; preserved term is an exact technical loanword, native-identical Galician label, SI symbol, brand, diagnostic marker, API identifier, named channel or original-language autonym. For torrents, existing gl.json uses 'torrents' in its originally authored navigation and library descriptions."
+    },
+    "settings.weig.density.torrentExample": {
+      "classification": "intentional_english",
+      "reason": "Torrent is an established technical loanword used as the unchanged sample-item label in Galician torrent clients.",
+      "evidence": "English canonical settings.weig.density.torrentExample = \"Torrent\"; preserved term is an exact technical loanword, native-identical Galician label, SI symbol, brand, diagnostic marker, API identifier, named channel or original-language autonym. For torrents, existing gl.json uses 'torrents' in its originally authored navigation and library descriptions."
+    },
+    "instances.torrentCount": {
+      "classification": "intentional_english",
+      "reason": "The Galician count expression naturally retains the conventional technical loanword torrents after {count}, making the whole label identical to English.",
+      "evidence": "English canonical instances.torrentCount = \"{count} torrents\"; preserved term is an exact technical loanword, native-identical Galician label, SI symbol, brand, diagnostic marker, API identifier, named channel or original-language autonym. For torrents, existing gl.json uses 'torrents' in its originally authored navigation and library descriptions."
+    }
+  }
+}
