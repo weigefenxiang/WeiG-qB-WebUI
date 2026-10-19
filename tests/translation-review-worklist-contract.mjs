@@ -326,6 +326,15 @@ assert.equal(nepaliScope.counts.qb_owned,7);
 assert.equal(nepaliScope.unresolvedKeys,0);
 assert.equal(nepaliScope.draftScopeComplete,true);
 assert.equal(nepaliScope.humanApproved,false,'Nepali AI draft is not native-language approval');
+const greekScope=getTranslationDraftScopeWorklist('el');
+assert.equal(greekScope.referenceKeys,673);
+assert.equal(greekScope.canonicalEnglishKeys,693);
+assert.equal(greekScope.counts.localized,656);
+assert.equal(greekScope.counts.intentional_english,10);
+assert.equal(greekScope.counts.qb_owned,7);
+assert.equal(greekScope.unresolvedKeys,0);
+assert.equal(greekScope.draftScopeComplete,true);
+assert.equal(greekScope.humanApproved,false,'Greek AI draft is not native-language approval');
 for(const field of ['name','size','progress','download','upload','status','categoryColumn']){
  assert.equal(nepaliScope.items.find(item=>item.key==='torrent.'+field)?.classification,'qb_owned','qB owns torrent column '+field);
 }
