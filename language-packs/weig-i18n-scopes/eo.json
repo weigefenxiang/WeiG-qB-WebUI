@@ -1,0 +1,98 @@
+{
+  "schemaVersion": 1,
+  "source": "WeiG-locale-draft-scope-decisions",
+  "locale": "eo",
+  "englishSourceSha256": "d0d6412654389081013f556747436862ef4c65ec6cc3410c267596055fd88959",
+  "simplifiedChineseSourceSha256": "fcaf060489856126fe909890100b8f3246c16231f139c86ddfaa8ee4a41eb627",
+  "decisions": {
+    "torrent.name": {
+      "classification": "qb_owned",
+      "reason": "qBittorrent owns this locale/version-aware torrent table and column-selector label.",
+      "evidence": "TorrentFieldRegistry FIELDS includes field.key='name' and label(field) calls qbText('column.'+field.key,fallback).",
+      "ownerFile": "webui/private/scripts/torrent-fields.js",
+      "caller": "label(field) -> qbText('column.'+field.key,fallback), field.key='name'"
+    },
+    "torrent.size": {
+      "classification": "qb_owned",
+      "reason": "qBittorrent owns this locale/version-aware torrent table and column-selector label.",
+      "evidence": "TorrentFieldRegistry FIELDS includes field.key='size' and label(field) calls qbText('column.'+field.key,fallback).",
+      "ownerFile": "webui/private/scripts/torrent-fields.js",
+      "caller": "label(field) -> qbText('column.'+field.key,fallback), field.key='size'"
+    },
+    "torrent.progress": {
+      "classification": "qb_owned",
+      "reason": "qBittorrent owns this locale/version-aware torrent table and column-selector label.",
+      "evidence": "TorrentFieldRegistry FIELDS includes field.key='progress' and label(field) calls qbText('column.'+field.key,fallback).",
+      "ownerFile": "webui/private/scripts/torrent-fields.js",
+      "caller": "label(field) -> qbText('column.'+field.key,fallback), field.key='progress'"
+    },
+    "torrent.download": {
+      "classification": "qb_owned",
+      "reason": "qBittorrent owns this locale/version-aware torrent table and column-selector label.",
+      "evidence": "TorrentFieldRegistry FIELDS includes field.key='dlspeed' and label(field) calls qbText('column.'+field.key,fallback).",
+      "ownerFile": "webui/private/scripts/torrent-fields.js",
+      "caller": "label(field) -> qbText('column.'+field.key,fallback), field.key='dlspeed'"
+    },
+    "torrent.upload": {
+      "classification": "qb_owned",
+      "reason": "qBittorrent owns this locale/version-aware torrent table and column-selector label.",
+      "evidence": "TorrentFieldRegistry FIELDS includes field.key='upspeed' and label(field) calls qbText('column.'+field.key,fallback).",
+      "ownerFile": "webui/private/scripts/torrent-fields.js",
+      "caller": "label(field) -> qbText('column.'+field.key,fallback), field.key='upspeed'"
+    },
+    "torrent.status": {
+      "classification": "qb_owned",
+      "reason": "qBittorrent owns this locale/version-aware torrent table and column-selector label.",
+      "evidence": "TorrentFieldRegistry FIELDS includes field.key='state' and label(field) calls qbText('column.'+field.key,fallback).",
+      "ownerFile": "webui/private/scripts/torrent-fields.js",
+      "caller": "label(field) -> qbText('column.'+field.key,fallback), field.key='state'"
+    },
+    "torrent.categoryColumn": {
+      "classification": "qb_owned",
+      "reason": "qBittorrent owns this locale/version-aware torrent table and column-selector label.",
+      "evidence": "TorrentFieldRegistry FIELDS includes field.key='category' and label(field) calls qbText('column.'+field.key,fallback).",
+      "ownerFile": "webui/private/scripts/torrent-fields.js",
+      "caller": "label(field) -> qbText('column.'+field.key,fallback), field.key='category'"
+    },
+    "settings.weig.unit.secondShort": {
+      "classification": "intentional_english",
+      "reason": "The internationally standardized SI unit symbol s for seconds is the same in Esperanto.",
+      "evidence": "English canonical settings.weig.unit.secondShort = \"s\"; this is the source-bound exact product/brand/locale identifier, SI unit or technical channel used at runtime. Source: webui/private/scripts/i18n.js. The internationally standardized SI unit symbol s for seconds is the same in Esperanto."
+    },
+    "common.na": {
+      "classification": "intentional_english",
+      "reason": "N/A is a conventional compact diagnostic token for an inapplicable or unavailable value.",
+      "evidence": "English canonical common.na = \"N/A\"; this is the source-bound exact product/brand/locale identifier, SI unit or technical channel used at runtime. Source: webui/private/scripts/i18n.js. N/A is a conventional compact diagnostic token for an inapplicable or unavailable value."
+    },
+    "header.blog": {
+      "classification": "intentional_english",
+      "reason": "WeiG Share Blog is the official branded name of the publication and must remain unchanged.",
+      "evidence": "English canonical header.blog = \"WeiG Share Blog\"; this is the source-bound exact product/brand/locale identifier, SI unit or technical channel used at runtime. Source: webui/private/scripts/i18n.js. WeiG Share Blog is the official branded name of the publication and must remain unchanged."
+    },
+    "connection.environment.qb": {
+      "classification": "intentional_english",
+      "reason": "qBittorrent is the exact product-name prefix before {value} in a version diagnostic.",
+      "evidence": "English canonical connection.environment.qb = \"qBittorrent: {value}\"; this is the source-bound exact product/brand/locale identifier, SI unit or technical channel used at runtime. Source: webui/private/scripts/i18n.js. qBittorrent is the exact product-name prefix before {value} in a version diagnostic."
+    },
+    "connection.environment.webapi": {
+      "classification": "intentional_english",
+      "reason": "WebAPI is the exact technical interface identifier before the diagnostic {value}.",
+      "evidence": "English canonical connection.environment.webapi = \"WebAPI: {value}\"; this is the source-bound exact product/brand/locale identifier, SI unit or technical channel used at runtime. Source: webui/private/scripts/i18n.js. WebAPI is the exact technical interface identifier before the diagnostic {value}."
+    },
+    "settings.update.channelDev": {
+      "classification": "intentional_english",
+      "reason": "Dev is the exact named development release-channel ID, unlike surrounding Esperanto UI prose.",
+      "evidence": "English canonical settings.update.channelDev = \"Dev\"; this is the source-bound exact product/brand/locale identifier, SI unit or technical channel used at runtime. Source: webui/private/scripts/i18n.js. Dev is the exact named development release-channel ID, unlike surrounding Esperanto UI prose."
+    },
+    "language.zh-TW": {
+      "classification": "intentional_english",
+      "reason": "The language chooser displays this locale's Traditional Chinese native self-name rather than an Esperanto translation.",
+      "evidence": "English canonical language.zh-TW = \"繁體中文\"; this is the source-bound exact product/brand/locale identifier, SI unit or technical channel used at runtime. Source: webui/private/scripts/i18n.js. The language chooser displays this locale's Traditional Chinese native self-name rather than an Esperanto translation."
+    },
+    "language.zh-HK": {
+      "classification": "intentional_english",
+      "reason": "The language chooser displays the Hong Kong locale's own Chinese written self-name.",
+      "evidence": "English canonical language.zh-HK = \"香港正體字\"; this is the source-bound exact product/brand/locale identifier, SI unit or technical channel used at runtime. Source: webui/private/scripts/i18n.js. The language chooser displays the Hong Kong locale's own Chinese written self-name."
+    }
+  }
+}
