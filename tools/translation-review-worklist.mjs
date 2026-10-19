@@ -112,7 +112,8 @@ export function getTranslationDraftScopeWorklist(locale,{decisions}={}){
     canonicalEnglishKeys:canonicalEnglishTranslationKeys.length,
     counts,unresolvedKeys:unresolved.length,
     draftScopeComplete:unresolved.length===0,
-    humanApproved:data?.translationStatus==='approved',
+    // A release-quality approval is not evidence of native-speaker review.
+    distributionApproved:data?.translationStatus==='approved',
     englishOnlyOutOfScope:canonicalEnglishTranslationKeys.length-simplifiedChineseReferenceKeys.length,
     items,work:unresolved};
 }
