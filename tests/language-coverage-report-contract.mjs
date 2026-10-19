@@ -21,7 +21,7 @@ if(report.extendedOverlays.approved===report.extendedOverlays.expected){
 }
 const externalRecords=report.records.filter(item=>item.translationKeys!==null);
 assert.equal(externalRecords.length,48);
-for(const [locale,min] of [['be',677],['cs',678],['uk',680],['bg',680],['pt-BR',671],['oc',656],['eu',656],['hy',656],['ka',656],['kk',656],['mn_MN',656],['ltg',656],['ar',656],['fa',656],['th',669],['vi',657],['it',651],['nl',649],['ms-MY',656],['tr',665],['az-Latn',665],['lt',658],['et',657],['hu',657],['is',657],['lv-LV',658],['gl',649],['ca',641],['eo',658],['sq',655],['uz-Latn',660],['hi-IN',657],['ne-NP',660],['el',656],['nb',651],['bs',658],['sr-Latn',658],['sr',658],['id',662],['sv',650],['da',642],['pl',657],['fi',657],['ro',664],['sk',657],['hr',658],['sl',666]]){
+for(const [locale,min] of [['be',677],['cs',678],['uk',680],['bg',680],['pt-BR',671],['oc',656],['eu',656],['hy',656],['ka',656],['kk',656],['mn_MN',656],['ltg',656],['ar',656],['fa',656],['he',656],['th',669],['vi',657],['it',651],['nl',649],['ms-MY',656],['tr',665],['az-Latn',665],['lt',658],['et',657],['hu',657],['is',657],['lv-LV',658],['gl',649],['ca',641],['eo',658],['sq',655],['uz-Latn',660],['hi-IN',657],['ne-NP',660],['el',656],['nb',651],['bs',658],['sr-Latn',658],['sr',658],['id',662],['sv',650],['da',642],['pl',657],['fi',657],['ro',664],['sk',657],['hr',658],['sl',666]]){
   const record=externalRecords.find(item=>item.locale===locale||item.locale===locale.replace('_','-'));
   assert.ok(record,'Missing official language progress record for '+locale);
   assert.ok(record.translationKeys.supplied>=min,'Previously supplied translations for '+locale+' must not disappear');

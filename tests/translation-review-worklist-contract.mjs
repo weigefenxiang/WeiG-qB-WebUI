@@ -431,6 +431,21 @@ assert.equal(persianScope.counts.qb_owned,7);
 assert.equal(persianScope.unresolvedKeys,0);
 assert.equal(persianScope.draftScopeComplete,true);
 assert.equal(persianScope.humanApproved,false,'Persian AI draft is not native-language approval');
+// A78-239 Hebrew: complete 673-key AI draft; this is not native approval.
+const hebrewScope=getTranslationDraftScopeWorklist('he');
+assert.equal(hebrewScope.referenceKeys,673);
+assert.equal(hebrewScope.canonicalEnglishKeys,693);
+assert.equal(hebrewScope.counts.localized,656);
+assert.equal(hebrewScope.counts.intentional_english,10);
+assert.equal(hebrewScope.counts.qb_owned,7);
+assert.equal(hebrewScope.unresolvedKeys,0);
+assert.equal(hebrewScope.draftScopeComplete,true);
+assert.equal(hebrewScope.humanApproved,false,'Hebrew AI draft is not native-language approval');
+for(const field of ['name','size','progress','download','upload','status','categoryColumn']){
+  assert.equal(hebrewScope.items.find(item=>item.key==='torrent.'+field)?.classification,'qb_owned',
+    'qBittorrent source owns Hebrew torrent column '+field);
+}
+
 for(const field of ['name','size','progress','download','upload','status','categoryColumn']){
   assert.equal(persianScope.items.find(item=>item.key==='torrent.'+field)?.classification,'qb_owned',
     'qBittorrent source owns Persian torrent column '+field);
