@@ -629,7 +629,6 @@
     "common.copyManualHint": "O acesso automático à área de transferência está indisponível. Pressione e segure ou selecione o texto abaixo para copiá-lo.",
     "settings.update.channelDev": "Desenvolvimento",
     "settings.update.channelStable": "Estável",
-    "settings.update.channelVirtual": "Virtualizado",
     "settings.update.devWarningTitle": "Compilação de desenvolvimento",
     "settings.update.devWarning": "As compilações de desenvolvimento contêm as alterações mais recentes e podem apresentar erros ainda desconhecidos ou instabilidade. Use a versão estável quando a confiabilidade a longo prazo for mais importante.",
     "settings.update.rollbackMethod": "Método de reversão",

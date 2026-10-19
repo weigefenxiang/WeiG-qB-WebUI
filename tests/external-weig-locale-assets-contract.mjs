@@ -2,6 +2,14 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import path from 'node:path';
 import {inspectExtendedLocaleSources,expectedExtendedLocales,validateExternalOverlay,canonicalEnglishTranslationKeys,canonicalEnglishSourceSha256,canonicalEnglishMessages,rootOfExternalLocales,SOURCE_PRESERVED_UI_LABELS} from '../tools/external-weig-locale-assets.mjs';
+
+// The update identity caller uses the "virtual" channel for simulator metadata,
+// not a virtualized installation; pt-BR must inherit canonical "Virtual".
+const portugueseVirtual=JSON.parse(fs.readFileSync(path.join(rootOfExternalLocales,'pt-BR.json'),'utf8'));
+assert.equal(canonicalEnglishMessages['settings.update.channelVirtual'],'Virtual');
+assert.equal(Object.hasOwn(portugueseVirtual.messages,'settings.update.channelVirtual'),false,
+  'Brazilian Portuguese must not relabel the simulator Virtual channel as Virtualizado');
+
 const status=inspectExtendedLocaleSources();
 assert.equal(status.official,61);
 assert.equal(status.primary,10);
