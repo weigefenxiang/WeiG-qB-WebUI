@@ -53,12 +53,11 @@ const approvedMessages=Object.fromEntries(canonicalEnglishTranslationKeys.map(ke
   const source=canonicalEnglishMessages[key];
   return [key,source.replace(/^(\s*)/,(_whole,leading)=>leading+'Approved fixture ca: ')];
 }));
-delete approvedMessages['app.back'];
-delete approvedMessages['torrent.eta'];
-delete approvedMessages['settings.about.version'];
+const approvedFallback=['app.back',...Object.keys(SOURCE_PRESERVED_UI_LABELS)];
+for(const key of approvedFallback)delete approvedMessages[key];
 const approved={...valid,messages:approvedMessages,translationStatus:'approved',englishSourceSha256:canonicalEnglishSourceSha256,
-  reviewedEnglishFallbackKeys:['app.back','torrent.eta','settings.about.version']};
-assert.equal(validateExternalOverlay('ca',approved),canonicalEnglishTranslationKeys.length-3,'All canonical keys must be explicitly reviewed');
+  reviewedEnglishFallbackKeys:approvedFallback};
+assert.equal(validateExternalOverlay('ca',approved),canonicalEnglishTranslationKeys.length-approvedFallback.length,'All canonical keys must be explicitly reviewed');
 assert.throws(()=>validateExternalOverlay('ca',{...approved,englishSourceSha256:undefined}),/fingerprint mismatch/);
 assert.throws(()=>validateExternalOverlay('ca',{...approved,englishSourceSha256:'0'.repeat(64)}),/fingerprint mismatch/);
 assert.throws(()=>validateExternalOverlay('ca',{...approved,reviewedEnglishFallbackKeys:[]}),/unreviewed canonical/);
