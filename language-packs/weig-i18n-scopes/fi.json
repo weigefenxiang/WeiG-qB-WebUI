@@ -1,0 +1,103 @@
+{
+  "schemaVersion": 1,
+  "source": "WeiG-locale-draft-scope-decisions",
+  "locale": "fi",
+  "englishSourceSha256": "d0d6412654389081013f556747436862ef4c65ec6cc3410c267596055fd88959",
+  "simplifiedChineseSourceSha256": "fcaf060489856126fe909890100b8f3246c16231f139c86ddfaa8ee4a41eb627",
+  "decisions": {
+    "torrent.name": {
+      "classification": "qb_owned",
+      "reason": "The localized table and column-selector caption belongs to qBittorrent's source-version/locale-aware column registry, not a WeiG-owned translation overlay.",
+      "evidence": "TorrentFieldRegistry FIELDS defines 'name' and label(field) calls qbText('column.'+field.key,fallback).",
+      "ownerFile": "webui/private/scripts/torrent-fields.js",
+      "caller": "label(field) -> qbText('column.'+field.key,fallback), field.key='name'"
+    },
+    "torrent.size": {
+      "classification": "qb_owned",
+      "reason": "The localized table and column-selector caption belongs to qBittorrent's source-version/locale-aware column registry, not a WeiG-owned translation overlay.",
+      "evidence": "TorrentFieldRegistry FIELDS defines 'size' and label(field) calls qbText('column.'+field.key,fallback).",
+      "ownerFile": "webui/private/scripts/torrent-fields.js",
+      "caller": "label(field) -> qbText('column.'+field.key,fallback), field.key='size'"
+    },
+    "torrent.progress": {
+      "classification": "qb_owned",
+      "reason": "The localized table and column-selector caption belongs to qBittorrent's source-version/locale-aware column registry, not a WeiG-owned translation overlay.",
+      "evidence": "TorrentFieldRegistry FIELDS defines 'progress' and label(field) calls qbText('column.'+field.key,fallback).",
+      "ownerFile": "webui/private/scripts/torrent-fields.js",
+      "caller": "label(field) -> qbText('column.'+field.key,fallback), field.key='progress'"
+    },
+    "torrent.download": {
+      "classification": "qb_owned",
+      "reason": "The localized table and column-selector caption belongs to qBittorrent's source-version/locale-aware column registry, not a WeiG-owned translation overlay.",
+      "evidence": "TorrentFieldRegistry FIELDS defines 'dlspeed' and label(field) calls qbText('column.'+field.key,fallback).",
+      "ownerFile": "webui/private/scripts/torrent-fields.js",
+      "caller": "label(field) -> qbText('column.'+field.key,fallback), field.key='dlspeed'"
+    },
+    "torrent.upload": {
+      "classification": "qb_owned",
+      "reason": "The localized table and column-selector caption belongs to qBittorrent's source-version/locale-aware column registry, not a WeiG-owned translation overlay.",
+      "evidence": "TorrentFieldRegistry FIELDS defines 'upspeed' and label(field) calls qbText('column.'+field.key,fallback).",
+      "ownerFile": "webui/private/scripts/torrent-fields.js",
+      "caller": "label(field) -> qbText('column.'+field.key,fallback), field.key='upspeed'"
+    },
+    "torrent.status": {
+      "classification": "qb_owned",
+      "reason": "The localized table and column-selector caption belongs to qBittorrent's source-version/locale-aware column registry, not a WeiG-owned translation overlay.",
+      "evidence": "TorrentFieldRegistry FIELDS defines 'state' and label(field) calls qbText('column.'+field.key,fallback).",
+      "ownerFile": "webui/private/scripts/torrent-fields.js",
+      "caller": "label(field) -> qbText('column.'+field.key,fallback), field.key='state'"
+    },
+    "torrent.categoryColumn": {
+      "classification": "qb_owned",
+      "reason": "The localized table and column-selector caption belongs to qBittorrent's source-version/locale-aware column registry, not a WeiG-owned translation overlay.",
+      "evidence": "TorrentFieldRegistry FIELDS defines 'category' and label(field) calls qbText('column.'+field.key,fallback).",
+      "ownerFile": "webui/private/scripts/torrent-fields.js",
+      "caller": "label(field) -> qbText('column.'+field.key,fallback), field.key='category'"
+    },
+    "settings.weig.unit.secondShort": {
+      "classification": "intentional_english",
+      "reason": "The international SI abbreviation s is the correct compact seconds symbol in Finnish.",
+      "evidence": "English canonical settings.weig.unit.secondShort is \"s\"; preserve the exact technical abbreviation, brand/channel identifier or native autonym."
+    },
+    "common.na": {
+      "classification": "intentional_english",
+      "reason": "N/A is a neutral technical no-value marker without an upstream explanation of why the datum is missing.",
+      "evidence": "English canonical common.na is \"N/A\"; preserve the exact technical abbreviation, brand/channel identifier or native autonym."
+    },
+    "header.blog": {
+      "classification": "intentional_english",
+      "reason": "WeiG Share Blog is the linked publication's exact proper name, not ordinary Finnish copy.",
+      "evidence": "English canonical header.blog is \"WeiG Share Blog\"; preserve the exact technical abbreviation, brand/channel identifier or native autonym."
+    },
+    "connection.environment.qb": {
+      "classification": "intentional_english",
+      "reason": "qBittorrent is a product-name prefix for a raw runtime diagnostic value.",
+      "evidence": "English canonical connection.environment.qb is \"qBittorrent: {value}\"; preserve the exact technical abbreviation, brand/channel identifier or native autonym."
+    },
+    "connection.environment.webapi": {
+      "classification": "intentional_english",
+      "reason": "WebAPI is a proper API identifier followed by a diagnostic value.",
+      "evidence": "English canonical connection.environment.webapi is \"WebAPI: {value}\"; preserve the exact technical abbreviation, brand/channel identifier or native autonym."
+    },
+    "settings.update.channelDev": {
+      "classification": "intentional_english",
+      "reason": "Dev is the named development release channel; keep its established short identifier.",
+      "evidence": "English canonical settings.update.channelDev is \"Dev\"; preserve the exact technical abbreviation, brand/channel identifier or native autonym."
+    },
+    "language.zh-TW": {
+      "classification": "intentional_english",
+      "reason": "The language chooser preserves this option's self-name in original traditional-Chinese script.",
+      "evidence": "English canonical language.zh-TW is \"繁體中文\"; preserve the exact technical abbreviation, brand/channel identifier or native autonym."
+    },
+    "language.zh-HK": {
+      "classification": "intentional_english",
+      "reason": "The native written self-name of Hong Kong Chinese must stay in its original script.",
+      "evidence": "English canonical language.zh-HK is \"香港正體字\"; preserve the exact technical abbreviation, brand/channel identifier or native autonym."
+    },
+    "settings.weig.density.torrentExample": {
+      "classification": "intentional_english",
+      "reason": "Torrent is the established BitTorrent technical loanword shown alone as the preview's sample item.",
+      "evidence": "English canonical settings.weig.density.torrentExample is \"Torrent\"; preserve the exact technical abbreviation, brand/channel identifier or native autonym."
+    }
+  }
+}
