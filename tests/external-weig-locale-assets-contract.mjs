@@ -16,6 +16,10 @@ assert.equal(expectedExtendedLocales.includes('en'),false,'Core English is never
 assert.equal(expectedExtendedLocales.includes('zh-HK'),false,'Current Hong Kong sparse overlay belongs to bundled WeiG core, not external packs');
 const valid={schemaVersion:1,source:'WeiG-runtime-locale-overlay',locale:'ca',translationStatus:'draft',messages:{'app.loading':'S’està carregant…','library.count':'{count} descàrregues'}};
 assert.equal(validateExternalOverlay('ca',valid),2);
+// The 20 keys absent from the Chinese draft reference are not automatically English-only.
+// Existing locale-specific ETA/Version translations must remain legal.
+assert.equal(validateExternalOverlay('ca',{...valid,messages:{'torrent.eta':'Temps restant'}}),1);
+assert.equal(validateExternalOverlay('ca',{...valid,messages:{'settings.about.version':'Versió'}}),1);
 for(const key of Object.keys(SOURCE_PRESERVED_UI_LABELS)){
   const unwanted='Localized forbidden label: '+key;
   assert.throws(()=>validateExternalOverlay('ca',{...valid,messages:{[key]:unwanted}}),

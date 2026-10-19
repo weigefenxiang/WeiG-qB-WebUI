@@ -13,10 +13,8 @@ const english=JSON.parse(englishMatch[1]);
 export const canonicalEnglishTranslationKeys=Object.freeze(Object.keys(english));
 export const canonicalEnglishMessages=Object.freeze(english);
 const MAX_APPROVED_ENGLISH_FALLBACK_PERCENT=10;
-// Standalone canonical technical/UI labels intentionally use English fallback, not translated overlays.
+// Preserve only source-bound identifiers (RSS, product name and language endonyms). Other UI labels such as ETA and Version remain localizable.
 export const SOURCE_PRESERVED_UI_LABELS=Object.freeze({
-  'torrent.eta':'ETA',
-  'settings.about.version':'Version',
   'nav.rss':'RSS',
   'rss.title':'RSS',
   'capability.rss.title':'RSS',

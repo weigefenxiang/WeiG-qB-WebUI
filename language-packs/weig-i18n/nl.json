@@ -95,6 +95,7 @@
     "torrent.progress": "Voortgang",
     "torrent.download": "Downloaden",
     "torrent.upload": "Uploaden",
+    "torrent.eta": "Geschatte resterende tijd",
     "torrent.ratio": "Verhouding",
     "torrent.categoryColumn": "Categorie",
     "tracker.add": "Tracker toevoegen",

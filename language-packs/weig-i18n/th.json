@@ -131,6 +131,7 @@
     "torrent.progress": "ความคืบหน้า",
     "torrent.download": "ดาวน์โหลด",
     "torrent.upload": "อัปโหลด",
+    "torrent.eta": "เวลาคงเหลือโดยประมาณ",
     "torrent.status": "สถานะ",
     "torrent.ratio": "อัตราส่วน",
     "torrent.tracker": "แทร็กเกอร์",

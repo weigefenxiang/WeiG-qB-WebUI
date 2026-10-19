@@ -130,6 +130,7 @@
     "torrent.progress": "İrəliləyiş",
     "torrent.download": "Endirmə",
     "torrent.upload": "Göndərmə",
+    "torrent.eta": "Təxmini qalan vaxt",
     "torrent.status": "Vəziyyət",
     "torrent.ratio": "Nisbət",
     "torrent.tracker": "Treker",

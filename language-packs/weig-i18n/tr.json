@@ -91,6 +91,7 @@
     "torrent.progress": "İlerleme",
     "torrent.download": "İndirme",
     "torrent.upload": "Yükleme",
+    "torrent.eta": "Tahmini kalan süre",
     "torrent.status": "Durum",
     "torrent.ratio": "Oran",
     "torrent.tracker": "İzleyici",

@@ -100,6 +100,7 @@
     "torrent.actionFailed": "कार्य असफल भयो: {error}",
     "torrent.added": "टोरेन्ट थपियो",
     "torrent.addFailed": "टोरेन्ट थप्न सकिएन: {error}",
+    "torrent.eta": "अनुमानित बाँकी समय",
     "torrent.ratio": "अनुपात",
     "torrent.tracker": "ट्र्याकर",
     "tracker.add": "ट्र्याकर थप्नुहोस्",
