@@ -1,0 +1,103 @@
+{
+  "schemaVersion": 1,
+  "source": "WeiG-locale-draft-scope-decisions",
+  "locale": "uz-Latn",
+  "englishSourceSha256": "d0d6412654389081013f556747436862ef4c65ec6cc3410c267596055fd88959",
+  "simplifiedChineseSourceSha256": "fcaf060489856126fe909890100b8f3246c16231f139c86ddfaa8ee4a41eb627",
+  "decisions": {
+    "torrent.name": {
+      "classification": "qb_owned",
+      "reason": "qBittorrent owns this locale/version-aware torrent table and column-selector label.",
+      "evidence": "TorrentFieldRegistry FIELDS includes field.key='name' and label(field) calls qbText('column.'+field.key,fallback).",
+      "ownerFile": "webui/private/scripts/torrent-fields.js",
+      "caller": "label(field) -> qbText('column.'+field.key,fallback), field.key='name'"
+    },
+    "torrent.size": {
+      "classification": "qb_owned",
+      "reason": "qBittorrent owns this locale/version-aware torrent table and column-selector label.",
+      "evidence": "TorrentFieldRegistry FIELDS includes field.key='size' and label(field) calls qbText('column.'+field.key,fallback).",
+      "ownerFile": "webui/private/scripts/torrent-fields.js",
+      "caller": "label(field) -> qbText('column.'+field.key,fallback), field.key='size'"
+    },
+    "torrent.progress": {
+      "classification": "qb_owned",
+      "reason": "qBittorrent owns this locale/version-aware torrent table and column-selector label.",
+      "evidence": "TorrentFieldRegistry FIELDS includes field.key='progress' and label(field) calls qbText('column.'+field.key,fallback).",
+      "ownerFile": "webui/private/scripts/torrent-fields.js",
+      "caller": "label(field) -> qbText('column.'+field.key,fallback), field.key='progress'"
+    },
+    "torrent.download": {
+      "classification": "qb_owned",
+      "reason": "qBittorrent owns this locale/version-aware torrent table and column-selector label.",
+      "evidence": "TorrentFieldRegistry FIELDS includes field.key='dlspeed' and label(field) calls qbText('column.'+field.key,fallback).",
+      "ownerFile": "webui/private/scripts/torrent-fields.js",
+      "caller": "label(field) -> qbText('column.'+field.key,fallback), field.key='dlspeed'"
+    },
+    "torrent.upload": {
+      "classification": "qb_owned",
+      "reason": "qBittorrent owns this locale/version-aware torrent table and column-selector label.",
+      "evidence": "TorrentFieldRegistry FIELDS includes field.key='upspeed' and label(field) calls qbText('column.'+field.key,fallback).",
+      "ownerFile": "webui/private/scripts/torrent-fields.js",
+      "caller": "label(field) -> qbText('column.'+field.key,fallback), field.key='upspeed'"
+    },
+    "torrent.status": {
+      "classification": "qb_owned",
+      "reason": "qBittorrent owns this locale/version-aware torrent table and column-selector label.",
+      "evidence": "TorrentFieldRegistry FIELDS includes field.key='state' and label(field) calls qbText('column.'+field.key,fallback).",
+      "ownerFile": "webui/private/scripts/torrent-fields.js",
+      "caller": "label(field) -> qbText('column.'+field.key,fallback), field.key='state'"
+    },
+    "torrent.categoryColumn": {
+      "classification": "qb_owned",
+      "reason": "qBittorrent owns this locale/version-aware torrent table and column-selector label.",
+      "evidence": "TorrentFieldRegistry FIELDS includes field.key='category' and label(field) calls qbText('column.'+field.key,fallback).",
+      "ownerFile": "webui/private/scripts/torrent-fields.js",
+      "caller": "label(field) -> qbText('column.'+field.key,fallback), field.key='category'"
+    },
+    "settings.weig.unit.secondShort": {
+      "classification": "intentional_english",
+      "reason": "The SI symbol s for seconds is international and remains unchanged in Uzbek duration displays.",
+      "evidence": "English canonical settings.weig.unit.secondShort = \"s\". Exact technical name, standardized SI symbol, channel ID, brand or original-language autonym; The SI symbol s for seconds is international and remains unchanged in Uzbek duration displays. Source: webui/private/scripts/i18n.js and language-packs/weig-i18n/uz-Latn.json."
+    },
+    "common.na": {
+      "classification": "intentional_english",
+      "reason": "N/A is the established diagnostic marker for unavailable/not applicable data, not a sentence.",
+      "evidence": "English canonical common.na = \"N/A\". Exact technical name, standardized SI symbol, channel ID, brand or original-language autonym; N/A is the established diagnostic marker for unavailable/not applicable data, not a sentence. Source: webui/private/scripts/i18n.js and language-packs/weig-i18n/uz-Latn.json."
+    },
+    "header.blog": {
+      "classification": "intentional_english",
+      "reason": "WeiG Share Blog is the exact brand/publication title and should not be translated.",
+      "evidence": "English canonical header.blog = \"WeiG Share Blog\". Exact technical name, standardized SI symbol, channel ID, brand or original-language autonym; WeiG Share Blog is the exact brand/publication title and should not be translated. Source: webui/private/scripts/i18n.js and language-packs/weig-i18n/uz-Latn.json."
+    },
+    "connection.environment.qb": {
+      "classification": "intentional_english",
+      "reason": "qBittorrent is the exact product identifier preceding the version value placeholder.",
+      "evidence": "English canonical connection.environment.qb = \"qBittorrent: {value}\". Exact technical name, standardized SI symbol, channel ID, brand or original-language autonym; qBittorrent is the exact product identifier preceding the version value placeholder. Source: webui/private/scripts/i18n.js and language-packs/weig-i18n/uz-Latn.json."
+    },
+    "connection.environment.webapi": {
+      "classification": "intentional_english",
+      "reason": "WebAPI is the exact diagnostic API name preceding the version value placeholder.",
+      "evidence": "English canonical connection.environment.webapi = \"WebAPI: {value}\". Exact technical name, standardized SI symbol, channel ID, brand or original-language autonym; WebAPI is the exact diagnostic API name preceding the version value placeholder. Source: webui/private/scripts/i18n.js and language-packs/weig-i18n/uz-Latn.json."
+    },
+    "settings.update.channelDev": {
+      "classification": "intentional_english",
+      "reason": "Dev is the canonical development update-channel identifier, not general prose about development.",
+      "evidence": "English canonical settings.update.channelDev = \"Dev\". Exact technical name, standardized SI symbol, channel ID, brand or original-language autonym; Dev is the canonical development update-channel identifier, not general prose about development. Source: webui/private/scripts/i18n.js and language-packs/weig-i18n/uz-Latn.json."
+    },
+    "language.zh-TW": {
+      "classification": "intentional_english",
+      "reason": "The language picker preserves the original written Traditional Chinese locale self-name.",
+      "evidence": "English canonical language.zh-TW = \"繁體中文\". Exact technical name, standardized SI symbol, channel ID, brand or original-language autonym; The language picker preserves the original written Traditional Chinese locale self-name. Source: webui/private/scripts/i18n.js and language-packs/weig-i18n/uz-Latn.json."
+    },
+    "language.zh-HK": {
+      "classification": "intentional_english",
+      "reason": "The language picker preserves the Hong Kong Chinese locale autonym used by the source.",
+      "evidence": "English canonical language.zh-HK = \"香港正體字\". Exact technical name, standardized SI symbol, channel ID, brand or original-language autonym; The language picker preserves the Hong Kong Chinese locale autonym used by the source. Source: webui/private/scripts/i18n.js and language-packs/weig-i18n/uz-Latn.json."
+    },
+    "settings.weig.density.torrentExample": {
+      "classification": "intentional_english",
+      "reason": "Torrent is a standard BitTorrent loanword used unchanged as a one-word example in Uzbek.",
+      "evidence": "English canonical settings.weig.density.torrentExample = \"Torrent\". Exact technical name, standardized SI symbol, channel ID, brand or original-language autonym; Torrent is a standard BitTorrent loanword used unchanged as a one-word example in Uzbek. Source: webui/private/scripts/i18n.js and language-packs/weig-i18n/uz-Latn.json."
+    }
+  }
+}

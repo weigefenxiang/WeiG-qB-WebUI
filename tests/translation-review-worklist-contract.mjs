@@ -299,6 +299,19 @@ assert.equal(albanianScope.counts.qb_owned,7);
 assert.equal(albanianScope.unresolvedKeys,0);
 assert.equal(albanianScope.draftScopeComplete,true);
 assert.equal(albanianScope.humanApproved,false,'Albanian AI draft is not mother-tongue approval');
+const uzbekScope=getTranslationDraftScopeWorklist('uz-Latn');
+assert.equal(uzbekScope.referenceKeys,673);
+assert.equal(uzbekScope.canonicalEnglishKeys,693);
+assert.equal(uzbekScope.counts.localized,657);
+assert.equal(uzbekScope.counts.intentional_english,9);
+assert.equal(uzbekScope.counts.qb_owned,7);
+assert.equal(uzbekScope.unresolvedKeys,0);
+assert.equal(uzbekScope.draftScopeComplete,true);
+assert.equal(uzbekScope.humanApproved,false,'Uzbek AI draft is not native-language approval');
+for(const field of ['name','size','progress','download','upload','status','categoryColumn']){
+  assert.equal(uzbekScope.items.find(item=>item.key==='torrent.'+field)?.classification,'qb_owned',
+    'The qBittorrent source must own torrent column '+field);
+}
 const caMissing=caScope.work.find(x=>x.key==='instances.currentSuffix');
 const qbMissing=caScope.work.find(x=>x.key==='torrent.name');
 assert.ok(caMissing&&qbMissing,'Synthetic decisions use genuinely missing Catalan draft keys');
