@@ -16,6 +16,10 @@ assert.equal(expectedExtendedLocales.includes('en'),false,'Core English is never
 assert.equal(expectedExtendedLocales.includes('zh-HK'),false,'Current Hong Kong sparse overlay belongs to bundled WeiG core, not external packs');
 const valid={schemaVersion:1,source:'WeiG-runtime-locale-overlay',locale:'ca',translationStatus:'draft',messages:{'app.loading':'S’està carregant…','library.count':'{count} descàrregues'}};
 assert.equal(validateExternalOverlay('ca',valid),2);
+for(const [key,unwanted] of [['torrent.eta','Temps restant estimat'],['settings.about.version','Versió']]){
+  assert.throws(()=>validateExternalOverlay('ca',{...valid,messages:{[key]:unwanted}}),
+    /Standalone English UI label must use W.I18n fallback/,'Independent English UI labels cannot be translated: '+key);
+}
 const boundaryValid={...valid,messages:{'library.refreshFailedPrefix':'No es poden actualitzar els torrents: ','instances.currentSuffix':' (actual)'}};
 assert.equal(validateExternalOverlay('ca',boundaryValid),2,'Source-proven error prefixes and suffixes preserve whitespace boundaries');
 assert.throws(()=>validateExternalOverlay('ca',{...boundaryValid,messages:{...boundaryValid.messages,'library.refreshFailedPrefix':'No es poden actualitzar els torrents:'}}),/Trailing whitespace mismatch/);
@@ -49,9 +53,11 @@ const approvedMessages=Object.fromEntries(canonicalEnglishTranslationKeys.map(ke
   return [key,source.replace(/^(\s*)/,(_whole,leading)=>leading+'Approved fixture ca: ')];
 }));
 delete approvedMessages['app.back'];
+delete approvedMessages['torrent.eta'];
+delete approvedMessages['settings.about.version'];
 const approved={...valid,messages:approvedMessages,translationStatus:'approved',englishSourceSha256:canonicalEnglishSourceSha256,
-  reviewedEnglishFallbackKeys:['app.back']};
-assert.equal(validateExternalOverlay('ca',approved),canonicalEnglishTranslationKeys.length-1,'All canonical keys must be explicitly reviewed');
+  reviewedEnglishFallbackKeys:['app.back','torrent.eta','settings.about.version']};
+assert.equal(validateExternalOverlay('ca',approved),canonicalEnglishTranslationKeys.length-3,'All canonical keys must be explicitly reviewed');
 assert.throws(()=>validateExternalOverlay('ca',{...approved,englishSourceSha256:undefined}),/fingerprint mismatch/);
 assert.throws(()=>validateExternalOverlay('ca',{...approved,englishSourceSha256:'0'.repeat(64)}),/fingerprint mismatch/);
 assert.throws(()=>validateExternalOverlay('ca',{...approved,reviewedEnglishFallbackKeys:[]}),/unreviewed canonical/);

@@ -13,6 +13,11 @@ const english=JSON.parse(englishMatch[1]);
 export const canonicalEnglishTranslationKeys=Object.freeze(Object.keys(english));
 export const canonicalEnglishMessages=Object.freeze(english);
 const MAX_APPROVED_ENGLISH_FALLBACK_PERCENT=10;
+// Standalone canonical technical/UI labels intentionally use English fallback, not translated overlays.
+const SOURCE_PRESERVED_UI_LABELS=Object.freeze({'torrent.eta':'ETA','settings.about.version':'Version'});
+for(const [key,source] of Object.entries(SOURCE_PRESERVED_UI_LABELS)){
+  assert.equal(english[key],source,'Canonical fixed English UI label changed: '+key);
+}
 export const canonicalEnglishSourceSha256=createHash('sha256').update(JSON.stringify(english)).digest('hex');
 const primaryCodes=new Set(languages.filter(x=>x.primary).map(x=>x.code));
 const runtimeLocaleMatch=/var SUPPORTED_LOCALES=(\[[^\n]+\]);/.exec(englishSource);
@@ -32,6 +37,7 @@ export function validateExternalOverlay(locale,data){
   assert(data.translationStatus==='draft'||data.translationStatus==='approved','External language must declare draft or approved review status: '+locale);
   for(const [key,value] of Object.entries(data.messages)){
     assert(Object.hasOwn(english,key),'Unknown canonical English key '+locale+'/'+key);
+    assert(!Object.hasOwn(SOURCE_PRESERVED_UI_LABELS,key),'Standalone English UI label must use W.I18n fallback: '+locale+'/'+key);
     assert(typeof value==='string'&&value.trim().length>0,'Empty/invalid translation '+locale+'/'+key);
     assert.equal(placeholders(value),placeholders(english[key]),'Placeholder mismatch '+locale+'/'+key);
     assert.equal(boundaryWhitespace(value,true),boundaryWhitespace(english[key],true),'Leading whitespace mismatch '+locale+'/'+key);

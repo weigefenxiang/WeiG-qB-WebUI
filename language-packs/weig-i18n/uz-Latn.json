@@ -125,7 +125,6 @@
     "torrent.actionFailed": "Amal bajarilmadi: {error}",
     "torrent.added": "Torrent qoʻshildi",
     "torrent.addFailed": "Torrent qoʻshilmadi: {error}",
-    "torrent.eta": "Taxminiy qolgan vaqt",
     "torrent.ratio": "Nisbat",
     "torrent.tracker": "Treker",
     "tracker.add": "Treker qoʻshish",
