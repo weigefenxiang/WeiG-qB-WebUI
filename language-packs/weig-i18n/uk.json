@@ -682,6 +682,7 @@
     "api.editTrackerUrlMissing": "Поточний вихідний контракт editTracker не надає підтримуваного параметра URL трекера.",
     "api.editTrackerEditUnproven": "Поточний вихідний контракт editTracker не підтверджує можливість редагування URL.",
     "api.editTrackerParameterUnsupported": "Поточний вихідний контракт editTracker вимагає параметра, який клієнт не може надати.",
-    "api.peersUnexpected": "API пірів торента повернув неочікувану відповідь."
+    "api.peersUnexpected": "API пірів торента повернув неочікувану відповідь.",
+    "app.ok": "Зрозуміло"
   }
 }

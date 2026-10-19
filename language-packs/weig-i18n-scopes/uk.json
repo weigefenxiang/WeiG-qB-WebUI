@@ -1,0 +1,34 @@
+{
+  "schemaVersion": 1,
+  "source": "WeiG-locale-draft-scope-decisions",
+  "locale": "uk",
+  "englishSourceSha256": "d0d6412654389081013f556747436862ef4c65ec6cc3410c267596055fd88959",
+  "simplifiedChineseSourceSha256": "fcaf060489856126fe909890100b8f3246c16231f139c86ddfaa8ee4a41eb627",
+  "decisions": {
+    "settings.weig.unit.secondShort": {
+      "classification": "intentional_english",
+      "reason": "The SI unit symbol s for seconds is standard and unchanged in Ukrainian.",
+      "evidence": "English canonical settings.weig.unit.secondShort is the symbol s rather than prose."
+    },
+    "common.na": {
+      "classification": "intentional_english",
+      "reason": "N/A is a generic technical status marker that may mean unavailable or not applicable.",
+      "evidence": "English canonical common.na is a compact status marker without disambiguating text."
+    },
+    "header.blog": {
+      "classification": "intentional_english",
+      "reason": "WeiG Share Blog is a publication's branded proper name.",
+      "evidence": "English canonical header.blog preserves the proper publication name WeiG Share Blog."
+    },
+    "language.zh-TW": {
+      "classification": "intentional_english",
+      "reason": "Native-language display names preserve original Chinese script.",
+      "evidence": "English canonical language.zh-TW displays the original self-name 繁體中文."
+    },
+    "language.zh-HK": {
+      "classification": "intentional_english",
+      "reason": "Hong Kong Chinese is shown using its native self-name.",
+      "evidence": "English canonical language.zh-HK displays the original self-name 香港正體字."
+    }
+  }
+}
