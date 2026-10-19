@@ -27,6 +27,10 @@ assert(pkg.scripts['test:core'].includes('node tests/runtime-asset-contracts.mjs
 const runtimeAssetGroup=read('tests/runtime-asset-contracts.mjs');
 for(const name of ["runtime-asset-plan-contract.mjs","route-module-loading-contract.mjs","runtime-asset-budget-contract.mjs","qb-weig-locale-sharding-contract.mjs","qb-copy-semantic-fingerprint-contract.mjs","qb-qm-first-routing-contract.mjs","bootstrap-inventory-contract.mjs","css-bundle-materializer-contract.mjs","js-bundle-materializer-contract.mjs","bootstrap-topology-contract.mjs","private-bootstrap-contract.mjs"])assert(runtimeAssetGroup.includes(name),'Runtime Asset grouped owner missing '+name);
 
+assert(pkg.scripts['test:core'].includes('node tests/locale-contracts.mjs'),'Core must invoke the canonical grouped Locale contract owner.');
+const localeContractGroup=read('tests/locale-contracts.mjs');
+for(const name of ["locale-handoff-contract.mjs","language-coverage-report-contract.mjs","translation-review-worklist-contract.mjs"])assert(localeContractGroup.includes(name),'Grouped Locale contract missing '+name);
+
 const core=scriptsOf(pkg.scripts['test:core']);
 const compat=scriptsOf(pkg.scripts['test:compat']);
 const simulator=scriptsOf(pkg.scripts['test:simulator']);
