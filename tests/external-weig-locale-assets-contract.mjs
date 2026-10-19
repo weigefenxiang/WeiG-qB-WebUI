@@ -33,6 +33,17 @@ for(const key of Object.keys(SOURCE_PRESERVED_UI_LABELS)){
   assert.throws(()=>validateExternalOverlay('ca',{...valid,messages:{[key]:unwanted}}),
     /Standalone English UI label must use W.I18n fallback/,'Independent English UI labels cannot be translated: '+key);
 }
+// A78-249: network loopback identifiers cannot be transliterated, even in a Cyrillic overlay.
+const srSource=JSON.parse(fs.readFileSync(path.join(rootOfExternalLocales,'sr.json'),'utf8'));
+const loopback=srSource.messages['instances.loopbackWarning'];
+assert.equal(canonicalEnglishMessages['instances.loopbackWarning'].includes('127.0.0.1 / localhost'),true);
+assert.ok(loopback.includes('127.0.0.1 / localhost'),'The Serbian Cyrillic network warning must preserve localhost verbatim');
+assert.equal(validateExternalOverlay('sr',srSource),Object.keys(srSource.messages).length);
+assert.throws(()=>validateExternalOverlay('ca',{...valid,messages:{'instances.loopbackWarning':'127.0.0.1 / лоцалхост no és el servidor remot.'}}),
+  /Canonical network address literal missing/,'Transliterating localhost breaks a literal hostname');
+assert.throws(()=>validateExternalOverlay('ca',{...valid,messages:{'instances.loopbackWarning':'localhost no és el servidor remot.'}}),
+  /Canonical network address literal missing/,'Omitting 127.0.0.1 breaks the loopback address warning');
+
 const boundaryValid={...valid,messages:{'library.refreshFailedPrefix':'No es poden actualitzar els torrents: ','instances.currentSuffix':' (actual)'}};
 assert.equal(validateExternalOverlay('ca',boundaryValid),2,'Source-proven error prefixes and suffixes preserve whitespace boundaries');
 assert.throws(()=>validateExternalOverlay('ca',{...boundaryValid,messages:{...boundaryValid.messages,'library.refreshFailedPrefix':'No es poden actualitzar els torrents:'}}),/Trailing whitespace mismatch/);

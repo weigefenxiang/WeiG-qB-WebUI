@@ -51,6 +51,13 @@ export function validateExternalOverlay(locale,data){
     assert.equal(placeholders(value),placeholders(english[key]),'Placeholder mismatch '+locale+'/'+key);
     assert.equal(boundaryWhitespace(value,true),boundaryWhitespace(english[key],true),'Leading whitespace mismatch '+locale+'/'+key);
     assert.equal(boundaryWhitespace(value,false),boundaryWhitespace(english[key],false),'Trailing whitespace mismatch '+locale+'/'+key);
+    // Network address literals are executable host identifiers, not translatable words.
+    // A localized spelling of localhost may make the safety hint unusable.
+    if(key==='instances.loopbackWarning'){
+      for(const address of ['127.0.0.1','localhost']){
+        assert(value.includes(address),'Canonical network address literal missing: '+locale+'/'+key+'/'+address);
+      }
+    }
     assert.notEqual(value,english[key],'WeiG overlay duplicates canonical English value; omit the key to use W.I18n fallback: '+locale+'/'+key);
   }
   // Review progress is source-bound even while a locale remains draft.

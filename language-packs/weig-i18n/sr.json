@@ -631,7 +631,7 @@
     "instances.currentSuffix": " (тренутна)",
     "instances.rename": "Преименуј",
     "instances.reachable": "Адреса је доступна · qB није проверен",
-    "instances.loopbackWarning": "127.0.0.1 / лоцалхост означава уређај са којег ради овај прегледач, а не ваш удаљени сервер.",
+    "instances.loopbackWarning": "127.0.0.1 / localhost означава уређај са којег ради овај прегледач, а не ваш удаљени сервер.",
     "instances.lastReported": "Последњи извештај: {time}",
     "instances.add": "Додај",
     "instances.connect": "Повежи",
