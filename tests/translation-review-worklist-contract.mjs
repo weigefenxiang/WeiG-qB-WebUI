@@ -317,6 +317,18 @@ assert.equal(hindiScope.counts.qb_owned,7);
 assert.equal(hindiScope.unresolvedKeys,0);
 assert.equal(hindiScope.draftScopeComplete,true);
 assert.equal(hindiScope.humanApproved,false,'Hindi AI draft is not native-language approval');
+const nepaliScope=getTranslationDraftScopeWorklist('ne-NP');
+assert.equal(nepaliScope.referenceKeys,673);
+assert.equal(nepaliScope.canonicalEnglishKeys,693);
+assert.equal(nepaliScope.counts.localized,657);
+assert.equal(nepaliScope.counts.intentional_english,9);
+assert.equal(nepaliScope.counts.qb_owned,7);
+assert.equal(nepaliScope.unresolvedKeys,0);
+assert.equal(nepaliScope.draftScopeComplete,true);
+assert.equal(nepaliScope.humanApproved,false,'Nepali AI draft is not native-language approval');
+for(const field of ['name','size','progress','download','upload','status','categoryColumn']){
+ assert.equal(nepaliScope.items.find(item=>item.key==='torrent.'+field)?.classification,'qb_owned','qB owns torrent column '+field);
+}
 for(const field of ['name','size','progress','download','upload','status','categoryColumn']){
   assert.equal(uzbekScope.items.find(item=>item.key==='torrent.'+field)?.classification,'qb_owned',
     'The qBittorrent source must own torrent column '+field);

@@ -1,0 +1,103 @@
+{
+  "schemaVersion": 1,
+  "source": "WeiG-locale-draft-scope-decisions",
+  "locale": "ne-NP",
+  "englishSourceSha256": "d0d6412654389081013f556747436862ef4c65ec6cc3410c267596055fd88959",
+  "simplifiedChineseSourceSha256": "fcaf060489856126fe909890100b8f3246c16231f139c86ddfaa8ee4a41eb627",
+  "decisions": {
+    "torrent.name": {
+      "classification": "qb_owned",
+      "reason": "qBittorrent owns this locale/version-aware torrent table and column-selector label.",
+      "evidence": "TorrentFieldRegistry FIELDS includes field.key='name' and label(field) calls qbText('column.'+field.key,fallback).",
+      "ownerFile": "webui/private/scripts/torrent-fields.js",
+      "caller": "label(field) -> qbText('column.'+field.key,fallback), field.key='name'"
+    },
+    "torrent.size": {
+      "classification": "qb_owned",
+      "reason": "qBittorrent owns this locale/version-aware torrent table and column-selector label.",
+      "evidence": "TorrentFieldRegistry FIELDS includes field.key='size' and label(field) calls qbText('column.'+field.key,fallback).",
+      "ownerFile": "webui/private/scripts/torrent-fields.js",
+      "caller": "label(field) -> qbText('column.'+field.key,fallback), field.key='size'"
+    },
+    "torrent.progress": {
+      "classification": "qb_owned",
+      "reason": "qBittorrent owns this locale/version-aware torrent table and column-selector label.",
+      "evidence": "TorrentFieldRegistry FIELDS includes field.key='progress' and label(field) calls qbText('column.'+field.key,fallback).",
+      "ownerFile": "webui/private/scripts/torrent-fields.js",
+      "caller": "label(field) -> qbText('column.'+field.key,fallback), field.key='progress'"
+    },
+    "torrent.download": {
+      "classification": "qb_owned",
+      "reason": "qBittorrent owns this locale/version-aware torrent table and column-selector label.",
+      "evidence": "TorrentFieldRegistry FIELDS includes field.key='dlspeed' and label(field) calls qbText('column.'+field.key,fallback).",
+      "ownerFile": "webui/private/scripts/torrent-fields.js",
+      "caller": "label(field) -> qbText('column.'+field.key,fallback), field.key='dlspeed'"
+    },
+    "torrent.upload": {
+      "classification": "qb_owned",
+      "reason": "qBittorrent owns this locale/version-aware torrent table and column-selector label.",
+      "evidence": "TorrentFieldRegistry FIELDS includes field.key='upspeed' and label(field) calls qbText('column.'+field.key,fallback).",
+      "ownerFile": "webui/private/scripts/torrent-fields.js",
+      "caller": "label(field) -> qbText('column.'+field.key,fallback), field.key='upspeed'"
+    },
+    "torrent.status": {
+      "classification": "qb_owned",
+      "reason": "qBittorrent owns this locale/version-aware torrent table and column-selector label.",
+      "evidence": "TorrentFieldRegistry FIELDS includes field.key='state' and label(field) calls qbText('column.'+field.key,fallback).",
+      "ownerFile": "webui/private/scripts/torrent-fields.js",
+      "caller": "label(field) -> qbText('column.'+field.key,fallback), field.key='state'"
+    },
+    "torrent.categoryColumn": {
+      "classification": "qb_owned",
+      "reason": "qBittorrent owns this locale/version-aware torrent table and column-selector label.",
+      "evidence": "TorrentFieldRegistry FIELDS includes field.key='category' and label(field) calls qbText('column.'+field.key,fallback).",
+      "ownerFile": "webui/private/scripts/torrent-fields.js",
+      "caller": "label(field) -> qbText('column.'+field.key,fallback), field.key='category'"
+    },
+    "settings.weig.unit.secondShort": {
+      "classification": "intentional_english",
+      "reason": "The SI unit symbol s for seconds is an internationally standardized time symbol and remains s in Nepali technical readouts.",
+      "evidence": "Current English canonical settings.weig.unit.secondShort = \"s\". The SI unit symbol s for seconds is an internationally standardized time symbol and remains s in Nepali technical readouts. Runtime source: webui/private/scripts/i18n.js; locale source: language-packs/weig-i18n/ne-NP.json."
+    },
+    "common.na": {
+      "classification": "intentional_english",
+      "reason": "N/A is a conventional unavailable/inapplicable diagnostic token, not normal localizable prose.",
+      "evidence": "Current English canonical common.na = \"N/A\". N/A is a conventional unavailable/inapplicable diagnostic token, not normal localizable prose. Runtime source: webui/private/scripts/i18n.js; locale source: language-packs/weig-i18n/ne-NP.json."
+    },
+    "header.blog": {
+      "classification": "intentional_english",
+      "reason": "WeiG Share Blog is the exact branded publication title and should remain unchanged.",
+      "evidence": "Current English canonical header.blog = \"WeiG Share Blog\". WeiG Share Blog is the exact branded publication title and should remain unchanged. Runtime source: webui/private/scripts/i18n.js; locale source: language-packs/weig-i18n/ne-NP.json."
+    },
+    "connection.environment.qb": {
+      "classification": "intentional_english",
+      "reason": "qBittorrent is the product's exact identifier before {value}; the name must not be translated.",
+      "evidence": "Current English canonical connection.environment.qb = \"qBittorrent: {value}\". qBittorrent is the product's exact identifier before {value}; the name must not be translated. Runtime source: webui/private/scripts/i18n.js; locale source: language-packs/weig-i18n/ne-NP.json."
+    },
+    "connection.environment.webapi": {
+      "classification": "intentional_english",
+      "reason": "WebAPI is the exact interface name before {value} in diagnostics, not natural prose.",
+      "evidence": "Current English canonical connection.environment.webapi = \"WebAPI: {value}\". WebAPI is the exact interface name before {value} in diagnostics, not natural prose. Runtime source: webui/private/scripts/i18n.js; locale source: language-packs/weig-i18n/ne-NP.json."
+    },
+    "settings.update.channelDev": {
+      "classification": "intentional_english",
+      "reason": "Dev is the exact development-channel ID and stays distinct from the translated description of development builds.",
+      "evidence": "Current English canonical settings.update.channelDev = \"Dev\". Dev is the exact development-channel ID and stays distinct from the translated description of development builds. Runtime source: webui/private/scripts/i18n.js; locale source: language-packs/weig-i18n/ne-NP.json."
+    },
+    "library.range": {
+      "classification": "intentional_english",
+      "reason": "The entire value is numerical placeholders and punctuation ({start}–{end} / {total}); no Nepali-language words are involved.",
+      "evidence": "Current English canonical library.range = \"{start}–{end} / {total}\". The entire value is numerical placeholders and punctuation ({start}–{end} / {total}); no Nepali-language words are involved. Runtime source: webui/private/scripts/i18n.js; locale source: language-packs/weig-i18n/ne-NP.json."
+    },
+    "language.zh-TW": {
+      "classification": "intentional_english",
+      "reason": "The locale selector preserves the Traditional Chinese locale's self-written name rather than a Nepali exonym.",
+      "evidence": "Current English canonical language.zh-TW = \"繁體中文\". The locale selector preserves the Traditional Chinese locale's self-written name rather than a Nepali exonym. Runtime source: webui/private/scripts/i18n.js; locale source: language-packs/weig-i18n/ne-NP.json."
+    },
+    "language.zh-HK": {
+      "classification": "intentional_english",
+      "reason": "The locale selector preserves the Hong Kong Chinese locale's source-written autonym.",
+      "evidence": "Current English canonical language.zh-HK = \"香港正體字\". The locale selector preserves the Hong Kong Chinese locale's source-written autonym. Runtime source: webui/private/scripts/i18n.js; locale source: language-packs/weig-i18n/ne-NP.json."
+    }
+  }
+}
