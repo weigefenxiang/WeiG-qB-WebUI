@@ -1,0 +1,128 @@
+{
+  "schemaVersion": 1,
+  "source": "WeiG-locale-draft-scope-decisions",
+  "locale": "ms-MY",
+  "englishSourceSha256": "d0d6412654389081013f556747436862ef4c65ec6cc3410c267596055fd88959",
+  "simplifiedChineseSourceSha256": "fcaf060489856126fe909890100b8f3246c16231f139c86ddfaa8ee4a41eb627",
+  "decisions": {
+    "torrent.name": {
+      "classification": "qb_owned",
+      "reason": "qBittorrent owns this locale/version-aware torrent table and column-selector label.",
+      "evidence": "TorrentFieldRegistry FIELDS includes field.key='name' and label(field) calls qbText('column.'+field.key,fallback).",
+      "ownerFile": "webui/private/scripts/torrent-fields.js",
+      "caller": "label(field) -> qbText('column.'+field.key,fallback), field.key='name'"
+    },
+    "torrent.size": {
+      "classification": "qb_owned",
+      "reason": "qBittorrent owns this locale/version-aware torrent table and column-selector label.",
+      "evidence": "TorrentFieldRegistry FIELDS includes field.key='size' and label(field) calls qbText('column.'+field.key,fallback).",
+      "ownerFile": "webui/private/scripts/torrent-fields.js",
+      "caller": "label(field) -> qbText('column.'+field.key,fallback), field.key='size'"
+    },
+    "torrent.progress": {
+      "classification": "qb_owned",
+      "reason": "qBittorrent owns this locale/version-aware torrent table and column-selector label.",
+      "evidence": "TorrentFieldRegistry FIELDS includes field.key='progress' and label(field) calls qbText('column.'+field.key,fallback).",
+      "ownerFile": "webui/private/scripts/torrent-fields.js",
+      "caller": "label(field) -> qbText('column.'+field.key,fallback), field.key='progress'"
+    },
+    "torrent.download": {
+      "classification": "qb_owned",
+      "reason": "qBittorrent owns this locale/version-aware torrent table and column-selector label.",
+      "evidence": "TorrentFieldRegistry FIELDS includes field.key='dlspeed' and label(field) calls qbText('column.'+field.key,fallback).",
+      "ownerFile": "webui/private/scripts/torrent-fields.js",
+      "caller": "label(field) -> qbText('column.'+field.key,fallback), field.key='dlspeed'"
+    },
+    "torrent.upload": {
+      "classification": "qb_owned",
+      "reason": "qBittorrent owns this locale/version-aware torrent table and column-selector label.",
+      "evidence": "TorrentFieldRegistry FIELDS includes field.key='upspeed' and label(field) calls qbText('column.'+field.key,fallback).",
+      "ownerFile": "webui/private/scripts/torrent-fields.js",
+      "caller": "label(field) -> qbText('column.'+field.key,fallback), field.key='upspeed'"
+    },
+    "torrent.status": {
+      "classification": "qb_owned",
+      "reason": "qBittorrent owns this locale/version-aware torrent table and column-selector label.",
+      "evidence": "TorrentFieldRegistry FIELDS includes field.key='state' and label(field) calls qbText('column.'+field.key,fallback).",
+      "ownerFile": "webui/private/scripts/torrent-fields.js",
+      "caller": "label(field) -> qbText('column.'+field.key,fallback), field.key='state'"
+    },
+    "torrent.categoryColumn": {
+      "classification": "qb_owned",
+      "reason": "qBittorrent owns this locale/version-aware torrent table and column-selector label.",
+      "evidence": "TorrentFieldRegistry FIELDS includes field.key='category' and label(field) calls qbText('column.'+field.key,fallback).",
+      "ownerFile": "webui/private/scripts/torrent-fields.js",
+      "caller": "label(field) -> qbText('column.'+field.key,fallback), field.key='category'"
+    },
+    "logs.ui.log": {
+      "classification": "intentional_english",
+      "reason": "Log is the established technical Malay name of the event log in this interface.",
+      "evidence": "English canonical logs.ui.log = \"Log\"; this preserves the Malaysian software/technical loanword, exact brand/API/release identifier, native autonym or SI unit rather than inventing a different meaning."
+    },
+    "settings.weig.unit.secondShort": {
+      "classification": "intentional_english",
+      "reason": "The SI unit symbol s for seconds is identical in Malaysian technical readouts.",
+      "evidence": "English canonical settings.weig.unit.secondShort = \"s\"; this preserves the Malaysian software/technical loanword, exact brand/API/release identifier, native autonym or SI unit rather than inventing a different meaning."
+    },
+    "common.na": {
+      "classification": "intentional_english",
+      "reason": "N/A is a neutral and cause-agnostic missing-data diagnostic code.",
+      "evidence": "English canonical common.na = \"N/A\"; this preserves the Malaysian software/technical loanword, exact brand/API/release identifier, native autonym or SI unit rather than inventing a different meaning."
+    },
+    "header.blog": {
+      "classification": "intentional_english",
+      "reason": "WeiG Share Blog is the exact name of the branded site.",
+      "evidence": "English canonical header.blog = \"WeiG Share Blog\"; this preserves the Malaysian software/technical loanword, exact brand/API/release identifier, native autonym or SI unit rather than inventing a different meaning."
+    },
+    "connection.environment.qb": {
+      "classification": "intentional_english",
+      "reason": "qBittorrent is an exact product-name diagnostic prefix.",
+      "evidence": "English canonical connection.environment.qb = \"qBittorrent: {value}\"; this preserves the Malaysian software/technical loanword, exact brand/API/release identifier, native autonym or SI unit rather than inventing a different meaning."
+    },
+    "connection.environment.webapi": {
+      "classification": "intentional_english",
+      "reason": "WebAPI is the exact software API identifier used as a diagnostic label.",
+      "evidence": "English canonical connection.environment.webapi = \"WebAPI: {value}\"; this preserves the Malaysian software/technical loanword, exact brand/API/release identifier, native autonym or SI unit rather than inventing a different meaning."
+    },
+    "transfer.eyebrow": {
+      "classification": "intentional_english",
+      "reason": "TRANSFER is the customary Malay all-caps network transfer heading.",
+      "evidence": "English canonical transfer.eyebrow = \"TRANSFER\"; this preserves the Malaysian software/technical loanword, exact brand/API/release identifier, native autonym or SI unit rather than inventing a different meaning."
+    },
+    "settings.update.channelDev": {
+      "classification": "intentional_english",
+      "reason": "Dev names the release channel exactly, not general descriptive prose.",
+      "evidence": "English canonical settings.update.channelDev = \"Dev\"; this preserves the Malaysian software/technical loanword, exact brand/API/release identifier, native autonym or SI unit rather than inventing a different meaning."
+    },
+    "language.zh-TW": {
+      "classification": "intentional_english",
+      "reason": "The language selector retains this language's native traditional Chinese name.",
+      "evidence": "English canonical language.zh-TW = \"繁體中文\"; this preserves the Malaysian software/technical loanword, exact brand/API/release identifier, native autonym or SI unit rather than inventing a different meaning."
+    },
+    "language.zh-HK": {
+      "classification": "intentional_english",
+      "reason": "The language selector retains the Hong Kong Chinese native autonym.",
+      "evidence": "English canonical language.zh-HK = \"香港正體字\"; this preserves the Malaysian software/technical loanword, exact brand/API/release identifier, native autonym or SI unit rather than inventing a different meaning."
+    },
+    "settings.weig.density.torrentExample": {
+      "classification": "intentional_english",
+      "reason": "Torrent is the conventional Malay sample torrent label.",
+      "evidence": "English canonical settings.weig.density.torrentExample = \"Torrent\"; this preserves the Malaysian software/technical loanword, exact brand/API/release identifier, native autonym or SI unit rather than inventing a different meaning."
+    },
+    "settings.weig.density.logsExample": {
+      "classification": "intentional_english",
+      "reason": "Log is the conventional Malay example log label.",
+      "evidence": "English canonical settings.weig.density.logsExample = \"Log\"; this preserves the Malaysian software/technical loanword, exact brand/API/release identifier, native autonym or SI unit rather than inventing a different meaning."
+    },
+    "instances.import": {
+      "classification": "intentional_english",
+      "reason": "Import is the widely-used Malay software action label in this file exchange context.",
+      "evidence": "English canonical instances.import = \"Import\"; this preserves the Malaysian software/technical loanword, exact brand/API/release identifier, native autonym or SI unit rather than inventing a different meaning."
+    },
+    "instances.importFile": {
+      "classification": "intentional_english",
+      "reason": "Import JSON preserves the conventional Malaysian software import action and file format.",
+      "evidence": "English canonical instances.importFile = \"Import JSON\"; this preserves the Malaysian software/technical loanword, exact brand/API/release identifier, native autonym or SI unit rather than inventing a different meaning."
+    }
+  }
+}
