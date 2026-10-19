@@ -1,0 +1,103 @@
+{
+  "schemaVersion": 1,
+  "source": "WeiG-locale-draft-scope-decisions",
+  "locale": "pl",
+  "englishSourceSha256": "d0d6412654389081013f556747436862ef4c65ec6cc3410c267596055fd88959",
+  "simplifiedChineseSourceSha256": "fcaf060489856126fe909890100b8f3246c16231f139c86ddfaa8ee4a41eb627",
+  "decisions": {
+    "torrent.name": {
+      "classification": "qb_owned",
+      "reason": "Torrent table and column selector captions must follow qBittorrent's exact-source locale/version-aware translation owner, not WeiG copy.",
+      "evidence": "Current TorrentFieldRegistry FIELDS includes name and calls qbText for column.name in label(field).",
+      "ownerFile": "webui/private/scripts/torrent-fields.js",
+      "caller": "label(field) -> qbText('column.'+field.key,fallback) with field.key='name'"
+    },
+    "torrent.size": {
+      "classification": "qb_owned",
+      "reason": "Torrent table and column selector captions must follow qBittorrent's exact-source locale/version-aware translation owner, not WeiG copy.",
+      "evidence": "Current TorrentFieldRegistry FIELDS includes size and calls qbText for column.size in label(field).",
+      "ownerFile": "webui/private/scripts/torrent-fields.js",
+      "caller": "label(field) -> qbText('column.'+field.key,fallback) with field.key='size'"
+    },
+    "torrent.progress": {
+      "classification": "qb_owned",
+      "reason": "Torrent table and column selector captions must follow qBittorrent's exact-source locale/version-aware translation owner, not WeiG copy.",
+      "evidence": "Current TorrentFieldRegistry FIELDS includes progress and calls qbText for column.progress in label(field).",
+      "ownerFile": "webui/private/scripts/torrent-fields.js",
+      "caller": "label(field) -> qbText('column.'+field.key,fallback) with field.key='progress'"
+    },
+    "torrent.download": {
+      "classification": "qb_owned",
+      "reason": "Torrent table and column selector captions must follow qBittorrent's exact-source locale/version-aware translation owner, not WeiG copy.",
+      "evidence": "Current TorrentFieldRegistry FIELDS includes dlspeed and calls qbText for column.dlspeed in label(field).",
+      "ownerFile": "webui/private/scripts/torrent-fields.js",
+      "caller": "label(field) -> qbText('column.'+field.key,fallback) with field.key='dlspeed'"
+    },
+    "torrent.upload": {
+      "classification": "qb_owned",
+      "reason": "Torrent table and column selector captions must follow qBittorrent's exact-source locale/version-aware translation owner, not WeiG copy.",
+      "evidence": "Current TorrentFieldRegistry FIELDS includes upspeed and calls qbText for column.upspeed in label(field).",
+      "ownerFile": "webui/private/scripts/torrent-fields.js",
+      "caller": "label(field) -> qbText('column.'+field.key,fallback) with field.key='upspeed'"
+    },
+    "torrent.status": {
+      "classification": "qb_owned",
+      "reason": "Torrent table and column selector captions must follow qBittorrent's exact-source locale/version-aware translation owner, not WeiG copy.",
+      "evidence": "Current TorrentFieldRegistry FIELDS includes state and calls qbText for column.state in label(field).",
+      "ownerFile": "webui/private/scripts/torrent-fields.js",
+      "caller": "label(field) -> qbText('column.'+field.key,fallback) with field.key='state'"
+    },
+    "torrent.categoryColumn": {
+      "classification": "qb_owned",
+      "reason": "Torrent table and column selector captions must follow qBittorrent's exact-source locale/version-aware translation owner, not WeiG copy.",
+      "evidence": "Current TorrentFieldRegistry FIELDS includes category and calls qbText for column.category in label(field).",
+      "ownerFile": "webui/private/scripts/torrent-fields.js",
+      "caller": "label(field) -> qbText('column.'+field.key,fallback) with field.key='category'"
+    },
+    "settings.weig.unit.secondShort": {
+      "classification": "intentional_english",
+      "reason": "The standalone SI seconds abbreviation s is standard in technical Polish duration displays.",
+      "evidence": "Canonical EN settings.weig.unit.secondShort is just s (the international seconds unit symbol)."
+    },
+    "common.na": {
+      "classification": "intentional_english",
+      "reason": "N/A remains an intentionally neutral technical no-value indicator where Polish wording would wrongly narrow the cause.",
+      "evidence": "Canonical EN common.na is N/A and does not specify whether the value is unavailable or inapplicable."
+    },
+    "header.blog": {
+      "classification": "intentional_english",
+      "reason": "WeiG Share Blog is a proper branded publication title and should not be renamed.",
+      "evidence": "Canonical EN header.blog is the exact linked publication name WeiG Share Blog."
+    },
+    "connection.environment.qb": {
+      "classification": "intentional_english",
+      "reason": "The diagnostic qBittorrent application-name prefix is a fixed brand marker followed by a placeholder.",
+      "evidence": "Canonical EN connection.environment.qb is exactly qBittorrent: {value}."
+    },
+    "connection.environment.webapi": {
+      "classification": "intentional_english",
+      "reason": "WebAPI is the proper API identifier; this short diagnostic prefix precedes the raw value.",
+      "evidence": "Canonical EN connection.environment.webapi is WebAPI: {value}."
+    },
+    "app.ok": {
+      "classification": "intentional_english",
+      "reason": "OK is the conventional very short affirmative acknowledgment on Polish-language software buttons.",
+      "evidence": "Canonical EN app.ok is a standalone OK acknowledgment without additional imperative."
+    },
+    "language.zh-TW": {
+      "classification": "intentional_english",
+      "reason": "The language chooser uses each language's autonym, here preserving the traditional Chinese native script.",
+      "evidence": "Canonical EN language.zh-TW is 繁體中文, not an English phrase."
+    },
+    "language.zh-HK": {
+      "classification": "intentional_english",
+      "reason": "The native-script Hong Kong Chinese language name should remain unchanged in the language chooser.",
+      "evidence": "Canonical EN language.zh-HK is 香港正體字."
+    },
+    "settings.weig.density.torrentExample": {
+      "classification": "intentional_english",
+      "reason": "Torrent is a compact international BitTorrent term in the sample preview, not an instruction to translate or expand.",
+      "evidence": "Canonical EN settings.weig.density.torrentExample is the single technical noun Torrent."
+    }
+  }
+}
