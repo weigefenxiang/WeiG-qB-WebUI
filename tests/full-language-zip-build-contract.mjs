@@ -6,7 +6,7 @@ import crypto from 'node:crypto';
 import {spawnSync} from 'node:child_process';
 import {fileURLToPath} from 'node:url';
 import {buildWebuiDist} from '../tools/build-webui-dist.mjs';
-import {expectedExtendedLocales,inspectExtendedLocaleSources,canonicalEnglishTranslationKeys,canonicalEnglishSourceSha256,canonicalEnglishMessages} from '../tools/external-weig-locale-assets.mjs';
+import {expectedExtendedLocales,inspectExtendedLocaleSources,canonicalEnglishTranslationKeys,canonicalEnglishSourceSha256,canonicalEnglishMessages,SOURCE_PRESERVED_UI_LABELS} from '../tools/external-weig-locale-assets.mjs';
 
 const root=path.resolve(path.dirname(fileURLToPath(import.meta.url)),'..');
 const scratch=fs.mkdtempSync(path.join(os.tmpdir(),'weig-locale-dist-test-'));
@@ -22,11 +22,11 @@ try{
   for(const locale of expectedExtendedLocales){
     const fixture={schemaVersion:1,source:'WeiG-runtime-locale-overlay',locale,
       translationStatus:'approved',englishSourceSha256:canonicalEnglishSourceSha256,
-      messages:Object.fromEntries(canonicalEnglishTranslationKeys.map(key=>{
+      messages:Object.fromEntries(canonicalEnglishTranslationKeys.filter(key=>!Object.hasOwn(SOURCE_PRESERVED_UI_LABELS,key)).map(key=>{
         const source=canonicalEnglishMessages[key];
         return [key,source.replace(/^(\s*)/,(_match,leading)=>leading+'Packaging test '+locale+': ')];
       })),
-      reviewedEnglishFallbackKeys:[]};
+      reviewedEnglishFallbackKeys:Object.keys(SOURCE_PRESERVED_UI_LABELS)};
     fs.writeFileSync(path.join(sourceDir,locale+'.json'),JSON.stringify(fixture)+'\n');
   }
   const damagedFile=path.join(sourceDir,'ca.json'),validBytes=fs.readFileSync(damagedFile);
