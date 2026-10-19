@@ -341,6 +341,20 @@ assert.equal(greekScope.counts.qb_owned,7);
 assert.equal(greekScope.unresolvedKeys,0);
 assert.equal(greekScope.draftScopeComplete,true);
 assert.equal(greekScope.humanApproved,false,'Greek AI draft is not native-language approval');
+// A78-230 Georgian: the complete 673-key semantic-reference draft is not native approval.
+const georgianScope=getTranslationDraftScopeWorklist('ka');
+assert.equal(georgianScope.referenceKeys,673);
+assert.equal(georgianScope.canonicalEnglishKeys,693);
+assert.equal(georgianScope.counts.localized,656);
+assert.equal(georgianScope.counts.intentional_english,10);
+assert.equal(georgianScope.counts.qb_owned,7);
+assert.equal(georgianScope.unresolvedKeys,0);
+assert.equal(georgianScope.draftScopeComplete,true);
+assert.equal(georgianScope.humanApproved,false,'Georgian AI draft is not native-language approval');
+for(const field of ['name','size','progress','download','upload','status','categoryColumn']){
+  assert.equal(georgianScope.items.find(item=>item.key==='torrent.'+field)?.classification,'qb_owned',
+    'qBittorrent source owns Georgian torrent column '+field);
+}
 for(const field of ['name','size','progress','download','upload','status','categoryColumn']){
  assert.equal(nepaliScope.items.find(item=>item.key==='torrent.'+field)?.classification,'qb_owned','qB owns torrent column '+field);
 }
