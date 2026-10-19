@@ -1,0 +1,39 @@
+{
+  "schemaVersion": 1,
+  "source": "WeiG-locale-draft-scope-decisions",
+  "locale": "cs",
+  "englishSourceSha256": "d0d6412654389081013f556747436862ef4c65ec6cc3410c267596055fd88959",
+  "simplifiedChineseSourceSha256": "fcaf060489856126fe909890100b8f3246c16231f139c86ddfaa8ee4a41eb627",
+  "decisions": {
+    "settings.weig.unit.secondShort": {
+      "classification": "intentional_english",
+      "reason": "The SI unit symbol s for seconds is unchanged in Czech.",
+      "evidence": "English canonical settings.weig.unit.secondShort uses the international unit symbol s."
+    },
+    "header.blog": {
+      "classification": "intentional_english",
+      "reason": "WeiG Share Blog is a linked publication's proper name.",
+      "evidence": "English canonical header.blog is the branded publication WeiG Share Blog."
+    },
+    "connection.environment.qb": {
+      "classification": "intentional_english",
+      "reason": "qBittorrent is a product name followed by an interpolated status.",
+      "evidence": "English canonical connection.environment.qb is qBittorrent: {value}."
+    },
+    "connection.environment.webapi": {
+      "classification": "intentional_english",
+      "reason": "WebAPI is a technical interface name followed by an interpolated value.",
+      "evidence": "English canonical connection.environment.webapi is WebAPI: {value}."
+    },
+    "language.zh-TW": {
+      "classification": "intentional_english",
+      "reason": "The native Chinese autonym is intentionally displayed in its original script.",
+      "evidence": "English canonical language.zh-TW has the native self-name 繁體中文."
+    },
+    "language.zh-HK": {
+      "classification": "intentional_english",
+      "reason": "The Hong Kong Chinese autonym is intentionally displayed in its original script.",
+      "evidence": "English canonical language.zh-HK has the native self-name 香港正體字."
+    }
+  }
+}

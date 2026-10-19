@@ -680,6 +680,7 @@
     "settings.update.channelDev": "Vývojová",
     "settings.update.channelStable": "Stabilní",
     "settings.update.channelVirtual": "Virtuální",
-    "instances.online": "Dostupná"
+    "instances.online": "Dostupná",
+    "settings.weig.density.torrentExample": "Ukázkový torrent"
   }
 }
