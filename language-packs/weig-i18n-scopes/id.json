@@ -1,0 +1,81 @@
+{
+  "schemaVersion": 1,
+  "source": "WeiG-locale-draft-scope-decisions",
+  "locale": "id",
+  "englishSourceSha256": "d0d6412654389081013f556747436862ef4c65ec6cc3410c267596055fd88959",
+  "simplifiedChineseSourceSha256": "fcaf060489856126fe909890100b8f3246c16231f139c86ddfaa8ee4a41eb627",
+  "decisions": {
+    "torrent.status": {
+      "classification": "qb_owned",
+      "reason": "qBittorrent owns this locale/version-aware torrent table and column-selector label.",
+      "evidence": "TorrentFieldRegistry FIELDS includes field.key='state' and label(field) calls qbText('column.'+field.key,fallback).",
+      "ownerFile": "webui/private/scripts/torrent-fields.js",
+      "caller": "label(field) -> qbText('column.'+field.key,fallback), field.key='state'"
+    },
+    "logs.ui.normal": {
+      "classification": "intentional_english",
+      "reason": "Normal is the conventional Indonesian severity term for an ordinary log record.",
+      "evidence": "English canonical logs.ui.normal = \"Normal\"; the canonical text denotes a native Indonesian loanword, exact proper name/technical identifier, SI unit, release channel or language autonym."
+    },
+    "logs.ui.log": {
+      "classification": "intentional_english",
+      "reason": "Log is the established Indonesian technical label for the application event log.",
+      "evidence": "English canonical logs.ui.log = \"Log\"; the canonical text denotes a native Indonesian loanword, exact proper name/technical identifier, SI unit, release channel or language autonym."
+    },
+    "file.normal": {
+      "classification": "intentional_english",
+      "reason": "Normal is the conventional Indonesian file priority level between Skip and High.",
+      "evidence": "English canonical file.normal = \"Normal\"; the canonical text denotes a native Indonesian loanword, exact proper name/technical identifier, SI unit, release channel or language autonym."
+    },
+    "settings.weig.unit.secondShort": {
+      "classification": "intentional_english",
+      "reason": "The international SI unit symbol s denotes seconds in Indonesian readouts.",
+      "evidence": "English canonical settings.weig.unit.secondShort = \"s\"; the canonical text denotes a native Indonesian loanword, exact proper name/technical identifier, SI unit, release channel or language autonym."
+    },
+    "common.na": {
+      "classification": "intentional_english",
+      "reason": "N/A is a neutral missing or unavailable diagnostic marker that does not invent a specific cause.",
+      "evidence": "English canonical common.na = \"N/A\"; the canonical text denotes a native Indonesian loanword, exact proper name/technical identifier, SI unit, release channel or language autonym."
+    },
+    "header.blog": {
+      "classification": "intentional_english",
+      "reason": "WeiG Share Blog is an exact branded publication name.",
+      "evidence": "English canonical header.blog = \"WeiG Share Blog\"; the canonical text denotes a native Indonesian loanword, exact proper name/technical identifier, SI unit, release channel or language autonym."
+    },
+    "connection.environment.qb": {
+      "classification": "intentional_english",
+      "reason": "qBittorrent is a proper product-name diagnostic prefix.",
+      "evidence": "English canonical connection.environment.qb = \"qBittorrent: {value}\"; the canonical text denotes a native Indonesian loanword, exact proper name/technical identifier, SI unit, release channel or language autonym."
+    },
+    "connection.environment.webapi": {
+      "classification": "intentional_english",
+      "reason": "WebAPI is the exact programmatic interface identifier.",
+      "evidence": "English canonical connection.environment.webapi = \"WebAPI: {value}\"; the canonical text denotes a native Indonesian loanword, exact proper name/technical identifier, SI unit, release channel or language autonym."
+    },
+    "transfer.eyebrow": {
+      "classification": "intentional_english",
+      "reason": "TRANSFER is also the established Indonesian all-caps network transfer heading.",
+      "evidence": "English canonical transfer.eyebrow = \"TRANSFER\"; the canonical text denotes a native Indonesian loanword, exact proper name/technical identifier, SI unit, release channel or language autonym."
+    },
+    "settings.editor.mode": {
+      "classification": "intentional_english",
+      "reason": "Mode is the conventional Indonesian interface label for an editor operating mode.",
+      "evidence": "English canonical settings.editor.mode = \"Mode\"; the canonical text denotes a native Indonesian loanword, exact proper name/technical identifier, SI unit, release channel or language autonym."
+    },
+    "settings.update.channelDev": {
+      "classification": "intentional_english",
+      "reason": "Dev is the exact named release-channel identifier.",
+      "evidence": "English canonical settings.update.channelDev = \"Dev\"; the canonical text denotes a native Indonesian loanword, exact proper name/technical identifier, SI unit, release channel or language autonym."
+    },
+    "language.zh-TW": {
+      "classification": "intentional_english",
+      "reason": "Keep the native traditional Chinese self-name in the language selector.",
+      "evidence": "English canonical language.zh-TW = \"繁體中文\"; the canonical text denotes a native Indonesian loanword, exact proper name/technical identifier, SI unit, release channel or language autonym."
+    },
+    "language.zh-HK": {
+      "classification": "intentional_english",
+      "reason": "Keep the original Hong Kong Chinese native written autonym in the language selector.",
+      "evidence": "English canonical language.zh-HK = \"香港正體字\"; the canonical text denotes a native Indonesian loanword, exact proper name/technical identifier, SI unit, release channel or language autonym."
+    }
+  }
+}
