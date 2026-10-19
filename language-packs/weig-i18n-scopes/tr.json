@@ -1,0 +1,64 @@
+{
+  "schemaVersion": 1,
+  "source": "WeiG-locale-draft-scope-decisions",
+  "locale": "tr",
+  "englishSourceSha256": "d0d6412654389081013f556747436862ef4c65ec6cc3410c267596055fd88959",
+  "simplifiedChineseSourceSha256": "fcaf060489856126fe909890100b8f3246c16231f139c86ddfaa8ee4a41eb627",
+  "decisions": {
+    "logs.ui.normal": {
+      "classification": "intentional_english",
+      "reason": "Normal is the established Turkish technical label for an ordinary log severity.",
+      "evidence": "English canonical logs.ui.normal = \"Normal\"; this is an unchanged locale technical loanword, unit, proper name, exact release channel, or native autonym."
+    },
+    "file.normal": {
+      "classification": "intentional_english",
+      "reason": "Normal is the recognized Turkish file-priority setting between Skip and High.",
+      "evidence": "English canonical file.normal = \"Normal\"; this is an unchanged locale technical loanword, unit, proper name, exact release channel, or native autonym."
+    },
+    "settings.weig.unit.secondShort": {
+      "classification": "intentional_english",
+      "reason": "The SI second unit symbol s does not change in Turkish numeric readouts.",
+      "evidence": "English canonical settings.weig.unit.secondShort = \"s\"; this is an unchanged locale technical loanword, unit, proper name, exact release channel, or native autonym."
+    },
+    "common.na": {
+      "classification": "intentional_english",
+      "reason": "N/A is a neutral unavailable-data diagnostic marker, not a Turkish sentence to invent.",
+      "evidence": "English canonical common.na = \"N/A\"; this is an unchanged locale technical loanword, unit, proper name, exact release channel, or native autonym."
+    },
+    "header.blog": {
+      "classification": "intentional_english",
+      "reason": "WeiG Share Blog is the publication's proper name.",
+      "evidence": "English canonical header.blog = \"WeiG Share Blog\"; this is an unchanged locale technical loanword, unit, proper name, exact release channel, or native autonym."
+    },
+    "connection.environment.qb": {
+      "classification": "intentional_english",
+      "reason": "The qBittorrent product name is a stable diagnostic caption before {value}.",
+      "evidence": "English canonical connection.environment.qb = \"qBittorrent: {value}\"; this is an unchanged locale technical loanword, unit, proper name, exact release channel, or native autonym."
+    },
+    "connection.environment.webapi": {
+      "classification": "intentional_english",
+      "reason": "WebAPI is the exact API identifier displayed before {value}.",
+      "evidence": "English canonical connection.environment.webapi = \"WebAPI: {value}\"; this is an unchanged locale technical loanword, unit, proper name, exact release channel, or native autonym."
+    },
+    "settings.update.channelDev": {
+      "classification": "intentional_english",
+      "reason": "Dev denotes the exact named update release channel.",
+      "evidence": "English canonical settings.update.channelDev = \"Dev\"; this is an unchanged locale technical loanword, unit, proper name, exact release channel, or native autonym."
+    },
+    "language.zh-TW": {
+      "classification": "intentional_english",
+      "reason": "Preserve the language's native traditional Chinese self-name in the selector.",
+      "evidence": "English canonical language.zh-TW = \"繁體中文\"; this is an unchanged locale technical loanword, unit, proper name, exact release channel, or native autonym."
+    },
+    "language.zh-HK": {
+      "classification": "intentional_english",
+      "reason": "Preserve the native Hong Kong traditional Chinese autonym.",
+      "evidence": "English canonical language.zh-HK = \"香港正體字\"; this is an unchanged locale technical loanword, unit, proper name, exact release channel, or native autonym."
+    },
+    "settings.weig.density.torrentExample": {
+      "classification": "intentional_english",
+      "reason": "Torrent is the accepted Turkish sample torrent noun; duplicating the same English value in the overlay is unnecessary.",
+      "evidence": "English canonical settings.weig.density.torrentExample = \"Torrent\"; this is an unchanged locale technical loanword, unit, proper name, exact release channel, or native autonym."
+    }
+  }
+}
