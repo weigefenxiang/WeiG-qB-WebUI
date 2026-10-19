@@ -361,6 +361,19 @@ assert.equal(kazakhScope.counts.qb_owned,7);
 assert.equal(kazakhScope.unresolvedKeys,0);
 assert.equal(kazakhScope.draftScopeComplete,true);
 assert.equal(kazakhScope.humanApproved,false,'Kazakh draft is not native-language approval');
+
+const mongolianScope=getTranslationDraftScopeWorklist('mn-MN');
+assert.equal(mongolianScope.referenceKeys,673);
+assert.equal(mongolianScope.canonicalEnglishKeys,693);
+assert.equal(mongolianScope.counts.localized,656);
+assert.equal(mongolianScope.counts.intentional_english,10);
+assert.equal(mongolianScope.counts.qb_owned,7);
+assert.equal(mongolianScope.unresolvedKeys,0);
+assert.equal(mongolianScope.draftScopeComplete,true);
+assert.equal(mongolianScope.humanApproved,false,'Mongolian draft is not native-language approval');
+for(const field of ['name','size','progress','download','upload','status','categoryColumn']){
+  assert.equal(mongolianScope.items.find(item=>item.key==='torrent.'+field)?.classification,'qb_owned');
+}
 for(const field of ['name','size','progress','download','upload','status','categoryColumn']){
   assert.equal(kazakhScope.items.find(item=>item.key==='torrent.'+field)?.classification,'qb_owned');
 }

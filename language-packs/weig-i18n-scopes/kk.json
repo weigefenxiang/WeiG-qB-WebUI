@@ -57,7 +57,7 @@
     "settings.weig.unit.secondShort": {
       "classification": "intentional_english",
       "reason": "The SI symbol s for seconds must remain the standard unmodified notation in technical UI readings.",
-      "evidence": "Canonical English source i18n.js provides the unit symbol s; internationally standardized SI unit notation, not a Georgian word."
+      "evidence": "Canonical English source i18n.js provides the unit symbol s; internationally standardized SI unit notation, not a Kazakh word."
     },
     "common.na": {
       "classification": "intentional_english",
