@@ -411,6 +411,21 @@ assert.equal(latgalianScope.counts.qb_owned,7);
 assert.equal(latgalianScope.unresolvedKeys,0);
 assert.equal(latgalianScope.draftScopeComplete,true);
 assert.equal(latgalianScope.humanApproved,false,'Latgalian AI draft is not native-language approval');
+// A78-237 Arabic: source-bound complete 673-key AI draft; native approval stays pending.
+const arabicScope=getTranslationDraftScopeWorklist('ar');
+assert.equal(arabicScope.referenceKeys,673);
+assert.equal(arabicScope.canonicalEnglishKeys,693);
+assert.equal(arabicScope.counts.localized,656);
+assert.equal(arabicScope.counts.intentional_english,10);
+assert.equal(arabicScope.counts.qb_owned,7);
+assert.equal(arabicScope.unresolvedKeys,0);
+assert.equal(arabicScope.draftScopeComplete,true);
+assert.equal(arabicScope.humanApproved,false,'Arabic AI draft is not native-language approval');
+for(const field of ['name','size','progress','download','upload','status','categoryColumn']){
+  assert.equal(arabicScope.items.find(item=>item.key==='torrent.'+field)?.classification,'qb_owned',
+    'qBittorrent source owns Arabic torrent column '+field);
+}
+
 for(const field of ['name','size','progress','download','upload','status','categoryColumn']){
   assert.equal(latgalianScope.items.find(item=>item.key==='torrent.'+field)?.classification,'qb_owned',
     'qBittorrent source owns Latgalian torrent column '+field);
