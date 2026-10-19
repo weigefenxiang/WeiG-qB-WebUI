@@ -391,6 +391,20 @@ assert.equal(occitanScope.counts.qb_owned,7);
 assert.equal(occitanScope.unresolvedKeys,0);
 assert.equal(occitanScope.draftScopeComplete,true);
 assert.equal(occitanScope.humanApproved,false,'Occitan AI draft is not native-language approval');
+
+const basqueScope=getTranslationDraftScopeWorklist('eu');
+assert.equal(basqueScope.referenceKeys,673);
+assert.equal(basqueScope.canonicalEnglishKeys,693);
+assert.equal(basqueScope.counts.localized,656);
+assert.equal(basqueScope.counts.intentional_english,10);
+assert.equal(basqueScope.counts.qb_owned,7);
+assert.equal(basqueScope.unresolvedKeys,0);
+assert.equal(basqueScope.draftScopeComplete,true);
+assert.equal(basqueScope.humanApproved,false,'Basque AI draft is not native-language approval');
+for(const field of ['name','size','progress','download','upload','status','categoryColumn']){
+  assert.equal(basqueScope.items.find(item=>item.key==='torrent.'+field)?.classification,'qb_owned',
+    'qBittorrent source owns Basque torrent column '+field);
+}
 for(const field of ['name','size','progress','download','upload','status','categoryColumn']){
   assert.equal(occitanScope.items.find(item=>item.key==='torrent.'+field)?.classification,'qb_owned',
     'qBittorrent source owns Occitan torrent column '+field);

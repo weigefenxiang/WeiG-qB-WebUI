@@ -1,0 +1,108 @@
+{
+  "schemaVersion": 1,
+  "source": "WeiG-locale-draft-scope-decisions",
+  "locale": "eu",
+  "englishSourceSha256": "d0d6412654389081013f556747436862ef4c65ec6cc3410c267596055fd88959",
+  "simplifiedChineseSourceSha256": "fcaf060489856126fe909890100b8f3246c16231f139c86ddfaa8ee4a41eb627",
+  "decisions": {
+    "torrent.name": {
+      "classification": "qb_owned",
+      "reason": "qBittorrent owns this locale/version-aware torrent table and column-selector label.",
+      "evidence": "TorrentFieldRegistry FIELDS includes field.key='name' and label(field) calls qbText('column.'+field.key,fallback).",
+      "ownerFile": "webui/private/scripts/torrent-fields.js",
+      "caller": "label(field) -> qbText('column.'+field.key,fallback), field.key='name'"
+    },
+    "torrent.size": {
+      "classification": "qb_owned",
+      "reason": "qBittorrent owns this locale/version-aware torrent table and column-selector label.",
+      "evidence": "TorrentFieldRegistry FIELDS includes field.key='size' and label(field) calls qbText('column.'+field.key,fallback).",
+      "ownerFile": "webui/private/scripts/torrent-fields.js",
+      "caller": "label(field) -> qbText('column.'+field.key,fallback), field.key='size'"
+    },
+    "torrent.progress": {
+      "classification": "qb_owned",
+      "reason": "qBittorrent owns this locale/version-aware torrent table and column-selector label.",
+      "evidence": "TorrentFieldRegistry FIELDS includes field.key='progress' and label(field) calls qbText('column.'+field.key,fallback).",
+      "ownerFile": "webui/private/scripts/torrent-fields.js",
+      "caller": "label(field) -> qbText('column.'+field.key,fallback), field.key='progress'"
+    },
+    "torrent.download": {
+      "classification": "qb_owned",
+      "reason": "qBittorrent owns this locale/version-aware torrent table and column-selector label.",
+      "evidence": "TorrentFieldRegistry FIELDS includes field.key='dlspeed' and label(field) calls qbText('column.'+field.key,fallback).",
+      "ownerFile": "webui/private/scripts/torrent-fields.js",
+      "caller": "label(field) -> qbText('column.'+field.key,fallback), field.key='dlspeed'"
+    },
+    "torrent.upload": {
+      "classification": "qb_owned",
+      "reason": "qBittorrent owns this locale/version-aware torrent table and column-selector label.",
+      "evidence": "TorrentFieldRegistry FIELDS includes field.key='upspeed' and label(field) calls qbText('column.'+field.key,fallback).",
+      "ownerFile": "webui/private/scripts/torrent-fields.js",
+      "caller": "label(field) -> qbText('column.'+field.key,fallback), field.key='upspeed'"
+    },
+    "torrent.status": {
+      "classification": "qb_owned",
+      "reason": "qBittorrent owns this locale/version-aware torrent table and column-selector label.",
+      "evidence": "TorrentFieldRegistry FIELDS includes field.key='state' and label(field) calls qbText('column.'+field.key,fallback).",
+      "ownerFile": "webui/private/scripts/torrent-fields.js",
+      "caller": "label(field) -> qbText('column.'+field.key,fallback), field.key='state'"
+    },
+    "torrent.categoryColumn": {
+      "classification": "qb_owned",
+      "reason": "qBittorrent owns this locale/version-aware torrent table and column-selector label.",
+      "evidence": "TorrentFieldRegistry FIELDS includes field.key='category' and label(field) calls qbText('column.'+field.key,fallback).",
+      "ownerFile": "webui/private/scripts/torrent-fields.js",
+      "caller": "label(field) -> qbText('column.'+field.key,fallback), field.key='category'"
+    },
+    "settings.weig.unit.secondShort": {
+      "classification": "intentional_english",
+      "reason": "The SI symbol s for seconds must remain the standard unmodified notation in technical UI readings.",
+      "evidence": "English canonical i18n.js defines the SI symbol s for seconds; the technical unit symbol remains lowercase s in Basque interfaces."
+    },
+    "common.na": {
+      "classification": "intentional_english",
+      "reason": "N/A denotes missing or inapplicable diagnostic data; preserve the stable technical marker.",
+      "evidence": "English source i18n.js common.na is N/A; this is a missing-value diagnostic marker rather than natural-language sentence."
+    },
+    "header.blog": {
+      "classification": "intentional_english",
+      "reason": "WeiG Share Blog is the exact site and publication name, which must not be altered.",
+      "evidence": "English source i18n.js header.blog gives the exact published brand WeiG Share Blog; altering it would misidentify the destination."
+    },
+    "connection.environment.qb": {
+      "classification": "intentional_english",
+      "reason": "The qBittorrent product name and value-placeholder diagnostic line remain source-exact.",
+      "evidence": "i18n.js canonical source: connection.environment.qb = qBittorrent: {value}; qBittorrent is the product identifier and {value} is runtime-substituted."
+    },
+    "connection.environment.webapi": {
+      "classification": "intentional_english",
+      "reason": "WebAPI is an exact API identifier followed by the {value} status placeholder.",
+      "evidence": "i18n.js canonical source: connection.environment.webapi = WebAPI: {value}; the API identifier is a stable diagnostic label."
+    },
+    "connection.networkSnapshot": {
+      "classification": "intentional_english",
+      "reason": "DHT and Peers are exact protocol/status identifiers with ordered runtime counters.",
+      "evidence": "i18n.js canonical source: connection.networkSnapshot = DHT {dht} · Peers {peers}; preserve protocol abbreviations and placeholder format."
+    },
+    "settings.update.channelDev": {
+      "classification": "intentional_english",
+      "reason": "Dev is the product's literal development release-channel identifier, not a sentence.",
+      "evidence": "i18n.js canonical source settings.update.channelDev = Dev; update channel UI refers to the exact Dev release tier."
+    },
+    "language.zh-TW": {
+      "classification": "intentional_english",
+      "reason": "Keep the self-name of Traditional Chinese in its original script instead of translating the language's native label.",
+      "evidence": "i18n.js canonical language.zh-TW = 繁體中文; use the native-language autonym in the language selector."
+    },
+    "language.zh-HK": {
+      "classification": "intentional_english",
+      "reason": "Keep the Hong Kong Traditional Chinese self-name in its original script for the language selector.",
+      "evidence": "i18n.js canonical language.zh-HK = 香港正體字; the locale autonym is source-defined in the original script."
+    },
+    "settings.weig.density.torrentExample": {
+      "classification": "intentional_english",
+      "reason": "Torrent is the intentionally unchanged technical sample label in the spacing preview.",
+      "evidence": "i18n.js canonical settings.weig.density.torrentExample = Torrent; this standalone preview sample uses the technical name unchanged."
+    }
+  }
+}
