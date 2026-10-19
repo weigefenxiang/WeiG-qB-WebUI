@@ -539,7 +539,7 @@
     "api.actionUnproven": "Ta operacja API nie jest potwierdzona w kodzie źródłowym dla bieżącej wersji qBittorrent.",
     "api.torrentRejected": "qBittorrent nie zaakceptował torrentu.",
     "api.categoriesUnexpected": "API kategorii zwróciło nieoczekiwaną odpowiedź.",
-    "api.writeBlocked": "Ten zapis nie jest potwierdzony w źródłach dla bieżącej wersji qBittorrent i został zablokowany.",
+    "api.writeBlocked": "Ta operacja zapisu nie została potwierdzona w kodzie źródłowym bieżącej wersji qBittorrenta i została zablokowana.",
     "api.sessionExpired": "Sesja wygasła. Zaloguj się ponownie.",
     "api.parseFailed": "API zwróciło dane, których nie udało się przeanalizować.",
     "api.filterUnsupported": "Ta wersja qBittorrent nie obsługuje tego filtra torrentów.",

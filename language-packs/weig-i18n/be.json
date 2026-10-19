@@ -553,7 +553,7 @@
     "api.actionUnproven": "Гэтае дзеянне API не пацверджана зыходным кодам для бягучага выпуску qBittorrent.",
     "api.torrentRejected": "qBittorrent не прыняў торэнт.",
     "api.categoriesUnexpected": "API катэгорый вярнуў нечаканы адказ.",
-    "api.writeBlocked": "Гэты запіс не пацверджаны зыходным кодам для бягучага выпуску qBittorrent.",
+    "api.writeBlocked": "Гэтая аперацыя запісу не пацверджана зыходным кодам бягучай версіі qBittorrent.",
     "api.sessionExpired": "Тэрмін дзеяння сеанса скончыўся. Увайдзіце зноў.",
     "api.parseFailed": "API вярнуў даныя, якія не ўдалося разабраць.",
     "api.filterUnsupported": "Гэты фільтр торэнтаў не падтрымліваецца бягучым выпускам qBittorrent.",

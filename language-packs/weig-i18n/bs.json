@@ -539,7 +539,7 @@
     "api.actionUnproven": "Ova API radnja nije potvrđena izvornim kodom za trenutnu verziju qBittorrenta.",
     "api.torrentRejected": "qBittorrent nije prihvatio torent.",
     "api.categoriesUnexpected": "API kategorija vratio je neočekivan odgovor.",
-    "api.writeBlocked": "Ovaj zapis nije potvrđen izvornim kodom za trenutnu verziju qBittorrenta i zato je blokiran.",
+    "api.writeBlocked": "Ova operacija pisanja nije potvrđena izvornim kodom za trenutnu verziju qBittorrenta i zato je blokirana.",
     "api.sessionExpired": "Sesija je istekla. Ponovo se prijavite.",
     "api.parseFailed": "API je vratio podatke koje nije moguće raščlaniti.",
     "api.filterUnsupported": "Ova verzija qBittorrenta ne podržava ovaj filter torenata.",

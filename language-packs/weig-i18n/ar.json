@@ -538,7 +538,7 @@
     "api.actionUnproven": "لم يثبت دعم إجراء API هذا في الشيفرة المصدرية لإصدار qBittorrent الحالي.",
     "api.torrentRejected": "لم يقبل qBittorrent التورنت.",
     "api.categoriesUnexpected": "أعادت واجهة API للفئات استجابة غير متوقعة.",
-    "api.writeBlocked": "لم يثبت أمان هذه الكتابة في الشيفرة المصدرية لإصدار qBittorrent الحالي.",
+    "api.writeBlocked": "لم يثبت من الشيفرة المصدرية أن عملية الكتابة هذه مدعومة في إصدار qBittorrent الحالي.",
     "api.sessionExpired": "انتهت صلاحية الجلسة. سجّل الدخول مجددًا.",
     "api.parseFailed": "أعادت واجهة API بيانات تعذّر تحليلها.",
     "api.filterUnsupported": "تصفية التورنت هذه غير مدعومة في إصدار qBittorrent الحالي.",

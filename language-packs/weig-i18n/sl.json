@@ -524,7 +524,7 @@
     "api.actionUnproven": "To dejanje API ni potrjeno z izvorno kodo trenutne različice qBittorrenta.",
     "api.torrentRejected": "qBittorrent ni sprejel torrenta.",
     "api.categoriesUnexpected": "API kategorij je vrnil nepričakovan odgovor.",
-    "api.writeBlocked": "Ta zapis ni potrjen z izvorno kodo trenutne različice qBittorrenta.",
+    "api.writeBlocked": "Ta operacija zapisovanja ni potrjena v izvorni kodi trenutne različice qBittorrenta.",
     "api.sessionExpired": "Seja je potekla. Znova se prijavi.",
     "api.parseFailed": "API je vrnil podatke, ki jih ni mogoče razčleniti.",
     "api.filterUnsupported": "Trenutna različica qBittorrenta tega filtra torrentov ne podpira.",

@@ -539,7 +539,7 @@
     "api.actionUnproven": "Šī API darbība nav apstiprināta avota kodā pašreizējai qBittorrent versijai.",
     "api.torrentRejected": "qBittorrent nepieņēma torrentu.",
     "api.categoriesUnexpected": "Kategoriju API atgrieza negaidītu atbildi.",
-    "api.writeBlocked": "Šis ieraksts nav apstiprināts avota kodā pašreizējai qBittorrent versijai.",
+    "api.writeBlocked": "Šīs rakstīšanas darbības atbalsts nav apstiprināts pašreizējās qBittorrent versijas pirmkodā.",
     "api.sessionExpired": "Sesija ir beigusies. Lūdzu, piesakieties vēlreiz.",
     "api.parseFailed": "API atgrieza datus, kurus nevar parsēt.",
     "api.filterUnsupported": "Šis torrentu filtrs netiek atbalstīts pašreizējā qBittorrent versijā.",
