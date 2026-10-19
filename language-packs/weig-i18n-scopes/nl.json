@@ -1,0 +1,141 @@
+{
+  "schemaVersion": 1,
+  "source": "WeiG-locale-draft-scope-decisions",
+  "locale": "nl",
+  "englishSourceSha256": "d0d6412654389081013f556747436862ef4c65ec6cc3410c267596055fd88959",
+  "simplifiedChineseSourceSha256": "fcaf060489856126fe909890100b8f3246c16231f139c86ddfaa8ee4a41eb627",
+  "decisions": {
+    "torrent.status": {
+      "classification": "qb_owned",
+      "reason": "The qBittorrent source-version and locale-aware table-column owner must provide the Status caption in both table and column selector.",
+      "evidence": "The exact torrent-fields.js FIELDS registry defines field.key='state'; label(field) resolves qbText('column.'+field.key,fallback) from qB translation sources.",
+      "ownerFile": "webui/private/scripts/torrent-fields.js",
+      "caller": "label(field) -> qbText('column.'+field.key,fallback), field.key='state'"
+    },
+    "nav.torrents": {
+      "classification": "intentional_english",
+      "reason": "Torrents is the unchanged standard Dutch BitTorrent plural used for this lone navigation label.",
+      "evidence": "Verified English canonical nav.torrents = \"Torrents\"; the locale should use this exact spelling via W.I18n fallback rather than duplicate English in overlay."
+    },
+    "sidebar.torrents": {
+      "classification": "intentional_english",
+      "reason": "The all-caps TORRENTS label is the natural Dutch name for this list of BitTorrent jobs.",
+      "evidence": "Verified English canonical sidebar.torrents = \"TORRENTS\"; the locale should use this exact spelling via W.I18n fallback rather than duplicate English in overlay."
+    },
+    "sidebar.trackers": {
+      "classification": "intentional_english",
+      "reason": "TRACKERS is a natural Dutch plural for the established tracker technical term.",
+      "evidence": "Verified English canonical sidebar.trackers = \"TRACKERS\"; the locale should use this exact spelling via W.I18n fallback rather than duplicate English in overlay."
+    },
+    "library.count": {
+      "classification": "intentional_english",
+      "reason": "The compact plural '{count} torrents' is standard Dutch and matches the source exactly.",
+      "evidence": "Verified English canonical library.count = \"{count} torrents\"; the locale should use this exact spelling via W.I18n fallback rather than duplicate English in overlay."
+    },
+    "logs.ui.compact": {
+      "classification": "intentional_english",
+      "reason": "Compact is a natural, unchanged Dutch compactness preset.",
+      "evidence": "Verified English canonical logs.ui.compact = \"Compact\"; the locale should use this exact spelling via W.I18n fallback rather than duplicate English in overlay."
+    },
+    "logs.ui.log": {
+      "classification": "intentional_english",
+      "reason": "Log is the standalone Dutch technical term for a log.",
+      "evidence": "Verified English canonical logs.ui.log = \"Log\"; the locale should use this exact spelling via W.I18n fallback rather than duplicate English in overlay."
+    },
+    "stats.torrent": {
+      "classification": "intentional_english",
+      "reason": "Torrents is the standard Dutch technical plural in the statistics pane.",
+      "evidence": "Verified English canonical stats.torrent = \"Torrents\"; the locale should use this exact spelling via W.I18n fallback rather than duplicate English in overlay."
+    },
+    "settings.interface": {
+      "classification": "intentional_english",
+      "reason": "Interface is the standard Dutch software loanword for this settings section.",
+      "evidence": "Verified English canonical settings.interface = \"Interface\"; the locale should use this exact spelling via W.I18n fallback rather than duplicate English in overlay."
+    },
+    "settings.density.compact": {
+      "classification": "intentional_english",
+      "reason": "Compact is the natural Dutch option spelling for the density preset.",
+      "evidence": "Verified English canonical settings.density.compact = \"Compact\"; the locale should use this exact spelling via W.I18n fallback rather than duplicate English in overlay."
+    },
+    "settings.weig.interface.title": {
+      "classification": "intentional_english",
+      "reason": "Interface is the ordinary Dutch software settings section title.",
+      "evidence": "Verified English canonical settings.weig.interface.title = \"Interface\"; the locale should use this exact spelling via W.I18n fallback rather than duplicate English in overlay."
+    },
+    "settings.weig.option.compact": {
+      "classification": "intentional_english",
+      "reason": "Compact is a standard Dutch short UI density option.",
+      "evidence": "Verified English canonical settings.weig.option.compact = \"Compact\"; the locale should use this exact spelling via W.I18n fallback rather than duplicate English in overlay."
+    },
+    "settings.weig.unit.secondShort": {
+      "classification": "intentional_english",
+      "reason": "The SI symbol s for seconds is invariant in Dutch time displays.",
+      "evidence": "Verified English canonical settings.weig.unit.secondShort = \"s\"; the locale should use this exact spelling via W.I18n fallback rather than duplicate English in overlay."
+    },
+    "common.na": {
+      "classification": "intentional_english",
+      "reason": "N/A is an unqualified technical missing-value marker; translating it would claim a cause absent in the source.",
+      "evidence": "Verified English canonical common.na = \"N/A\"; the locale should use this exact spelling via W.I18n fallback rather than duplicate English in overlay."
+    },
+    "transfer.download": {
+      "classification": "intentional_english",
+      "reason": "Download is the ordinary Dutch borrowed term for this standalone transfer direction.",
+      "evidence": "Verified English canonical transfer.download = \"Download\"; the locale should use this exact spelling via W.I18n fallback rather than duplicate English in overlay."
+    },
+    "transfer.upload": {
+      "classification": "intentional_english",
+      "reason": "Upload is the ordinary Dutch borrowed term for this standalone transfer direction.",
+      "evidence": "Verified English canonical transfer.upload = \"Upload\"; the locale should use this exact spelling via W.I18n fallback rather than duplicate English in overlay."
+    },
+    "header.blog": {
+      "classification": "intentional_english",
+      "reason": "WeiG Share Blog is the proper name of the publication linked here, not generic UI prose.",
+      "evidence": "Verified English canonical header.blog = \"WeiG Share Blog\"; the locale should use this exact spelling via W.I18n fallback rather than duplicate English in overlay."
+    },
+    "connection.environment.qb": {
+      "classification": "intentional_english",
+      "reason": "qBittorrent is the exact diagnostic product-name prefix followed by a runtime value.",
+      "evidence": "Verified English canonical connection.environment.qb = \"qBittorrent: {value}\"; the locale should use this exact spelling via W.I18n fallback rather than duplicate English in overlay."
+    },
+    "connection.environment.webapi": {
+      "classification": "intentional_english",
+      "reason": "WebAPI is the exact technical name of the API in this diagnostic prefix.",
+      "evidence": "Verified English canonical connection.environment.webapi = \"WebAPI: {value}\"; the locale should use this exact spelling via W.I18n fallback rather than duplicate English in overlay."
+    },
+    "settings.update.channelDev": {
+      "classification": "intentional_english",
+      "reason": "Dev names the development update channel, an unchanged conventional release abbreviation.",
+      "evidence": "Verified English canonical settings.update.channelDev = \"Dev\"; the locale should use this exact spelling via W.I18n fallback rather than duplicate English in overlay."
+    },
+    "language.zh-TW": {
+      "classification": "intentional_english",
+      "reason": "The language chooser preserves this Chinese option's original native-script autonym.",
+      "evidence": "Verified English canonical language.zh-TW = \"繁體中文\"; the locale should use this exact spelling via W.I18n fallback rather than duplicate English in overlay."
+    },
+    "language.zh-HK": {
+      "classification": "intentional_english",
+      "reason": "The Hong Kong Chinese chooser label must keep the original written language autonym.",
+      "evidence": "Verified English canonical language.zh-HK = \"香港正體字\"; the locale should use this exact spelling via W.I18n fallback rather than duplicate English in overlay."
+    },
+    "settings.weig.density.torrentExample": {
+      "classification": "intentional_english",
+      "reason": "Torrent is the unchanged common Dutch technical word for a standalone preview row.",
+      "evidence": "Verified English canonical settings.weig.density.torrentExample = \"Torrent\"; the locale should use this exact spelling via W.I18n fallback rather than duplicate English in overlay."
+    },
+    "settings.weig.density.logsExample": {
+      "classification": "intentional_english",
+      "reason": "Log is the unchanged common Dutch technical word for a standalone log-preview row.",
+      "evidence": "Verified English canonical settings.weig.density.logsExample = \"Log\"; the locale should use this exact spelling via W.I18n fallback rather than duplicate English in overlay."
+    },
+    "instances.online": {
+      "classification": "intentional_english",
+      "reason": "Online is the established Dutch term for a concise connectivity-status indicator.",
+      "evidence": "Verified English canonical instances.online = \"Online\"; the locale should use this exact spelling via W.I18n fallback rather than duplicate English in overlay."
+    },
+    "instances.torrentCount": {
+      "classification": "intentional_english",
+      "reason": "The compact '{count} torrents' is already idiomatic Dutch plural counting.",
+      "evidence": "Verified English canonical instances.torrentCount = \"{count} torrents\"; the locale should use this exact spelling via W.I18n fallback rather than duplicate English in overlay."
+    }
+  }
+}
