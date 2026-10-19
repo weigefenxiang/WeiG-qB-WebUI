@@ -1,0 +1,34 @@
+{
+  "schemaVersion": 1,
+  "source": "WeiG-locale-draft-scope-decisions",
+  "locale": "bg",
+  "englishSourceSha256": "d0d6412654389081013f556747436862ef4c65ec6cc3410c267596055fd88959",
+  "simplifiedChineseSourceSha256": "fcaf060489856126fe909890100b8f3246c16231f139c86ddfaa8ee4a41eb627",
+  "decisions": {
+    "settings.weig.unit.secondShort": {
+      "classification": "intentional_english",
+      "reason": "The SI unit symbol s for seconds is unchanged in Bulgarian.",
+      "evidence": "English canonical settings.weig.unit.secondShort is the international symbol s."
+    },
+    "common.na": {
+      "classification": "intentional_english",
+      "reason": "N/A is an established generic technical status marker, intentionally not narrowed.",
+      "evidence": "English canonical common.na is a compact value that does not specify unavailable versus not applicable."
+    },
+    "header.blog": {
+      "classification": "intentional_english",
+      "reason": "WeiG Share Blog is the publication's own branded title.",
+      "evidence": "English canonical header.blog contains the proper name WeiG Share Blog."
+    },
+    "language.zh-TW": {
+      "classification": "intentional_english",
+      "reason": "The language selector retains the native Chinese autonym rather than a Bulgarian translation.",
+      "evidence": "English canonical language.zh-TW contains the autonym 繁體中文."
+    },
+    "language.zh-HK": {
+      "classification": "intentional_english",
+      "reason": "The language selector retains the original Hong Kong Chinese autonym.",
+      "evidence": "English canonical language.zh-HK contains the autonym 香港正體字."
+    }
+  }
+}
