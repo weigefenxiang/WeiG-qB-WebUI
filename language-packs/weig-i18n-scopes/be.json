@@ -1,0 +1,44 @@
+{
+  "schemaVersion": 1,
+  "source": "WeiG-locale-draft-scope-decisions",
+  "locale": "be",
+  "englishSourceSha256": "d0d6412654389081013f556747436862ef4c65ec6cc3410c267596055fd88959",
+  "simplifiedChineseSourceSha256": "fcaf060489856126fe909890100b8f3246c16231f139c86ddfaa8ee4a41eb627",
+  "decisions": {
+    "settings.weig.unit.secondShort": {
+      "classification": "intentional_english",
+      "reason": "The SI seconds symbol s is valid unchanged in Belarusian.",
+      "evidence": "English canonical settings.weig.unit.secondShort uses the international unit symbol s."
+    },
+    "common.na": {
+      "classification": "intentional_english",
+      "reason": "N/A is a neutral compact unavailable-or-not-applicable status and should not be narrowed.",
+      "evidence": "English canonical common.na is a generic status value, not explanatory text."
+    },
+    "header.blog": {
+      "classification": "intentional_english",
+      "reason": "WeiG Share Blog is the official linked publication name.",
+      "evidence": "English canonical header.blog contains the unchanged branded publication title WeiG Share Blog."
+    },
+    "connection.environment.qb": {
+      "classification": "intentional_english",
+      "reason": "qBittorrent is a product brand and the dynamic value is not translated.",
+      "evidence": "English canonical connection.environment.qb is qBittorrent: {value}."
+    },
+    "connection.environment.webapi": {
+      "classification": "intentional_english",
+      "reason": "WebAPI is a technical interface identifier followed by a dynamic value.",
+      "evidence": "English canonical connection.environment.webapi is WebAPI: {value}."
+    },
+    "language.zh-TW": {
+      "classification": "intentional_english",
+      "reason": "Native-language names must remain in their own writing systems.",
+      "evidence": "English canonical language.zh-TW already gives the Chinese autonym 繁體中文."
+    },
+    "language.zh-HK": {
+      "classification": "intentional_english",
+      "reason": "Native-language labels preserve the original Hong Kong Chinese autonym.",
+      "evidence": "English canonical language.zh-HK already gives 香港正體字."
+    }
+  }
+}

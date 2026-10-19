@@ -34,6 +34,7 @@ assert.throws(()=>getTranslationReviewWorklist('en'),/Unknown or already bundled
 const roScope=getTranslationDraftScopeWorklist('ro');
 const slScope=getTranslationDraftScopeWorklist('sl');
 const caScope=getTranslationDraftScopeWorklist('ca');
+const beScope=getTranslationDraftScopeWorklist('be');
 for(const scope of [roScope,slScope,caScope]){
   assert.equal(scope.referenceKeys,673,'Reference source contains 673 Simplified Chinese keys');
   assert.equal(scope.canonicalEnglishKeys,693,'Approval source must remain 693 English keys');
@@ -61,6 +62,12 @@ assert.equal(slScope.humanApproved,false,'Completed Slovenian draft does not imp
 assert.equal(caScope.counts.localized,45);
 assert.equal(caScope.unresolvedKeys,628);
 assert.equal(caScope.draftScopeComplete,false);
+assert.equal(beScope.referenceKeys,673);
+assert.equal(beScope.counts.localized,666);
+assert.equal(beScope.counts.intentional_english,7);
+assert.equal(beScope.unresolvedKeys,0);
+assert.equal(beScope.draftScopeComplete,true);
+assert.equal(beScope.humanApproved,false);
 const caMissing=caScope.work.find(x=>x.key==='instances.currentSuffix');
 const qbMissing=caScope.work.find(x=>x.key==='torrent.name');
 assert.ok(caMissing&&qbMissing,'Synthetic decisions use genuinely missing Catalan draft keys');

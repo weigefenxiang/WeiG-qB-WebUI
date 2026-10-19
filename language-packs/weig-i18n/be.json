@@ -677,6 +677,9 @@
     "settings.update.rollbackTitle": "Спосаб адкату (вяртанне да папярэдняй версіі)",
     "settings.update.sourceInstallNoSha": "Усталявана з зыходнага кода · няма SHA зборкі",
     "settings.about.bugReport": "Паведамленне пра памылку",
-    "settings.about.reportBug": "Паведаміць пра праблему"
+    "settings.about.reportBug": "Паведаміць пра праблему",
+    "app.ok": "Зразумела",
+    "settings.update.channelDev": "Распрацоўка",
+    "settings.update.channelStable": "Стабільная"
   }
 }
