@@ -1,0 +1,178 @@
+{
+  "schemaVersion": 1,
+  "source": "WeiG-locale-draft-scope-decisions",
+  "locale": "da",
+  "englishSourceSha256": "d0d6412654389081013f556747436862ef4c65ec6cc3410c267596055fd88959",
+  "simplifiedChineseSourceSha256": "fcaf060489856126fe909890100b8f3246c16231f139c86ddfaa8ee4a41eb627",
+  "decisions": {
+    "torrent.name": {
+      "classification": "qb_owned",
+      "reason": "qBittorrent's locale- and version-aware table-column caption owner supplies this title for both the table and column picker; WeiG must not override it.",
+      "evidence": "Current TorrentFieldRegistry FIELDS includes field.key='name' and label(field) calls qbText('column.'+field.key,fallback).",
+      "ownerFile": "webui/private/scripts/torrent-fields.js",
+      "caller": "label(field) -> qbText('column.'+field.key,fallback), field.key='name'"
+    },
+    "torrent.size": {
+      "classification": "qb_owned",
+      "reason": "qBittorrent's locale- and version-aware table-column caption owner supplies this title for both the table and column picker; WeiG must not override it.",
+      "evidence": "Current TorrentFieldRegistry FIELDS includes field.key='size' and label(field) calls qbText('column.'+field.key,fallback).",
+      "ownerFile": "webui/private/scripts/torrent-fields.js",
+      "caller": "label(field) -> qbText('column.'+field.key,fallback), field.key='size'"
+    },
+    "torrent.progress": {
+      "classification": "qb_owned",
+      "reason": "qBittorrent's locale- and version-aware table-column caption owner supplies this title for both the table and column picker; WeiG must not override it.",
+      "evidence": "Current TorrentFieldRegistry FIELDS includes field.key='progress' and label(field) calls qbText('column.'+field.key,fallback).",
+      "ownerFile": "webui/private/scripts/torrent-fields.js",
+      "caller": "label(field) -> qbText('column.'+field.key,fallback), field.key='progress'"
+    },
+    "torrent.download": {
+      "classification": "qb_owned",
+      "reason": "qBittorrent's locale- and version-aware table-column caption owner supplies this title for both the table and column picker; WeiG must not override it.",
+      "evidence": "Current TorrentFieldRegistry FIELDS includes field.key='dlspeed' and label(field) calls qbText('column.'+field.key,fallback).",
+      "ownerFile": "webui/private/scripts/torrent-fields.js",
+      "caller": "label(field) -> qbText('column.'+field.key,fallback), field.key='dlspeed'"
+    },
+    "torrent.upload": {
+      "classification": "qb_owned",
+      "reason": "qBittorrent's locale- and version-aware table-column caption owner supplies this title for both the table and column picker; WeiG must not override it.",
+      "evidence": "Current TorrentFieldRegistry FIELDS includes field.key='upspeed' and label(field) calls qbText('column.'+field.key,fallback).",
+      "ownerFile": "webui/private/scripts/torrent-fields.js",
+      "caller": "label(field) -> qbText('column.'+field.key,fallback), field.key='upspeed'"
+    },
+    "torrent.status": {
+      "classification": "qb_owned",
+      "reason": "qBittorrent's locale- and version-aware table-column caption owner supplies this title for both the table and column picker; WeiG must not override it.",
+      "evidence": "Current TorrentFieldRegistry FIELDS includes field.key='state' and label(field) calls qbText('column.'+field.key,fallback).",
+      "ownerFile": "webui/private/scripts/torrent-fields.js",
+      "caller": "label(field) -> qbText('column.'+field.key,fallback), field.key='state'"
+    },
+    "torrent.categoryColumn": {
+      "classification": "qb_owned",
+      "reason": "qBittorrent's locale- and version-aware table-column caption owner supplies this title for both the table and column picker; WeiG must not override it.",
+      "evidence": "Current TorrentFieldRegistry FIELDS includes field.key='category' and label(field) calls qbText('column.'+field.key,fallback).",
+      "ownerFile": "webui/private/scripts/torrent-fields.js",
+      "caller": "label(field) -> qbText('column.'+field.key,fallback), field.key='category'"
+    },
+    "logs.ui.normal": {
+      "classification": "intentional_english",
+      "reason": "Normal is also the natural unchanged Danish one-word priority/severity label.",
+      "evidence": "Verified canonical English logs.ui.normal = \"Normal\"; Danish UI legitimately uses the identical form, unit, product name or native-script self-name."
+    },
+    "logs.ui.log": {
+      "classification": "intentional_english",
+      "reason": "Log is the conventional Danish software term for one log entry or view.",
+      "evidence": "Verified canonical English logs.ui.log = \"Log\"; Danish UI legitimately uses the identical form, unit, product name or native-script self-name."
+    },
+    "file.normal": {
+      "classification": "intentional_english",
+      "reason": "Normal is the natural, identical Danish priority choice.",
+      "evidence": "Verified canonical English file.normal = \"Normal\"; Danish UI legitimately uses the identical form, unit, product name or native-script self-name."
+    },
+    "settings.size.standard": {
+      "classification": "intentional_english",
+      "reason": "Standard is the conventional unchanged Danish UI default-size preset.",
+      "evidence": "Verified canonical English settings.size.standard = \"Standard\"; Danish UI legitimately uses the identical form, unit, product name or native-script self-name."
+    },
+    "settings.density.standard": {
+      "classification": "intentional_english",
+      "reason": "Standard is the natural Danish density preset label, identical to English.",
+      "evidence": "Verified canonical English settings.density.standard = \"Standard\"; Danish UI legitimately uses the identical form, unit, product name or native-script self-name."
+    },
+    "settings.weig.option.standard": {
+      "classification": "intentional_english",
+      "reason": "Standard is the conventional Danish single-word preset in the interface.",
+      "evidence": "Verified canonical English settings.weig.option.standard = \"Standard\"; Danish UI legitimately uses the identical form, unit, product name or native-script self-name."
+    },
+    "settings.weig.unit.secondShort": {
+      "classification": "intentional_english",
+      "reason": "The SI seconds symbol s is language-independent and valid in Danish durations.",
+      "evidence": "Verified canonical English settings.weig.unit.secondShort = \"s\"; Danish UI legitimately uses the identical form, unit, product name or native-script self-name."
+    },
+    "common.na": {
+      "classification": "intentional_english",
+      "reason": "N/A is a neutral short diagnostic marker; a Danish phrase would assume an unavailable/inapplicable cause absent from source.",
+      "evidence": "Verified canonical English common.na = \"N/A\"; Danish UI legitimately uses the identical form, unit, product name or native-script self-name."
+    },
+    "transfer.download": {
+      "classification": "intentional_english",
+      "reason": "Download is a well-established unchanged Danish noun for a transfer direction.",
+      "evidence": "Verified canonical English transfer.download = \"Download\"; Danish UI legitimately uses the identical form, unit, product name or native-script self-name."
+    },
+    "transfer.upload": {
+      "classification": "intentional_english",
+      "reason": "Upload is a well-established unchanged Danish noun for a transfer direction.",
+      "evidence": "Verified canonical English transfer.upload = \"Upload\"; Danish UI legitimately uses the identical form, unit, product name or native-script self-name."
+    },
+    "header.blog": {
+      "classification": "intentional_english",
+      "reason": "WeiG Share Blog is the exact proper name of the linked publication.",
+      "evidence": "Verified canonical English header.blog = \"WeiG Share Blog\"; Danish UI legitimately uses the identical form, unit, product name or native-script self-name."
+    },
+    "header.links": {
+      "classification": "intentional_english",
+      "reason": "LINKS is a natural all-caps Danish navigation heading, identical to English.",
+      "evidence": "Verified canonical English header.links = \"LINKS\"; Danish UI legitimately uses the identical form, unit, product name or native-script self-name."
+    },
+    "connection.environment.qb": {
+      "classification": "intentional_english",
+      "reason": "qBittorrent is the proper product name of this diagnostic field prefix.",
+      "evidence": "Verified canonical English connection.environment.qb = \"qBittorrent: {value}\"; Danish UI legitimately uses the identical form, unit, product name or native-script self-name."
+    },
+    "connection.environment.webapi": {
+      "classification": "intentional_english",
+      "reason": "WebAPI is the exact proper API identifier preceding its diagnostic value.",
+      "evidence": "Verified canonical English connection.environment.webapi = \"WebAPI: {value}\"; Danish UI legitimately uses the identical form, unit, product name or native-script self-name."
+    },
+    "selection.action.resume": {
+      "classification": "intentional_english",
+      "reason": "Start is also the natural Danish button command for resuming a torrent.",
+      "evidence": "Verified canonical English selection.action.resume = \"Start\"; Danish UI legitimately uses the identical form, unit, product name or native-script self-name."
+    },
+    "selection.action.pause": {
+      "classification": "intentional_english",
+      "reason": "Pause / stop is also standard Danish terminology for the paired pause/stop torrent actions.",
+      "evidence": "Verified canonical English selection.action.pause = \"Pause / stop\"; Danish UI legitimately uses the identical form, unit, product name or native-script self-name."
+    },
+    "app.ok": {
+      "classification": "intentional_english",
+      "reason": "OK is the conventional short affirmative button label in Danish software.",
+      "evidence": "Verified canonical English app.ok = \"OK\"; Danish UI legitimately uses the identical form, unit, product name or native-script self-name."
+    },
+    "feedback.info": {
+      "classification": "intentional_english",
+      "reason": "Information is a natural identical Danish notification heading.",
+      "evidence": "Verified canonical English feedback.info = \"Information\"; Danish UI legitimately uses the identical form, unit, product name or native-script self-name."
+    },
+    "settings.update.channelDev": {
+      "classification": "intentional_english",
+      "reason": "Dev names the development release channel; this compact channel identifier is not generic prose.",
+      "evidence": "Verified canonical English settings.update.channelDev = \"Dev\"; Danish UI legitimately uses the identical form, unit, product name or native-script self-name."
+    },
+    "language.zh-TW": {
+      "classification": "intentional_english",
+      "reason": "The language selector preserves this Chinese autonym in its own traditional script.",
+      "evidence": "Verified canonical English language.zh-TW = \"繁體中文\"; Danish UI legitimately uses the identical form, unit, product name or native-script self-name."
+    },
+    "language.zh-HK": {
+      "classification": "intentional_english",
+      "reason": "The language selector preserves the Hong Kong Chinese written autonym.",
+      "evidence": "Verified canonical English language.zh-HK = \"香港正體字\"; Danish UI legitimately uses the identical form, unit, product name or native-script self-name."
+    },
+    "settings.weig.density.torrentExample": {
+      "classification": "intentional_english",
+      "reason": "Torrent is an established unchanged Danish BitTorrent term in this one-word preview.",
+      "evidence": "Verified canonical English settings.weig.density.torrentExample = \"Torrent\"; Danish UI legitimately uses the identical form, unit, product name or native-script self-name."
+    },
+    "settings.weig.density.logsExample": {
+      "classification": "intentional_english",
+      "reason": "Log is the established Danish software loanword for a log preview row.",
+      "evidence": "Verified canonical English settings.weig.density.logsExample = \"Log\"; Danish UI legitimately uses the identical form, unit, product name or native-script self-name."
+    },
+    "instances.online": {
+      "classification": "intentional_english",
+      "reason": "Online is the established unchanged Danish network-status label.",
+      "evidence": "Verified canonical English instances.online = \"Online\"; Danish UI legitimately uses the identical form, unit, product name or native-script self-name."
+    }
+  }
+}
