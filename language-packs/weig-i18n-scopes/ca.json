@@ -1,0 +1,183 @@
+{
+  "schemaVersion": 1,
+  "source": "WeiG-locale-draft-scope-decisions",
+  "locale": "ca",
+  "englishSourceSha256": "d0d6412654389081013f556747436862ef4c65ec6cc3410c267596055fd88959",
+  "simplifiedChineseSourceSha256": "fcaf060489856126fe909890100b8f3246c16231f139c86ddfaa8ee4a41eb627",
+  "decisions": {
+    "torrent.name": {
+      "classification": "qb_owned",
+      "reason": "qBittorrent owns this locale/version-aware torrent table and column-selector label.",
+      "evidence": "TorrentFieldRegistry FIELDS includes field.key='name' and label(field) calls qbText('column.'+field.key,fallback).",
+      "ownerFile": "webui/private/scripts/torrent-fields.js",
+      "caller": "label(field) -> qbText('column.'+field.key,fallback), field.key='name'"
+    },
+    "torrent.size": {
+      "classification": "qb_owned",
+      "reason": "qBittorrent owns this locale/version-aware torrent table and column-selector label.",
+      "evidence": "TorrentFieldRegistry FIELDS includes field.key='size' and label(field) calls qbText('column.'+field.key,fallback).",
+      "ownerFile": "webui/private/scripts/torrent-fields.js",
+      "caller": "label(field) -> qbText('column.'+field.key,fallback), field.key='size'"
+    },
+    "torrent.progress": {
+      "classification": "qb_owned",
+      "reason": "qBittorrent owns this locale/version-aware torrent table and column-selector label.",
+      "evidence": "TorrentFieldRegistry FIELDS includes field.key='progress' and label(field) calls qbText('column.'+field.key,fallback).",
+      "ownerFile": "webui/private/scripts/torrent-fields.js",
+      "caller": "label(field) -> qbText('column.'+field.key,fallback), field.key='progress'"
+    },
+    "torrent.download": {
+      "classification": "qb_owned",
+      "reason": "qBittorrent owns this locale/version-aware torrent table and column-selector label.",
+      "evidence": "TorrentFieldRegistry FIELDS includes field.key='dlspeed' and label(field) calls qbText('column.'+field.key,fallback).",
+      "ownerFile": "webui/private/scripts/torrent-fields.js",
+      "caller": "label(field) -> qbText('column.'+field.key,fallback), field.key='dlspeed'"
+    },
+    "torrent.upload": {
+      "classification": "qb_owned",
+      "reason": "qBittorrent owns this locale/version-aware torrent table and column-selector label.",
+      "evidence": "TorrentFieldRegistry FIELDS includes field.key='upspeed' and label(field) calls qbText('column.'+field.key,fallback).",
+      "ownerFile": "webui/private/scripts/torrent-fields.js",
+      "caller": "label(field) -> qbText('column.'+field.key,fallback), field.key='upspeed'"
+    },
+    "torrent.status": {
+      "classification": "qb_owned",
+      "reason": "qBittorrent owns this locale/version-aware torrent table and column-selector label.",
+      "evidence": "TorrentFieldRegistry FIELDS includes field.key='state' and label(field) calls qbText('column.'+field.key,fallback).",
+      "ownerFile": "webui/private/scripts/torrent-fields.js",
+      "caller": "label(field) -> qbText('column.'+field.key,fallback), field.key='state'"
+    },
+    "torrent.categoryColumn": {
+      "classification": "qb_owned",
+      "reason": "qBittorrent owns this locale/version-aware torrent table and column-selector label.",
+      "evidence": "TorrentFieldRegistry FIELDS includes field.key='category' and label(field) calls qbText('column.'+field.key,fallback).",
+      "ownerFile": "webui/private/scripts/torrent-fields.js",
+      "caller": "label(field) -> qbText('column.'+field.key,fallback), field.key='category'"
+    },
+    "nav.torrents": {
+      "classification": "intentional_english",
+      "reason": "Torrents is the natural Catalan technical loanword used in the original Catalan navigation.",
+      "evidence": "English canonical nav.torrents = \"Torrents\". Source webui/private/scripts/i18n.js. Torrents is the natural Catalan technical loanword used in the original Catalan navigation. Existing Catalan terminology: language-packs/weig-i18n/ca.json."
+    },
+    "sidebar.torrents": {
+      "classification": "intentional_english",
+      "reason": "TORRENTS is the ordinary uppercase Catalan label for torrents in sidebar navigation.",
+      "evidence": "English canonical sidebar.torrents = \"TORRENTS\". Source webui/private/scripts/i18n.js. TORRENTS is the ordinary uppercase Catalan label for torrents in sidebar navigation. Existing Catalan terminology: language-packs/weig-i18n/ca.json."
+    },
+    "sidebar.categories": {
+      "classification": "intentional_english",
+      "reason": "CATEGORIES is the native uppercase Catalan plural category label, identical to English.",
+      "evidence": "English canonical sidebar.categories = \"CATEGORIES\". Source webui/private/scripts/i18n.js. CATEGORIES is the native uppercase Catalan plural category label, identical to English. Existing Catalan terminology: language-packs/weig-i18n/ca.json."
+    },
+    "library.count": {
+      "classification": "intentional_english",
+      "reason": "Catalan uses torrents after numbers, as in the original ca.json library strings; entire count line matches English.",
+      "evidence": "English canonical library.count = \"{count} torrents\". Source webui/private/scripts/i18n.js. Catalan uses torrents after numbers, as in the original ca.json library strings; entire count line matches English. Existing Catalan terminology: language-packs/weig-i18n/ca.json."
+    },
+    "logs.ui.normal": {
+      "classification": "intentional_english",
+      "reason": "Normal is the Catalan diagnostic severity word, spelled identically to English.",
+      "evidence": "English canonical logs.ui.normal = \"Normal\". Source webui/private/scripts/i18n.js. Normal is the Catalan diagnostic severity word, spelled identically to English. Existing Catalan terminology: language-packs/weig-i18n/ca.json."
+    },
+    "stats.torrent": {
+      "classification": "intentional_english",
+      "reason": "Torrents is an accepted Catalan technical plural for BitTorrent transfers.",
+      "evidence": "English canonical stats.torrent = \"Torrents\". Source webui/private/scripts/i18n.js. Torrents is an accepted Catalan technical plural for BitTorrent transfers. Existing Catalan terminology: language-packs/weig-i18n/ca.json."
+    },
+    "stats.error": {
+      "classification": "intentional_english",
+      "reason": "Error is the Catalan status/error label and matches English exactly.",
+      "evidence": "English canonical stats.error = \"Error\". Source webui/private/scripts/i18n.js. Error is the Catalan status/error label and matches English exactly. Existing Catalan terminology: language-packs/weig-i18n/ca.json."
+    },
+    "file.normal": {
+      "classification": "intentional_english",
+      "reason": "Normal is the correct native Catalan file-priority adjective.",
+      "evidence": "English canonical file.normal = \"Normal\". Source webui/private/scripts/i18n.js. Normal is the correct native Catalan file-priority adjective. Existing Catalan terminology: language-packs/weig-i18n/ca.json."
+    },
+    "settings.interface": {
+      "classification": "intentional_english",
+      "reason": "Interface is the normal Catalan computing term with the English spelling.",
+      "evidence": "English canonical settings.interface = \"Interface\". Source webui/private/scripts/i18n.js. Interface is the normal Catalan computing term with the English spelling. Existing Catalan terminology: language-packs/weig-i18n/ca.json."
+    },
+    "settings.weig.interface.title": {
+      "classification": "intentional_english",
+      "reason": "Interface is the native Catalan title for interface settings, with identical spelling.",
+      "evidence": "English canonical settings.weig.interface.title = \"Interface\". Source webui/private/scripts/i18n.js. Interface is the native Catalan title for interface settings, with identical spelling. Existing Catalan terminology: language-packs/weig-i18n/ca.json."
+    },
+    "settings.weig.unit.secondShort": {
+      "classification": "intentional_english",
+      "reason": "The SI unit symbol s for seconds is unchanged in Catalan technical readouts.",
+      "evidence": "English canonical settings.weig.unit.secondShort = \"s\". Source webui/private/scripts/i18n.js. The SI unit symbol s for seconds is unchanged in Catalan technical readouts. Existing Catalan terminology: language-packs/weig-i18n/ca.json."
+    },
+    "common.no": {
+      "classification": "intentional_english",
+      "reason": "No is the native Catalan negative answer and is identical to English.",
+      "evidence": "English canonical common.no = \"No\". Source webui/private/scripts/i18n.js. No is the native Catalan negative answer and is identical to English. Existing Catalan terminology: language-packs/weig-i18n/ca.json."
+    },
+    "common.na": {
+      "classification": "intentional_english",
+      "reason": "N/A is a diagnostic marker for a missing or inapplicable value, not a normal translatable phrase.",
+      "evidence": "English canonical common.na = \"N/A\". Source webui/private/scripts/i18n.js. N/A is a diagnostic marker for a missing or inapplicable value, not a normal translatable phrase. Existing Catalan terminology: language-packs/weig-i18n/ca.json."
+    },
+    "detail.secondary.total": {
+      "classification": "intentional_english",
+      "reason": "total is the native Catalan summary-label word and coincides with English.",
+      "evidence": "English canonical detail.secondary.total = \"total\". Source webui/private/scripts/i18n.js. total is the native Catalan summary-label word and coincides with English. Existing Catalan terminology: language-packs/weig-i18n/ca.json."
+    },
+    "header.blog": {
+      "classification": "intentional_english",
+      "reason": "WeiG Share Blog is the exact publication brand and must be left unchanged.",
+      "evidence": "English canonical header.blog = \"WeiG Share Blog\". Source webui/private/scripts/i18n.js. WeiG Share Blog is the exact publication brand and must be left unchanged. Existing Catalan terminology: language-packs/weig-i18n/ca.json."
+    },
+    "connection.environment.qb": {
+      "classification": "intentional_english",
+      "reason": "qBittorrent is the product identifier before the {value} diagnostic placeholder.",
+      "evidence": "English canonical connection.environment.qb = \"qBittorrent: {value}\". Source webui/private/scripts/i18n.js. qBittorrent is the product identifier before the {value} diagnostic placeholder. Existing Catalan terminology: language-packs/weig-i18n/ca.json."
+    },
+    "connection.environment.webapi": {
+      "classification": "intentional_english",
+      "reason": "WebAPI is the exact API identifier before the {value} diagnostic placeholder.",
+      "evidence": "English canonical connection.environment.webapi = \"WebAPI: {value}\". Source webui/private/scripts/i18n.js. WebAPI is the exact API identifier before the {value} diagnostic placeholder. Existing Catalan terminology: language-packs/weig-i18n/ca.json."
+    },
+    "settings.editor.mode": {
+      "classification": "intentional_english",
+      "reason": "Mode is the natural Catalan noun for an editor mode and is spelled the same as English.",
+      "evidence": "English canonical settings.editor.mode = \"Mode\". Source webui/private/scripts/i18n.js. Mode is the natural Catalan noun for an editor mode and is spelled the same as English. Existing Catalan terminology: language-packs/weig-i18n/ca.json."
+    },
+    "capability.categoryFacet.title": {
+      "classification": "intentional_english",
+      "reason": "Categories is the native Catalan plural word, identical to English.",
+      "evidence": "English canonical capability.categoryFacet.title = \"Categories\". Source webui/private/scripts/i18n.js. Categories is the native Catalan plural word, identical to English. Existing Catalan terminology: language-packs/weig-i18n/ca.json."
+    },
+    "rss.workspace.articles": {
+      "classification": "intentional_english",
+      "reason": "Articles is the natural Catalan plural heading for RSS articles.",
+      "evidence": "English canonical rss.workspace.articles = \"Articles\". Source webui/private/scripts/i18n.js. Articles is the natural Catalan plural heading for RSS articles. Existing Catalan terminology: language-packs/weig-i18n/ca.json."
+    },
+    "settings.update.channelDev": {
+      "classification": "intentional_english",
+      "reason": "Dev is the actual development-channel identifier, not free text about developer builds.",
+      "evidence": "English canonical settings.update.channelDev = \"Dev\". Source webui/private/scripts/i18n.js. Dev is the actual development-channel identifier, not free text about developer builds. Existing Catalan terminology: language-packs/weig-i18n/ca.json."
+    },
+    "language.zh-TW": {
+      "classification": "intentional_english",
+      "reason": "The language selector keeps the source locale's Traditional Chinese autonym.",
+      "evidence": "English canonical language.zh-TW = \"繁體中文\". Source webui/private/scripts/i18n.js. The language selector keeps the source locale's Traditional Chinese autonym. Existing Catalan terminology: language-packs/weig-i18n/ca.json."
+    },
+    "language.zh-HK": {
+      "classification": "intentional_english",
+      "reason": "The language selector keeps the Hong Kong locale's Chinese self-name.",
+      "evidence": "English canonical language.zh-HK = \"香港正體字\". Source webui/private/scripts/i18n.js. The language selector keeps the Hong Kong locale's Chinese self-name. Existing Catalan terminology: language-packs/weig-i18n/ca.json."
+    },
+    "settings.weig.density.torrentExample": {
+      "classification": "intentional_english",
+      "reason": "Torrent is the accepted technical loanword in the original Catalan library labels.",
+      "evidence": "English canonical settings.weig.density.torrentExample = \"Torrent\". Source webui/private/scripts/i18n.js. Torrent is the accepted technical loanword in the original Catalan library labels. Existing Catalan terminology: language-packs/weig-i18n/ca.json."
+    },
+    "instances.torrentCount": {
+      "classification": "intentional_english",
+      "reason": "The complete {count} torrents label is idiomatic Catalan, as confirmed by original ca.json library text.",
+      "evidence": "English canonical instances.torrentCount = \"{count} torrents\". Source webui/private/scripts/i18n.js. The complete {count} torrents label is idiomatic Catalan, as confirmed by original ca.json library text. Existing Catalan terminology: language-packs/weig-i18n/ca.json."
+    }
+  }
+}
