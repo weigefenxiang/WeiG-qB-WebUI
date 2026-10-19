@@ -1,0 +1,133 @@
+{
+  "schemaVersion": 1,
+  "source": "WeiG-locale-draft-scope-decisions",
+  "locale": "it",
+  "englishSourceSha256": "d0d6412654389081013f556747436862ef4c65ec6cc3410c267596055fd88959",
+  "simplifiedChineseSourceSha256": "fcaf060489856126fe909890100b8f3246c16231f139c86ddfaa8ee4a41eb627",
+  "decisions": {
+    "torrent.name": {
+      "classification": "qb_owned",
+      "reason": "The table and column-selector caption belongs to the version- and locale-aware qBittorrent column-copy owner, not the WeiG overlay.",
+      "evidence": "TorrentFieldRegistry FIELDS includes field.key='name' and label(field) resolves qbText('column.'+field.key,fallback), preserving upstream localization.",
+      "ownerFile": "webui/private/scripts/torrent-fields.js",
+      "caller": "label(field) -> qbText('column.'+field.key,fallback), field.key='name'"
+    },
+    "torrent.size": {
+      "classification": "qb_owned",
+      "reason": "The table and column-selector caption belongs to the version- and locale-aware qBittorrent column-copy owner, not the WeiG overlay.",
+      "evidence": "TorrentFieldRegistry FIELDS includes field.key='size' and label(field) resolves qbText('column.'+field.key,fallback), preserving upstream localization.",
+      "ownerFile": "webui/private/scripts/torrent-fields.js",
+      "caller": "label(field) -> qbText('column.'+field.key,fallback), field.key='size'"
+    },
+    "torrent.progress": {
+      "classification": "qb_owned",
+      "reason": "The table and column-selector caption belongs to the version- and locale-aware qBittorrent column-copy owner, not the WeiG overlay.",
+      "evidence": "TorrentFieldRegistry FIELDS includes field.key='progress' and label(field) resolves qbText('column.'+field.key,fallback), preserving upstream localization.",
+      "ownerFile": "webui/private/scripts/torrent-fields.js",
+      "caller": "label(field) -> qbText('column.'+field.key,fallback), field.key='progress'"
+    },
+    "torrent.download": {
+      "classification": "qb_owned",
+      "reason": "The table and column-selector caption belongs to the version- and locale-aware qBittorrent column-copy owner, not the WeiG overlay.",
+      "evidence": "TorrentFieldRegistry FIELDS includes field.key='dlspeed' and label(field) resolves qbText('column.'+field.key,fallback), preserving upstream localization.",
+      "ownerFile": "webui/private/scripts/torrent-fields.js",
+      "caller": "label(field) -> qbText('column.'+field.key,fallback), field.key='dlspeed'"
+    },
+    "torrent.upload": {
+      "classification": "qb_owned",
+      "reason": "The table and column-selector caption belongs to the version- and locale-aware qBittorrent column-copy owner, not the WeiG overlay.",
+      "evidence": "TorrentFieldRegistry FIELDS includes field.key='upspeed' and label(field) resolves qbText('column.'+field.key,fallback), preserving upstream localization.",
+      "ownerFile": "webui/private/scripts/torrent-fields.js",
+      "caller": "label(field) -> qbText('column.'+field.key,fallback), field.key='upspeed'"
+    },
+    "torrent.status": {
+      "classification": "qb_owned",
+      "reason": "The table and column-selector caption belongs to the version- and locale-aware qBittorrent column-copy owner, not the WeiG overlay.",
+      "evidence": "TorrentFieldRegistry FIELDS includes field.key='state' and label(field) resolves qbText('column.'+field.key,fallback), preserving upstream localization.",
+      "ownerFile": "webui/private/scripts/torrent-fields.js",
+      "caller": "label(field) -> qbText('column.'+field.key,fallback), field.key='state'"
+    },
+    "torrent.categoryColumn": {
+      "classification": "qb_owned",
+      "reason": "The table and column-selector caption belongs to the version- and locale-aware qBittorrent column-copy owner, not the WeiG overlay.",
+      "evidence": "TorrentFieldRegistry FIELDS includes field.key='category' and label(field) resolves qbText('column.'+field.key,fallback), preserving upstream localization.",
+      "ownerFile": "webui/private/scripts/torrent-fields.js",
+      "caller": "label(field) -> qbText('column.'+field.key,fallback), field.key='category'"
+    },
+    "settings.weig.unit.secondShort": {
+      "classification": "intentional_english",
+      "reason": "The SI seconds unit s stays unchanged in Italian compact time displays.",
+      "evidence": "Canonical English is s, the international SI seconds symbol."
+    },
+    "settings.size.standard": {
+      "classification": "intentional_english",
+      "reason": "Standard is the established Italian software setting term for the default text size.",
+      "evidence": "Canonical English settings.size.standard is the single-word size option Standard; Italian normally writes Standard identically."
+    },
+    "settings.density.standard": {
+      "classification": "intentional_english",
+      "reason": "Standard is a natural, unchanged Italian preset adjective for standard UI density.",
+      "evidence": "English canonical is the preset label Standard, also used verbatim in Italian UI choices."
+    },
+    "settings.weig.option.standard": {
+      "classification": "intentional_english",
+      "reason": "Italian uses Standard as a standard, short UI preset choice; a synonym would alter the level implied.",
+      "evidence": "Canonical English is precisely Standard, used as an unchanged Italian software loanword."
+    },
+    "common.no": {
+      "classification": "intentional_english",
+      "reason": "No is the ordinary Italian negative response with identical spelling and initial capitalization.",
+      "evidence": "Canonical English common.no is the standalone word No, also the Italian answer."
+    },
+    "common.na": {
+      "classification": "intentional_english",
+      "reason": "N/A is the neutral technical indicator for an unknown unavailable/inapplicable field; no more specific cause is given.",
+      "evidence": "Canonical English common.na is N/A, a generic diagnostic no-value marker."
+    },
+    "transfer.download": {
+      "classification": "intentional_english",
+      "reason": "Download is standard Italian UI terminology for a download-direction metric, with the identical borrowed noun.",
+      "evidence": "Canonical English transfer.download is the standalone transfer-direction label Download."
+    },
+    "transfer.upload": {
+      "classification": "intentional_english",
+      "reason": "Upload is standard Italian UI terminology for an upload-direction metric, with the identical borrowed noun.",
+      "evidence": "Canonical English transfer.upload is the standalone transfer-direction label Upload."
+    },
+    "header.blog": {
+      "classification": "intentional_english",
+      "reason": "WeiG Share Blog is the linked publication's exact proper name.",
+      "evidence": "Canonical English header.blog is the title WeiG Share Blog, rather than a generic noun."
+    },
+    "connection.environment.qb": {
+      "classification": "intentional_english",
+      "reason": "qBittorrent is the application-brand diagnostic prefix and its adjacent runtime placeholder is not Italian prose.",
+      "evidence": "Canonical English connection.environment.qb is qBittorrent: {value}, the product identifier and value."
+    },
+    "connection.environment.webapi": {
+      "classification": "intentional_english",
+      "reason": "WebAPI is the proper API name of this diagnostic field and stays unchanged.",
+      "evidence": "Canonical English connection.environment.webapi is WebAPI: {value}, a technical identifier and value."
+    },
+    "language.zh-TW": {
+      "classification": "intentional_english",
+      "reason": "Language self-names are kept in their native script in the language chooser.",
+      "evidence": "Canonical English language.zh-TW is native-script 繁體中文."
+    },
+    "language.zh-HK": {
+      "classification": "intentional_english",
+      "reason": "The Hong Kong Chinese autonym is written in its original script in the language chooser.",
+      "evidence": "Canonical English language.zh-HK is native-script 香港正體字."
+    },
+    "settings.weig.density.torrentExample": {
+      "classification": "intentional_english",
+      "reason": "Torrent is the established unchanged Italian technical noun for BitTorrent in a one-word preview label.",
+      "evidence": "Canonical English settings.weig.density.torrentExample is the lone technical noun Torrent."
+    },
+    "instances.online": {
+      "classification": "intentional_english",
+      "reason": "Online is the common unchanged Italian network-state label in short status chips.",
+      "evidence": "Canonical English instances.online is the single-word network status Online."
+    }
+  }
+}
