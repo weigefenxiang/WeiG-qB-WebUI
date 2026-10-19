@@ -13,7 +13,12 @@ assert.equal(ledger.canonicalPerLocale,693);
 assert.equal(ledger.expectedSlots,48*693);
 assert.equal(ledger.supplied+ledger.reviewedEnglishFallback+ledger.unreviewed,ledger.expectedSlots);
 assert.ok(ledger.supplied>=6605,'A78-160 cumulative external UI translations must not regress');
-assert.ok(ledger.unreviewed>0,'Sparse draft locales must not appear fully reviewed');
+assert.ok(ledger.unreviewed>=0,'Unreviewed WeiG UI message count cannot be negative');
+// A fully translated draft can have zero unreviewed keys, and all approved locales must.
+// Do not make the valid fully reviewed distribution impossible to validate.
+if(report.extendedOverlays.approved===report.extendedOverlays.expected){
+  assert.equal(ledger.unreviewed,0,'Every approved external locale must have accounted for all canonical WeiG messages');
+}
 const externalRecords=report.records.filter(item=>item.translationKeys!==null);
 assert.equal(externalRecords.length,48);
 for(const [locale,min] of [['oc',127],['eu',151],['hy',135],['ka',135],['kk',135],['mn_MN',135],['ltg',93],['vi',213],['it',151],['ms-MY',168],['nb',149],['sv',150],['da',150],['pl',153],['fi',151],['ro',150],['sk',152],['hr',152],['sl',152]]){
