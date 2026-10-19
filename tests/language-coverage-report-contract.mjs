@@ -16,7 +16,7 @@ assert.ok(ledger.supplied>=6605,'A78-160 cumulative external UI translations mus
 assert.ok(ledger.unreviewed>0,'Sparse draft locales must not appear fully reviewed');
 const externalRecords=report.records.filter(item=>item.translationKeys!==null);
 assert.equal(externalRecords.length,48);
-for(const [locale,min] of [['oc',127],['eu',151],['hy',135],['ka',135],['kk',135],['mn_MN',135],['ltg',93]]){
+for(const [locale,min] of [['oc',127],['eu',151],['hy',135],['ka',135],['kk',135],['mn_MN',135],['ltg',93],['vi',213],['it',151],['ms-MY',168],['nb',149],['sv',150],['da',150]]){
   const record=externalRecords.find(item=>item.locale===locale||item.locale===locale.replace('_','-'));
   assert.ok(record,'Missing official language progress record for '+locale);
   assert.ok(record.translationKeys.supplied>=min,'Previously supplied translations for '+locale+' must not disappear');
