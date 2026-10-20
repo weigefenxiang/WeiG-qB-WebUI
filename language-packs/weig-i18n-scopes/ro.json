@@ -49,6 +49,11 @@
       "classification": "intentional_english",
       "reason": "Online is an established Romanian software UI connectivity term, not proof of login.",
       "evidence": "English canonical instances.online labels an instance visibility status; copying a login term would change its meaning."
+    },
+    "settings.weig.density.torrentExample": {
+      "classification": "intentional_english",
+      "reason": "Torrent is a standard unchanged Romanian BitTorrent UI noun; avoid adding an example qualifier.",
+      "evidence": "English canonical settings.weig.density.torrentExample is Torrent; the Settings density caller appends A/B/C; Torrent de probă added Sample."
     }
   }
 }

@@ -39,6 +39,11 @@
       "classification": "intentional_english",
       "reason": "The native Hong Kong Chinese self-name should not be retranslated.",
       "evidence": "Source: webui/private/scripts/i18n.js language.zh-HK uses the autonym 香港正體字."
+    },
+    "settings.weig.density.torrentExample": {
+      "classification": "intentional_english",
+      "reason": "Torrent is the accepted unchanged Slovenian BitTorrent technical label in this preview.",
+      "evidence": "English canonical settings.weig.density.torrentExample is Torrent; the Settings density caller appends A/B/C; Primer torrenta added Example."
     }
   }
 }

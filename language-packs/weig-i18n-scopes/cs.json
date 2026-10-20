@@ -34,6 +34,11 @@
       "classification": "intentional_english",
       "reason": "The Hong Kong Chinese autonym is intentionally displayed in its original script.",
       "evidence": "English canonical language.zh-HK has the native self-name 香港正體字."
+    },
+    "settings.weig.density.torrentExample": {
+      "classification": "intentional_english",
+      "reason": "Torrent is the established Czech technical noun here; preserve the plain label without Sample.",
+      "evidence": "English canonical is Torrent and the actual settings.js density preview appends A/B/C; Ukázkový torrent added sample."
     }
   }
 }

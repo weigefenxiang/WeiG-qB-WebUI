@@ -16,6 +16,20 @@ for(const [key,english] of [['settings.weig.density.torrentExample','Torrent'],[
     'Do not add extra meaning to the Brazilian Portuguese standalone label '+key);
 }
 
+// A78-256: the density preview labels its samples by appending A/B/C to a bare Torrent noun.
+// Never add Example/Sample, and do not store a duplicate of English when the natural noun is Torrent.
+const densitySampleKey='settings.weig.density.torrentExample';
+assert.equal(canonicalEnglishMessages[densitySampleKey],'Torrent');
+for(const [locale,term] of [['be','Торэнт'],['bg','Торент'],['uk','Торент']]){
+  const data=JSON.parse(fs.readFileSync(path.join(rootOfExternalLocales,locale+'.json'),'utf8'));
+  assert.equal(data.messages[densitySampleKey],term,'Incorrect density sample noun: '+locale);
+}
+for(const locale of ['cs','ro','sl','pt-BR']){
+  const data=JSON.parse(fs.readFileSync(path.join(rootOfExternalLocales,locale+'.json'),'utf8'));
+  assert.equal(Object.hasOwn(data.messages,densitySampleKey),false,
+    'Literal Torrent should inherit the canonical English density sample label: '+locale);
+}
+
 const status=inspectExtendedLocaleSources();
 assert.equal(status.official,61);
 assert.equal(status.primary,10);

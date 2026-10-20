@@ -74,6 +74,16 @@
       "classification": "intentional_english",
       "reason": "The Hong Kong Chinese autonym must retain its native orthography.",
       "evidence": "English canonical language.zh-HK is 香港正體字."
+    },
+    "header.links": {
+      "classification": "intentional_english",
+      "reason": "LINKS is an established Brazilian Portuguese web UI section label, without a Useful qualifier.",
+      "evidence": "English canonical header.links is LINKS; the prior LINKS ÚTEIS added an unsupported Useful modifier."
+    },
+    "settings.weig.density.torrentExample": {
+      "classification": "intentional_english",
+      "reason": "Torrent is the accepted unchanged Brazilian Portuguese BitTorrent label in a density sample.",
+      "evidence": "English canonical density.torrentExample is Torrent; settings.js appends A/B/C, so Exemplo de torrent added meaning."
     }
   }
 }
