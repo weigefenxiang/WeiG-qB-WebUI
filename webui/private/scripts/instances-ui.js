@@ -4,7 +4,7 @@
   if(W.InstancesUI||!R||!D)return;
   var KEY=W.StorageKeys&&W.StorageKeys.instancesCollapsed||'weig.instances.collapsed';
   // 127/8 is a loopback network, not just 127.0.0.1. Keep the local-device warning for localhost. too.
-  var LOOPBACK_HOST_RE=/^(?:127(?:\.[0-9]{1,3}){3}|localhost\.?|\[::1\])$/i;
+  var LOOPBACK_HOST_RE=/^(?:127(?:\.[0-9]{1,3}){3}|(?:[a-z0-9-]+\.)*localhost\.?|\[::1\])$/i;
   var host=null,expanded=!(STORE&&STORE.get(KEY,'0')==='1'),importOffered=false,liveRows=new Map();
   function tr(key,vars){return W.I18n&&W.I18n.t?W.I18n.t('instances.'+key,vars):String(key);}
   function el(tag,cls,text){var node=document.createElement(tag);if(cls)node.className=cls;if(text!==undefined)node.textContent=String(text);return node;}
@@ -234,6 +234,8 @@
         if(!item.existing&&!selected.has(item.url))return;
         var row=el('div','instance-import__row'),details=el('div','instance-import__details');
         details.append(el('strong','',item.name),el('span','instance-import__url',item.url));
+        // Imported instance addresses are also browser-relative: show the same local-device hint before consent.
+        if(LOOPBACK_HOST_RE.test(new URL(item.url).hostname))details.appendChild(el('span','instance-manager__feedback',tr('loopbackWarning')));
         row.appendChild(details);
         if(item.existing){row.classList.add('is-existing');row.appendChild(el('span','instance-import__existing','✓'));}
         else{

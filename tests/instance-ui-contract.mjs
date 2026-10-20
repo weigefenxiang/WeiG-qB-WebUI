@@ -24,6 +24,8 @@ assert.ok(health.includes('reportedCount')&&health.includes("status:'unverified'
 assert.ok(health.includes("global.addEventListener('weig:app-ready'")&&health.includes('checkNow()'),'Current qB must reconcile after app-ready');
 assert.ok(ui.includes('syncAddressHint')&&ui.includes('loopbackWarning'),'Loopback addresses require an explicit user-facing browser-device hint');
 
+assert.ok(ui.includes("if(LOOPBACK_HOST_RE.test(new URL(item.url).hostname))details.appendChild("),
+  'Imported loopback addresses must display the same local-device hint before consent');
 assert.ok(ui.includes('url.value=item.url;syncAddressHint();name.focus()'),
   'Editing a saved local instance must immediately refresh the browser-device warning');
 assert.ok(ui.includes("url.value='';syncAddressHint();status.textContent=''"),
@@ -42,6 +44,9 @@ for(const [url,expected] of [
   ['http://127.255.255.254:8080/',true],
   ['http://LOCALHOST.:8080/',true],
   ['http://localhost:8080/',true],
+  ['http://qb.localhost:8080/',true],
+  ['http://node.dev.localhost.:8080/',true],
+  ['http://notlocalhost.example.com:8080/',false],
   ['http://[::1]:8080/',true],
   ['http://192.168.1.72:8080/',false],
   ['http://128.0.0.1:8080/',false],
