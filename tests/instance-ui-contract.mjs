@@ -23,6 +23,29 @@ assert.ok(ui.includes("addEventListener('weig:instance-health',updateHealth)")&&
 assert.ok(health.includes('reportedCount')&&health.includes("status:'unverified'"),'Historical peer reports must never become live online evidence');
 assert.ok(health.includes("global.addEventListener('weig:app-ready'")&&health.includes('checkNow()'),'Current qB must reconcile after app-ready');
 assert.ok(ui.includes('syncAddressHint')&&ui.includes('loopbackWarning'),'Loopback addresses require an explicit user-facing browser-device hint');
+
+const loopbackPattern=ui.match(/var LOOPBACK_HOST_RE=(\/[^\r\n]+\/i);/);
+assert.ok(loopbackPattern,'The InstanceManager must retain a source-owned loopback hostname classifier');
+assert.ok(ui.includes("LOOPBACK_HOST_RE.test(host)?tr('loopbackWarning')"),
+  'The visible local-device warning must use the tested loopback classifier');
+const isLoopbackHost=vm.runInNewContext(loopbackPattern[1]);
+for(const [url,expected] of [
+  ['http://127.0.0.1:8080/',true],
+  ['http://127.0.0.2:8080/',true],
+  ['http://127.1:8080/',true],
+  ['http://127.255.255.254:8080/',true],
+  ['http://LOCALHOST.:8080/',true],
+  ['http://localhost:8080/',true],
+  ['http://[::1]:8080/',true],
+  ['http://192.168.1.72:8080/',false],
+  ['http://128.0.0.1:8080/',false],
+  ['http://[::2]:8080/',false],
+  ['http://qb.example.com:8080/',false]
+]){
+  const host=new URL(url).hostname;
+  assert.equal(isLoopbackHost.test(host),expected,'Browser-device warning mismatch for '+url+' normalized to '+host);
+}
+
 assert.ok(ui.includes('bindContextMenuTrigger')&&ui.includes('R.update(')&&ui.includes('currentSuffix'),'Reuse shared ContextMenu and registry identity for rename');
 assert.ok(!ui.includes('localStorage.')&&!ui.includes('fetch('),'UI is a presentation-only consumer');
 assert.ok(ui.includes('R.exportList()')&&ui.includes('R.previewIncoming(raw)')&&ui.includes('R.importMissing(JSON.stringify'),'Portable JSON and consented handoff must reuse the same Registry validation and review owner');
