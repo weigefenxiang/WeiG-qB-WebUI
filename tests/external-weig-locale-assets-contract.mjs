@@ -30,6 +30,16 @@ for(const locale of ['cs','ro','sl','pt-BR']){
     'Literal Torrent should inherit the canonical English density sample label: '+locale);
 }
 
+// A78-257: density affects row spacing, not the font family.
+// Preserve text-size and column-width meaning at the actual settings.js caller.
+const romanianDensity=JSON.parse(fs.readFileSync(path.join(rootOfExternalLocales,'ro.json'),'utf8'));
+assert.equal(canonicalEnglishMessages['settings.weig.density.description'],
+  'Adjust vertical spacing between list rows without changing text size or column widths.');
+assert.match(romanianDensity.messages['settings.weig.density.description'],/dimensiunea textului/u,
+  'Romanian density description must preserve the text-size distinction');
+assert.match(romanianDensity.messages['settings.weig.density.description'],/lățimea coloanelor/u,
+  'Romanian density description must preserve the column-width distinction');
+
 const status=inspectExtendedLocaleSources();
 assert.equal(status.official,61);
 assert.equal(status.primary,10);

@@ -218,7 +218,7 @@
     "settings.weig.performance.trackerIndex": "Indexul trackerelor",
     "settings.weig.performance.ready": "Pregătit",
     "settings.weig.performance.building": "Se construiește",
-    "settings.weig.density.description": "Reglează spațiul vertical dintre rânduri fără să schimbi fontul sau lățimea coloanelor.",
+    "settings.weig.density.description": "Reglează spațiul vertical dintre rândurile listei fără să modifici dimensiunea textului sau lățimea coloanelor.",
     "settings.weig.density.overall": "Spațiere generală",
     "settings.weig.density.torrent": "Spațierea listei de torrente",
     "settings.weig.density.logs": "Spațierea jurnalelor",
