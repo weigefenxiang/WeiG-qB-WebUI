@@ -231,7 +231,6 @@
     function paintPreview(){
       list.textContent='';
       preview.items.forEach(function(item){
-        if(!item.existing&&!selected.has(item.url))return;
         var row=el('div','instance-import__row'),details=el('div','instance-import__details');
         details.append(el('strong','',item.name),el('span','instance-import__url',item.url));
         // Imported instance addresses are also browser-relative: show the same local-device hint before consent.
@@ -239,9 +238,15 @@
         row.appendChild(details);
         if(item.existing){row.classList.add('is-existing');row.appendChild(el('span','instance-import__existing','✓'));}
         else{
-          var remove=button('×','icon-btn',function(){selected.delete(item.url);paintPreview();});
-          remove.setAttribute('aria-label',tr('remove')+' · '+item.name);
-          row.appendChild(remove);
+          // Exclusion must be reversible before committing the selected subset.
+          var included=selected.has(item.url);
+          if(!included)row.classList.add('is-excluded');
+          var toggle=button(included?'×':'+','icon-btn',function(){
+            if(selected.has(item.url))selected.delete(item.url);else selected.add(item.url);
+            paintPreview();
+          });
+          toggle.setAttribute('aria-label',(included?tr('remove'):tr('import'))+' · '+item.name);
+          row.appendChild(toggle);
         }
         list.appendChild(row);
       });

@@ -17,6 +17,14 @@ assert.ok(ui.includes('W.AppState.initialized')&&ui.includes("'weig:app-ready'")
 assert.ok(ui.includes('R.previewIncoming(raw)')&&ui.includes('importOffered')&&ui.includes('reviewImport(JSON.stringify({schemaVersion:1,items:proposal.items})'),'Local restore and cross-origin handoff must share one strict consent preview; only novel records need confirmation');
 assert.ok(ui.includes('R.defaultName(current)')&&ui.includes("active?tr('currentSuffix')"),'Unregistered current instances use stable host identity and current badge');
 assert.ok(ui.includes('selected.delete(item.url)')&&ui.includes('R.importMissing(JSON.stringify'),'A review row can exclude an instance, committing only the selected set');
+assert.ok(!ui.includes('if(!item.existing&&!selected.has(item.url))return;'),
+  'Excluded import rows must stay visible so their selection can be restored');
+assert.ok(ui.includes('if(selected.has(item.url))selected.delete(item.url);else selected.add(item.url);'),
+  'Import choice must toggle both ways before commit');
+assert.ok(ui.includes("toggle.setAttribute('aria-label',(included?tr('remove'):tr('import'))+' · '+item.name)"),
+  'Import selection actions require localized accessibility labels');
+assert.ok(css.includes('.instance-import__row.is-excluded'),
+  'The excluded-but-restorable row must retain a visible distinction');
 assert.ok(!ui.includes("function openInterval(")&&!ui.includes("sidebar-instances__interval"),'Instance interval must be owned only by Settings');
 assert.ok(!read('webui/private/scripts/settings.js').includes('instanceCheckRow()'),'Retire obsolete remote-detection interval setting');
 assert.ok(ui.includes("addEventListener('weig:instance-health',updateHealth)")&&ui.includes('liveRows.forEach(paintHealth)'),'Health events must preserve row DOM, focus and context menu');

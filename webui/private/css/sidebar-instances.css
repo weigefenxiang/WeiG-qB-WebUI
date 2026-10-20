@@ -37,6 +37,7 @@
 .instance-import__row{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:9px 11px;min-width:0}
 .instance-import__row+.instance-import__row{border-top:1px solid var(--border)}
 .instance-import__row.is-existing{opacity:.62}
+.instance-import__row.is-excluded{opacity:.55}
 .instance-import__details{display:grid;gap:3px;min-width:0;flex:1}
 .instance-import__url{font-size:var(--text-meta-size);color:var(--text-secondary);overflow-wrap:anywhere;user-select:text}
 .instance-import__existing{color:var(--text-secondary);font-size:17px}
