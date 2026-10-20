@@ -9,6 +9,12 @@ const portugueseVirtual=JSON.parse(fs.readFileSync(path.join(rootOfExternalLocal
 assert.equal(canonicalEnglishMessages['settings.update.channelVirtual'],'Virtual');
 assert.equal(Object.hasOwn(portugueseVirtual.messages,'settings.update.channelVirtual'),false,
   'Brazilian Portuguese must not relabel the simulator Virtual channel as Virtualizado');
+// The density preview caller appends A/B/C to the literal Torrent label; LINKS has no Useful qualifier.
+for(const [key,english] of [['settings.weig.density.torrentExample','Torrent'],['header.links','LINKS']]){
+  assert.equal(canonicalEnglishMessages[key],english,'Canonical UI label changed: '+key);
+  assert.equal(Object.hasOwn(portugueseVirtual.messages,key),false,
+    'Do not add extra meaning to the Brazilian Portuguese standalone label '+key);
+}
 
 const status=inspectExtendedLocaleSources();
 assert.equal(status.official,61);
