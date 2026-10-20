@@ -228,7 +228,8 @@
         finished=true;if(onDone)onDone();render();D.close(m.dialog,'confirm');
       }catch(error){feedback.textContent=error.message;}
     });
-    function paintPreview(){
+    function paintPreview(focusUrl){
+      var previousScroll=list.scrollTop,nextFocus=null;
       list.textContent='';
       preview.items.forEach(function(item){
         var row=el('div','instance-import__row'),details=el('div','instance-import__details');
@@ -243,15 +244,19 @@
           if(!included)row.classList.add('is-excluded');
           var toggle=button(included?'×':'+','icon-btn',function(){
             if(selected.has(item.url))selected.delete(item.url);else selected.add(item.url);
-            paintPreview();
+            paintPreview(item.url);
           });
           toggle.setAttribute('aria-label',(included?tr('remove'):tr('import'))+' · '+item.name);
+          if(focusUrl===item.url)nextFocus=toggle;
           row.appendChild(toggle);
         }
         list.appendChild(row);
       });
       accept.disabled=selected.size===0;
       accept.textContent=tr('import')+' ('+selected.size+')';
+      // Repainting an import choice must not strand keyboard focus or jump the review list.
+      list.scrollTop=previousScroll;
+      if(nextFocus)nextFocus.focus({preventScroll:true});
     }
     m.footer.append(button(tr('cancel'),'btn btn--ghost',function(){finished=true;if(onDone)onDone();D.close(m.dialog,'cancel');}),accept);
     m.dialog.addEventListener('close',function(){if(!finished&&onDone)onDone();});

@@ -25,6 +25,12 @@ assert.ok(ui.includes("toggle.setAttribute('aria-label',(included?tr('remove'):t
   'Import selection actions require localized accessibility labels');
 assert.ok(css.includes('.instance-import__row.is-excluded'),
   'The excluded-but-restorable row must retain a visible distinction');
+assert.ok(ui.includes('function paintPreview(focusUrl)')&&ui.includes('paintPreview(item.url)'),
+  'Toggling an import row must pass its stable URL identity through repaint');
+assert.ok(ui.includes('if(focusUrl===item.url)nextFocus=toggle;')&&ui.includes('if(nextFocus)nextFocus.focus({preventScroll:true});'),
+  'Keyboard focus must return to the replacement add/remove control');
+assert.ok(ui.includes('list.scrollTop=previousScroll;'),
+  'Repainting review rows must retain scroll position');
 assert.ok(!ui.includes("function openInterval(")&&!ui.includes("sidebar-instances__interval"),'Instance interval must be owned only by Settings');
 assert.ok(!read('webui/private/scripts/settings.js').includes('instanceCheckRow()'),'Retire obsolete remote-detection interval setting');
 assert.ok(ui.includes("addEventListener('weig:instance-health',updateHealth)")&&ui.includes('liveRows.forEach(paintHealth)'),'Health events must preserve row DOM, focus and context menu');
