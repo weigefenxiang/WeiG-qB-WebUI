@@ -40,6 +40,20 @@ assert.match(romanianDensity.messages['settings.weig.density.description'],/dime
 assert.match(romanianDensity.messages['settings.weig.density.description'],/lățimea coloanelor/u,
   'Romanian density description must preserve the column-width distinction');
 
+// A78-258: BitTorrent network peers are not same-aged human companions.
+const malayP2P=JSON.parse(fs.readFileSync(path.join(rootOfExternalLocales,'ms-MY.json'),'utf8'));
+const malayPeerKeys=['detail.peers','detail.peersCount','peer.ban','peer.banned',
+  'connection.reason.firewalled','connection.networkSnapshot','connection.step.default.3',
+  'api.peersUnexpected'];
+for(const key of malayPeerKeys){
+  assert.match(malayP2P.messages[key],/rakan setara/iu,
+    'Malay peer networking terminology should be domain-accurate: '+key);
+  assert.doesNotMatch(malayP2P.messages[key],/rakan sebaya/iu,
+    'Same-age peers are not BitTorrent network peers: '+key);
+}
+assert.equal(malayP2P.translationStatus,'draft','Glossary QA is not distribution approval');
+assert.equal(Object.keys(malayP2P.messages).length,656,'Malay locale key count must not regress');
+
 const status=inspectExtendedLocaleSources();
 assert.equal(status.official,61);
 assert.equal(status.primary,10);
