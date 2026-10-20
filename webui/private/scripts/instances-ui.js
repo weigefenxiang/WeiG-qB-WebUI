@@ -168,7 +168,7 @@
       list.textContent='';
       try{R.list(true).forEach(function(item){
         var row=el('div','instance-manager__row'),label=el('span','',item.name+' · '+item.url);
-        var edit=button(tr('edit'),'btn btn--ghost',function(){editingUrl=item.url;name.value=item.name;url.value=item.url;name.focus();});
+        var edit=button(tr('edit'),'btn btn--ghost',function(){editingUrl=item.url;name.value=item.name;url.value=item.url;syncAddressHint();name.focus();});
         var remove=button(tr('remove'),'btn btn--ghost',function(){
           try{if(P)P.disconnect(item.url);R.remove(item.url);status.textContent='';showRows();render();}catch(error){status.textContent=error.message;}
         });
@@ -180,7 +180,7 @@
       try{
         if(editingUrl)R.update(editingUrl,name.value,url.value);
         else R.add(name.value,url.value);
-        editingUrl=null;name.value='';url.value='';status.textContent='';showRows();render();
+        editingUrl=null;name.value='';url.value='';syncAddressHint();status.textContent='';showRows();render();
       }catch(error){status.textContent=error.message;}
     });
     var file=el('input');file.type='file';file.accept='.json,application/json';file.hidden=true;

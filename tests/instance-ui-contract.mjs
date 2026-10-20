@@ -24,6 +24,12 @@ assert.ok(health.includes('reportedCount')&&health.includes("status:'unverified'
 assert.ok(health.includes("global.addEventListener('weig:app-ready'")&&health.includes('checkNow()'),'Current qB must reconcile after app-ready');
 assert.ok(ui.includes('syncAddressHint')&&ui.includes('loopbackWarning'),'Loopback addresses require an explicit user-facing browser-device hint');
 
+assert.ok(ui.includes('url.value=item.url;syncAddressHint();name.focus()'),
+  'Editing a saved local instance must immediately refresh the browser-device warning');
+assert.ok(ui.includes("url.value='';syncAddressHint();status.textContent=''"),
+  'After saving and clearing the URL, no stale browser-device warning may remain');
+
+
 const loopbackPattern=ui.match(/var LOOPBACK_HOST_RE=(\/[^\r\n]+\/i);/);
 assert.ok(loopbackPattern,'The InstanceManager must retain a source-owned loopback hostname classifier');
 assert.ok(ui.includes("LOOPBACK_HOST_RE.test(host)?tr('loopbackWarning')"),
