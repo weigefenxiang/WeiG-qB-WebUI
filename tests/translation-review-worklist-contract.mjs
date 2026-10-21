@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import {getTranslationReviewWorklist,getTranslationDraftScopeWorklist,simplifiedChineseReferenceSha256} from '../tools/translation-review-worklist.mjs';
+import {getTranslationFullQualityWorklist,getTranslationReviewWorklist,getTranslationDraftScopeWorklist,simplifiedChineseReferenceSha256} from '../tools/translation-review-worklist.mjs';
 import {canonicalEnglishSourceSha256} from '../tools/external-weig-locale-assets.mjs';
 import {expectedExtendedLocales} from '../tools/external-weig-locale-assets.mjs';
 const ca=getTranslationReviewWorklist('ca');
@@ -553,5 +553,21 @@ if(unfinishedScope){
   assert.ok(expectedExtendedLocales.every(locale=>getTranslationDraftScopeWorklist(locale).unresolvedKeys===0),
     'Evidence fixtures are optional after every 673-key draft has been classified');
 }
+
+// A78-267: full English canonical worklist never confuses accounted keys,
+// static caller *candidates* or scope decisions with independent QA approval.
+const ptFull=getTranslationFullQualityWorklist('pt-BR');
+assert.equal(ptFull.canonicalKeys,693);
+assert.equal(ptFull.items.length,693);
+assert.equal(ptFull.counts.translated,668);
+assert.equal(ptFull.counts.reviewedEnglishFallback,25);
+assert.equal(ptFull.counts.unreviewedEnglishFallback,0);
+assert.equal(ptFull.independentErrorReviewRecorded,false);
+assert.equal(ptFull.staticCallerEvidence,'candidate-only');
+assert.ok(ptFull.items.every(item=>item.semanticAndIndependentReview==='pending'));
+assert.ok(ptFull.items.some(item=>item.key==='settings.update.channelVirtual'&&item.disposition==='reviewed_english_fallback'));
+assert.ok(ptFull.items.find(item=>item.key==='selection.invertAllMatching')
+  .callerCandidates.some(item=>item.file==='webui/private/scripts/selection.js'));
+assert.throws(()=>getTranslationFullQualityWorklist('zh-CN'),/Unknown or already bundled/);
 
 console.log('Translation worklist passed: source-bound English and Simplified Chinese semantic reference, no fabricated approvals.');

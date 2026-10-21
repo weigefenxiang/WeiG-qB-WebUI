@@ -118,17 +118,88 @@ export function getTranslationDraftScopeWorklist(locale,{decisions}={}){
     items,work:unresolved};
 }
 
+// Full review is deliberately not an approval action. A draft can have every
+// canonical key accounted for and still require per-message semantic review.
+let staticCallerCandidateCache;
+function getStaticCallerCandidates(){
+  if(staticCallerCandidateCache)return staticCallerCandidateCache;
+  const index=new Map(canonicalEnglishTranslationKeys.map(key=>[key,[]]));
+  const dir=path.join(root,'webui/private/scripts');
+  for(const entry of fs.readdirSync(dir,{withFileTypes:true})){
+    if(!entry.isFile()||!entry.name.endsWith('.js')||entry.name==='i18n.js')continue;
+    const filename=path.join(dir,entry.name);
+    if(fs.statSync(filename).size>1000000)continue;
+    const file='webui/private/scripts/'+entry.name;
+    const lines=fs.readFileSync(filename,'utf8').split(/\r?\n/u);
+    for(let i=0;i<lines.length;i++){
+      // A literal reference is a caller *candidate*, never a verified UI owner.
+      const literals=/(['"])([A-Za-z0-9_-]+(?:\.[A-Za-z0-9_-]+)+)\1/gu;
+      for(const match of lines[i].matchAll(literals)){
+        const owners=index.get(match[2]);
+        if(!owners||owners.length>=12)continue;
+        if(!owners.some(item=>item.file===file&&item.line===i+1)){
+          owners.push({file,line:i+1,evidence:'static-literal-candidate-not-verified'});
+        }
+      }
+    }
+  }
+  staticCallerCandidateCache=index;
+  return index;
+}
+export function getTranslationFullQualityWorklist(locale){
+  assert(known.has(locale),'Unknown or already bundled external locale: '+locale);
+  const filename=path.join(rootOfExternalLocales,locale+'.json');
+  const data=fs.existsSync(filename)?JSON.parse(fs.readFileSync(filename,'utf8')):null;
+  if(data)validateExternalOverlay(locale,data);
+  const messages=data?.messages||{};
+  const formalFallback=new Set(data?.reviewedEnglishFallbackKeys||[]);
+  const scope=getTranslationDraftScopeWorklist(locale);
+  const scopeItems=new Map(scope.items.map(item=>[item.key,item]));
+  const callers=getStaticCallerCandidates();
+  const counts={translated:0,reviewedEnglishFallback:0,unreviewedEnglishFallback:0,withoutStaticCallerCandidate:0};
+  const items=canonicalEnglishTranslationKeys.map(key=>{
+    const exists=Object.hasOwn(messages,key),reviewed=formalFallback.has(key);
+    const disposition=exists?'translated':reviewed?'reviewed_english_fallback':'unreviewed_english_fallback';
+    if(exists)counts.translated++;
+    else if(reviewed)counts.reviewedEnglishFallback++;
+    else counts.unreviewedEnglishFallback++;
+    const candidates=callers.get(key)||[];
+    if(!candidates.length)counts.withoutStaticCallerCandidate++;
+    const draftScope=scopeItems.get(key);
+    return {key,english:english[key],
+      simplifiedChinese:Object.hasOwn(chinese.messages,key)?chinese.messages[key]:null,
+      translation:exists?messages[key]:null,disposition,
+      draftScopeClassification:draftScope?.classification||'out_of_zh_cn_draft_scope',
+      ...(draftScope?.reason?{draftScopeReason:draftScope.reason}:{}),
+      callerCandidates:candidates,
+      placeholders:[...String(english[key]).matchAll(/\{([^{}]+)\}/gu)].map(m=>m[1]),
+      semanticAndIndependentReview:'pending'};
+  });
+  assert.equal(items.length,canonicalEnglishTranslationKeys.length);
+  assert.equal(counts.translated+counts.reviewedEnglishFallback+counts.unreviewedEnglishFallback,items.length);
+  return {schemaVersion:1,source:'WeiG-translation-full-quality-worklist',
+    locale,translationStatus:data?.translationStatus||'missing',
+    englishSourceSha256:canonicalEnglishSourceSha256,canonicalKeys:items.length,
+    counts,independentErrorReviewRecorded:false,
+    // A source lookup only generates candidates, not confirmed caller/owner proof.
+    staticCallerEvidence:'candidate-only',
+    items};
+}
+
 if(process.argv[1]&&path.resolve(process.argv[1])===fileURLToPath(import.meta.url)){
   const localeArg=process.argv.find(arg=>arg.startsWith('--locale='));
   assert(localeArg,'Usage: node tools/translation-review-worklist.mjs --locale=ca [--limit=30]');
   const locale=localeArg.slice('--locale='.length);
   const scopeArg=process.argv.find(arg=>arg.startsWith('--scope='));
   assert(!scopeArg||scopeArg==='--scope=zh-CN','Only the Simplified Chinese draft reference scope is supported');
-  const result=scopeArg?getTranslationDraftScopeWorklist(locale):getTranslationReviewWorklist(locale);
+  const fullArg=process.argv.includes('--full');
+  assert(!(fullArg&&scopeArg),'--full and --scope are mutually exclusive');
+  const result=fullArg?getTranslationFullQualityWorklist(locale):scopeArg?getTranslationDraftScopeWorklist(locale):getTranslationReviewWorklist(locale);
   const limArg=process.argv.find(arg=>arg.startsWith('--limit='));
   const limit=limArg?Number(limArg.split('=')[1]):30;
   assert(Number.isSafeInteger(limit)&&limit>=0&&limit<=canonicalEnglishTranslationKeys.length,'Invalid --limit');
-  console.log(JSON.stringify(scopeArg
-    ?{...result,items:result.items.slice(0,limit),work:result.work.slice(0,limit)}
+  console.log(JSON.stringify(fullArg
+    ?{...result,items:result.items.slice(0,limit)}
+    :scopeArg?{...result,items:result.items.slice(0,limit),work:result.work.slice(0,limit)}
     :{...result,work:result.work.slice(0,limit)},null,2));
 }
