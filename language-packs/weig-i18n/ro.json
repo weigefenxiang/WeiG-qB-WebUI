@@ -377,7 +377,7 @@
     "detail.secondary.max": "maxim",
     "detail.secondary.total": "în total",
     "detail.loadFailed": "Încărcarea a eșuat: {error}",
-    "detail.virtualSummary": "{count} elemente · în DOM sunt afișate doar cele vizibile.",
+    "detail.virtualSummary": "Elemente: {count} · în DOM sunt afișate doar cele vizibile.",
     "detail.copyFilePath": "Copiază calea fișierului",
     "detail.copyContainingFolderPath": "Copiază calea dosarului părinte",
     "detail.sourceValuePromptPrefix": "Alege una dintre valorile confirmate de sursă: ",

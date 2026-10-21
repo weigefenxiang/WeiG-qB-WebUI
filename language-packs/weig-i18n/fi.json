@@ -328,7 +328,7 @@
     "transfer.download": "Lataus",
     "transfer.upload": "Lähetys",
     "detail.loadFailed": "Lataaminen epäonnistui: {error}",
-    "detail.virtualSummary": "{count} kohdetta · DOM sisältää vain näkyvät kohteet.",
+    "detail.virtualSummary": "Kohteet: {count} · DOM sisältää vain näkyvät kohteet.",
     "transfer.statusUnavailable": "Siirron tila ei ole käytettävissä",
     "action.renameEllipsis": "Nimeä uudelleen...",
     "detail.copyFilePath": "Kopioi tiedoston polku",

@@ -338,7 +338,7 @@
     "detail.secondary.max": "maksimum",
     "detail.secondary.total": "i alt",
     "detail.loadFailed": "Kunne ikke indlæse: {error}",
-    "detail.virtualSummary": "{count} elementer · kun synlige elementer findes i DOM.",
+    "detail.virtualSummary": "Elementer: {count} · kun synlige elementer findes i DOM.",
     "transfer.statusUnavailable": "Overførselsstatus er ikke tilgængelig",
     "action.renameEllipsis": "Omdøb...",
     "detail.copyFilePath": "Kopiér filsti",

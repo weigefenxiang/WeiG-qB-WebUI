@@ -368,7 +368,7 @@
     "detail.secondary.max": "maximum",
     "detail.secondary.total": "totaal",
     "detail.loadFailed": "Laden mislukt: {error}",
-    "detail.virtualSummary": "{count} items · alleen zichtbare elementen staan in de DOM.",
+    "detail.virtualSummary": "Items: {count} · alleen zichtbare elementen staan in de DOM.",
     "transfer.statusUnavailable": "Overdrachtsstatus niet beschikbaar",
     "action.renameEllipsis": "Naam wijzigen...",
     "detail.copyFilePath": "Bestandspad kopiëren",

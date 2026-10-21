@@ -375,7 +375,7 @@
     "detail.secondary.max": "največ",
     "detail.secondary.total": "skupaj",
     "detail.loadFailed": "Nalaganje ni uspelo: {error}",
-    "detail.virtualSummary": "{count} elementov · v DOM so vključeni samo vidni elementi.",
+    "detail.virtualSummary": "Elementi: {count} · v DOM so vključeni samo vidni elementi.",
     "detail.copyFilePath": "Kopiraj pot datoteke",
     "detail.copyContainingFolderPath": "Kopiraj pot nadrejene mape",
     "detail.sourceValuePromptPrefix": "Izberi eno od vrednosti, potrjenih z izvorno kodo: ",

@@ -328,7 +328,7 @@
     "detail.secondary.max": "massimo",
     "detail.secondary.total": "totale",
     "detail.loadFailed": "Impossibile caricare: {error}",
-    "detail.virtualSummary": "{count} elementi · nel DOM sono presenti soltanto quelli visibili.",
+    "detail.virtualSummary": "Elementi: {count} · nel DOM sono presenti soltanto quelli visibili.",
     "transfer.statusUnavailable": "Stato del trasferimento non disponibile",
     "action.renameEllipsis": "Rinomina...",
     "detail.copyFilePath": "Copia percorso del file",

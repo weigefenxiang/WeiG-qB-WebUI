@@ -294,7 +294,7 @@
     "transfer.download": "Nedlasting",
     "transfer.upload": "Opplasting",
     "detail.loadFailed": "Kunne ikke laste inn: {error}",
-    "detail.virtualSummary": "{count} elementer · bare de synlige elementene er lagt inn i DOM.",
+    "detail.virtualSummary": "Elementer: {count} · bare de synlige elementene er lagt inn i DOM.",
     "transfer.statusUnavailable": "Overføringsstatus er utilgjengelig",
     "action.renameEllipsis": "Gi nytt navn...",
     "detail.copyFilePath": "Kopier filsti",

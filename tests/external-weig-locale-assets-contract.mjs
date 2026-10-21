@@ -414,6 +414,19 @@ for(const [key,expected] of [
 assert.ok(portugueseVirtual.messages['instances.importHint'].includes('nenhuma senha nem sessão'),
   'An imported instance list must not imply that credentials or sessions are included');
 
+// A78-283: app.js supplies items.length directly with no plural grammar
+// selection. Count-neutral language labels must work at both 1 and N,
+// without modifying localization approval or the caller's business state.
+assert.equal(canonicalEnglishMessages['detail.virtualSummary'],
+  '{count} items · only the visible DOM is mounted.');
+for(const [locale,copy] of [["it","Elementi: {count} · nel DOM sono presenti soltanto quelli visibili."],["nl","Items: {count} · alleen zichtbare elementen staan in de DOM."],["ro","Elemente: {count} · în DOM sunt afișate doar cele vizibile."],["fi","Kohteet: {count} · DOM sisältää vain näkyvät kohteet."],["sl","Elementi: {count} · v DOM so vključeni samo vidni elementi."],["pl","Elementy: {count} · w DOM znajdują się tylko widoczne elementy."],["da","Elementer: {count} · kun synlige elementer findes i DOM."],["nb","Elementer: {count} · bare de synlige elementene er lagt inn i DOM."]]){
+  const overlay=JSON.parse(fs.readFileSync(path.join(rootOfExternalLocales,locale+'.json'),'utf8'));
+  assert.equal(overlay.messages['detail.virtualSummary'],copy,
+    'Count-neutral detail virtual summary required: '+locale);
+  assert.equal(overlay.translationStatus,'draft');
+  assert.ok(copy.includes('{count}'),'Count placeholder lost: '+locale);
+}
+
 // A78-259: Evidence correction. The BitTorrent app's own Malay description
 // uses "rakan sebaya" for peers within a torrent swarm. A financial P2P term
 // ("rakan setara") alone cannot disqualify that BitTorrent usage.

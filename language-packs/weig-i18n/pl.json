@@ -329,7 +329,7 @@
     "transfer.download": "Pobieranie",
     "transfer.upload": "Wysyłanie",
     "detail.loadFailed": "Nie udało się wczytać: {error}",
-    "detail.virtualSummary": "{count} elementów · w DOM znajdują się tylko widoczne elementy.",
+    "detail.virtualSummary": "Elementy: {count} · w DOM znajdują się tylko widoczne elementy.",
     "transfer.statusUnavailable": "Stan transferu jest niedostępny",
     "action.renameEllipsis": "Zmień nazwę...",
     "detail.copyFilePath": "Kopiuj ścieżkę pliku",
