@@ -141,7 +141,7 @@ for(const key of malayPeerKeys){
     'Malay BitTorrent peer terminology must stay consistent: '+key);
 }
 assert.equal(malayP2P.translationStatus,'draft','Source-term QA does not imply formal review approval');
-assert.equal(Object.keys(malayP2P.messages).length,656,'Malay locale key count must not regress');
+assert.ok(Object.keys(malayP2P.messages).length>=656,'Malay locale key count must not regress');
 
 const status=inspectExtendedLocaleSources();
 assert.equal(status.official,61);
