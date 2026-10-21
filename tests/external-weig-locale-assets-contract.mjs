@@ -148,6 +148,28 @@ for(const [key,source,localized] of [
   assert.equal(portugueseVirtual.messages[key],localized,'Portuguese count label must not force wrong plural: '+key);
 }
 
+// A78-270: Romanian qB 5.2.4 terminology confirms Seeds=Surse,
+// Peers=Parteneri; overlay owns the WeiG detail labels, while the exact
+// source-owned torrent column captions (ETA/Ratio/Tracker) stay fallback.
+// Source: qbittorrent-5.2.4/src/lang/qbittorrent_ro.ts (PropertiesWidget).
+const roAccounted=JSON.parse(fs.readFileSync(path.join(rootOfExternalLocales,'ro.json'),'utf8'));
+const roReviewScope=getTranslationDraftScopeWorklist('ro');
+const roIntentional=roReviewScope.items.filter(x=>x.classification==='intentional_english').map(x=>x.key);
+const roEnglishFallback=new Set([...Object.keys(SOURCE_PRESERVED_UI_LABELS),
+  ...roIntentional,'torrent.eta','torrent.ratio','torrent.tracker','settings.update.channelVirtual']);
+const roUnstored=canonicalEnglishTranslationKeys.filter(key=>!Object.hasOwn(roAccounted.messages,key));
+assert.equal(roEnglishFallback.size,22,'Romanian fallbacks must have source-based classification');
+assert.deepEqual([...roEnglishFallback].sort(),roUnstored.slice().sort());
+assert.deepEqual(roAccounted.reviewedEnglishFallbackKeys,roUnstored);
+assert.equal(roAccounted.englishSourceSha256,canonicalEnglishSourceSha256);
+for(const [key,localeTerm] of Object.entries({
+  'detail.trackers':'Trackere','detail.peers':'Parteneri','detail.seeds':'Surse',
+  'detail.peersCount':'Parteneri','transfer.dhtPeers':'DHT / Parteneri',
+  'settings.about.version':'Versiune','capability.privateFilter.title':'Privat / PT'})){
+  assert.equal(roAccounted.messages[key],localeTerm,'Native-source-aligned Romanian term: '+key);
+}
+assert.equal(roAccounted.translationStatus,'draft','Formal English fallback is not independent AI QA');
+
 // A78-259: Evidence correction. The BitTorrent app's own Malay description
 // uses "rakan sebaya" for peers within a torrent swarm. A financial P2P term
 // ("rakan setara") alone cannot disqualify that BitTorrent usage.

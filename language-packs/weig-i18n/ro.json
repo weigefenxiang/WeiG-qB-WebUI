@@ -3,6 +3,31 @@
   "source": "WeiG-runtime-locale-overlay",
   "locale": "ro",
   "translationStatus": "draft",
+  "englishSourceSha256": "d0d6412654389081013f556747436862ef4c65ec6cc3410c267596055fd88959",
+  "reviewedEnglishFallbackKeys": [
+    "nav.rss",
+    "rss.title",
+    "torrent.eta",
+    "torrent.ratio",
+    "torrent.tracker",
+    "settings.size.standard",
+    "language.en",
+    "language.zh-CN",
+    "language.zh-TW",
+    "language.zh-HK",
+    "language.ja",
+    "language.ko",
+    "settings.weig.title",
+    "settings.weig.density.torrentExample",
+    "settings.weig.unit.secondShort",
+    "common.na",
+    "header.blog",
+    "connection.environment.qb",
+    "connection.environment.webapi",
+    "capability.rss.title",
+    "settings.update.channelVirtual",
+    "instances.online"
+  ],
   "messages": {
     "app.skip": "Sari la lista de torrente",
     "app.back": "Înapoi",
@@ -668,5 +693,13 @@
     "instances.importFile": "Importă JSON",
     "instances.loadFailed": "Modulul de gestionare a instanțelor nu s-a putut încărca.",
     "stats.dhtPeers": "DHT {dht} · Parteneri {peers}"
+,
+    "detail.trackers": "Trackere",
+    "detail.peers": "Parteneri",
+    "detail.seeds": "Surse",
+    "detail.peersCount": "Parteneri",
+    "transfer.dhtPeers": "DHT / Parteneri",
+    "settings.about.version": "Versiune",
+    "capability.privateFilter.title": "Privat / PT"
   }
 }
