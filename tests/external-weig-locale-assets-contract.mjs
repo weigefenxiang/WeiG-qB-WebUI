@@ -36,9 +36,9 @@ assert.equal(portugueseVirtual.translationStatus,'draft');
 
 // A78-298: qB detail PropertiesWidget includes seeds_total and peers_total.
 // layout.js uses detail.secondary.total for these current swarm counts;
-// translating it as accumulated would invent an incorrect temporal meaning.
+// 'ao todo' expresses the total without inventing a cumulative-over-time meaning.
 assert.equal(canonicalEnglishMessages['detail.secondary.total'],'total');
-assert.equal(portugueseVirtual.messages['detail.secondary.total'],'total',
+assert.equal(portugueseVirtual.messages['detail.secondary.total'],'ao todo',
   'pt-BR detail swarm total must not say cumulative/accumulated');
 assert.equal(portugueseVirtual.translationStatus,'draft');
 // A78-260: selection.js uses allMatchingHashes() to invert only torrents
