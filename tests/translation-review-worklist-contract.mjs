@@ -67,9 +67,9 @@ assert.equal(slScope.draftScopeComplete,true);
 assert.equal(slScope.distributionApproved,false,'Draft scope must not imply distribution approval: slScope');
 // Catalan A78-223 completed the 673-key AI draft. The older 45-key
 // bootstrap fixture must not outlive the actual shipped language pack.
-assert.equal(caScope.counts.localized,641);
+assert.equal(caScope.counts.localized,642);
 assert.equal(caScope.counts.localized,ca.suppliedKeys);
-assert.equal(caScope.counts.intentional_english,25);
+assert.equal(caScope.counts.intentional_english,24);
 assert.equal(caScope.counts.qb_owned,7);
 assert.equal(caScope.unresolvedKeys,0);
 assert.equal(caScope.draftScopeComplete,true);
@@ -143,8 +143,8 @@ assert.equal(itScope.unresolvedKeys,0);
 assert.equal(itScope.draftScopeComplete,true);
 assert.equal(itScope.distributionApproved,false,'Draft scope must not imply distribution approval: itScope');
 const nlScope=getTranslationDraftScopeWorklist('nl');
-assert.equal(nlScope.counts.localized,647);
-assert.equal(nlScope.counts.intentional_english,25);
+assert.equal(nlScope.counts.localized,648);
+assert.equal(nlScope.counts.intentional_english,24);
 assert.equal(nlScope.counts.qb_owned,1);
 assert.equal(nlScope.unresolvedKeys,0);
 assert.equal(nlScope.draftScopeComplete,true);

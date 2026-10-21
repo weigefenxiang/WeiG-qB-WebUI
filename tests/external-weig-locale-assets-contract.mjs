@@ -204,7 +204,7 @@ const dutchBase=dutchScope.items.filter(item=>item.classification!=='localized')
 const dutchReasons=new Set([...Object.keys(SOURCE_PRESERVED_UI_LABELS),...dutchBase,
   'torrent.tracker','detail.trackers','detail.peers','detail.seeds','detail.peersCount']);
 const dutchMissing=canonicalEnglishTranslationKeys.filter(key=>!Object.hasOwn(dutchAccounted.messages,key));
-assert.equal(dutchReasons.size,39,'Unexplained Dutch fallback');
+assert.equal(dutchReasons.size,38,'Unexplained Dutch fallback');
 assert.deepEqual([...dutchReasons].sort(),dutchMissing.slice().sort());
 assert.deepEqual(dutchAccounted.reviewedEnglishFallbackKeys,dutchMissing);
 assert.equal(dutchAccounted.englishSourceSha256,canonicalEnglishSourceSha256);
@@ -552,6 +552,26 @@ for(const [locale,label] of [["eo","Torentoj: {count}"],["fi","Torrentit: {count
   assert.equal(copy.replace('{count}','1'),label.replace('{count}','1'));
   assert.deepEqual([...copy.matchAll(/\{([^{}]+)\}/gu)].map(x=>x[1]),['count']);
   assert.equal(overlay.translationStatus,'draft','Count repair must not promote '+locale);
+}
+
+// A78-292: instances-ui.js substitutes a bare count in its live and
+// historical instance tooltip, so '{count} torrents' must not be retained
+// as English for a single instance torrent. Retire three superseded scope
+// decisions, plus the Dutch formal fallback, as the localized copy takes over.
+assert.equal(canonicalEnglishMessages['instances.torrentCount'],'{count} torrents');
+for(const locale of ['ca','gl','nl']){
+  const overlay=JSON.parse(fs.readFileSync(path.join(rootOfExternalLocales,locale+'.json'),'utf8'));
+  const worklist=getTranslationDraftScopeWorklist(locale);
+  const entry=worklist.items.find(item=>item.key==='instances.torrentCount');
+  assert.equal(overlay.messages['instances.torrentCount'],'Torrents: {count}');
+  assert.equal(overlay.messages['instances.torrentCount'].replace('{count}','1'),'Torrents: 1');
+  assert.equal(entry.classification,'localized','Retire stale English-only scope: '+locale);
+  assert.equal(overlay.translationStatus,'draft','Localized phrase alone is not QA approved');
+  if(locale==='nl'){
+    assert.equal(overlay.reviewedEnglishFallbackKeys.length,38);
+    assert.ok(!overlay.reviewedEnglishFallbackKeys.includes('instances.torrentCount'));
+    assert.equal(overlay.englishSourceSha256,canonicalEnglishSourceSha256);
+  }
 }
 
 // A78-259: Evidence correction. The BitTorrent app's own Malay description

@@ -42,8 +42,7 @@
     "connection.environment.webapi",
     "capability.rss.title",
     "settings.update.channelDev",
-    "instances.online",
-    "instances.torrentCount"
+    "instances.online"
   ],
   "messages": {
     "app.skip": "Ga naar de torrentlijst",
@@ -186,6 +185,7 @@
     "instances.continue": "Doorgaan",
     "instances.denied": "Aanmelden vereist",
     "instances.unverified": "Niet te verifiëren",
+    "instances.torrentCount": "Torrents: {count}",
     "instances.importTitle": "Instantielijst importeren?",
     "instances.importHint": "Een externe pagina heeft instantieadressen van {source} aangeleverd (totaal: {count}). Controleer ze voordat je ze opslaat; er worden geen wachtwoorden of sessies meegeleverd.",
     "instances.import": "Importeren",

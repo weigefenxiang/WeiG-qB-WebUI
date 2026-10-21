@@ -131,11 +131,6 @@
       "classification": "intentional_english",
       "reason": "Online is the established Dutch term for a concise connectivity-status indicator.",
       "evidence": "Verified English canonical instances.online = \"Online\"; the locale should use this exact spelling via W.I18n fallback rather than duplicate English in overlay."
-    },
-    "instances.torrentCount": {
-      "classification": "intentional_english",
-      "reason": "The compact '{count} torrents' is already idiomatic Dutch plural counting.",
-      "evidence": "Verified English canonical instances.torrentCount = \"{count} torrents\"; the locale should use this exact spelling via W.I18n fallback rather than duplicate English in overlay."
     }
   }
 }

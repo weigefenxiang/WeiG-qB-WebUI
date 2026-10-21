@@ -133,11 +133,6 @@
       "classification": "intentional_english",
       "reason": "Torrent is an established technical loanword used as the unchanged sample-item label in Galician torrent clients.",
       "evidence": "English canonical settings.weig.density.torrentExample = \"Torrent\"; preserved term is an exact technical loanword, native-identical Galician label, SI symbol, brand, diagnostic marker, API identifier, named channel or original-language autonym. For torrents, existing gl.json uses 'torrents' in its originally authored navigation and library descriptions."
-    },
-    "instances.torrentCount": {
-      "classification": "intentional_english",
-      "reason": "The Galician count expression naturally retains the conventional technical loanword torrents after {count}, making the whole label identical to English.",
-      "evidence": "English canonical instances.torrentCount = \"{count} torrents\"; preserved term is an exact technical loanword, native-identical Galician label, SI symbol, brand, diagnostic marker, API identifier, named channel or original-language autonym. For torrents, existing gl.json uses 'torrents' in its originally authored navigation and library descriptions."
     }
   }
 }

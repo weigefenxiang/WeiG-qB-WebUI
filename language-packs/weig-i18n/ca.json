@@ -639,6 +639,7 @@
     "instances.online": "En línia",
     "instances.denied": "Cal iniciar sessió",
     "instances.unverified": "No es pot verificar",
+    "instances.torrentCount": "Torrents: {count}",
     "instances.importTitle": "Vols importar una llista d'instàncies?",
     "instances.importHint": "Una pàgina externa ha proporcionat adreces d'instàncies de {source} (total: {count}). Revisa-les abans de desar-les; no s'hi inclouen contrasenyes ni sessions.",
     "instances.import": "Importa",

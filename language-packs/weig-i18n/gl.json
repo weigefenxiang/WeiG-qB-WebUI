@@ -647,6 +647,7 @@
     "instances.online": "En liña",
     "instances.denied": "É preciso iniciar sesión",
     "instances.unverified": "Non se pode verificar",
+    "instances.torrentCount": "Torrents: {count}",
     "instances.importTitle": "Importar unha lista de instancias?",
     "instances.importHint": "Unha páxina externa proporcionou enderezos de instancias desde {source} (total: {count}). Revísaos antes de gardar; non se inclúen contrasinais nin sesións.",
     "instances.import": "Importar",

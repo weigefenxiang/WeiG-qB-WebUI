@@ -173,11 +173,6 @@
       "classification": "intentional_english",
       "reason": "Torrent is the accepted technical loanword in the original Catalan library labels.",
       "evidence": "English canonical settings.weig.density.torrentExample = \"Torrent\". Source webui/private/scripts/i18n.js. Torrent is the accepted technical loanword in the original Catalan library labels. Existing Catalan terminology: language-packs/weig-i18n/ca.json."
-    },
-    "instances.torrentCount": {
-      "classification": "intentional_english",
-      "reason": "The complete {count} torrents label is idiomatic Catalan, as confirmed by original ca.json library text.",
-      "evidence": "English canonical instances.torrentCount = \"{count} torrents\". Source webui/private/scripts/i18n.js. The complete {count} torrents label is idiomatic Catalan, as confirmed by original ca.json library text. Existing Catalan terminology: language-packs/weig-i18n/ca.json."
     }
   }
 }
