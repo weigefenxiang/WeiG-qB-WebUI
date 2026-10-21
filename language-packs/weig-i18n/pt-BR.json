@@ -312,7 +312,7 @@
     "detail.duration.hoursMinutes": "{hours} h {minutes} min",
     "detail.duration.minutesSeconds": "{minutes} min {seconds} s",
     "detail.duration.seconds": "{seconds} segundos",
-    "detail.piecesHave": "{count} disponíveis",
+    "detail.piecesHave": "possui {count}",
     "detail.secondary.session": "nesta sessão",
     "detail.secondary.average": "média",
     "detail.secondary.max": "máximo",

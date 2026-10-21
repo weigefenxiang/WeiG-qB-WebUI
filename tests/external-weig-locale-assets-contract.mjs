@@ -128,6 +128,13 @@ for(const locale of ['el','fa','he','gl','hi-IN','is','ms-MY','lt']){
   assert.equal(overlay.translationStatus,'draft','Parallel wording is not AI review approval');
 }
 
+// A78-268: the native General details caller reads pieces_have (pieces
+// already possessed by this torrent). The PT-BR label must not imply generic
+// pieces available elsewhere in the swarm. Keep the {count} placeholder.
+assert.equal(canonicalEnglishMessages['detail.piecesHave'],'have {count}');
+assert.equal(portugueseVirtual.messages['detail.piecesHave'],'possui {count}',
+  'Portuguese pieces_have must describe owned pieces, not generally available ones');
+
 // A78-259: Evidence correction. The BitTorrent app's own Malay description
 // uses "rakan sebaya" for peers within a torrent swarm. A financial P2P term
 // ("rakan setara") alone cannot disqualify that BitTorrent usage.
