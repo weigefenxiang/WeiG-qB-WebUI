@@ -134,6 +134,32 @@ for(const [locale,expected] of [['ltg','daleišonys laiks'],
   assert.equal(data.translationStatus,'draft','No quality/native approval: '+locale);
 }
 
+// A78-308: selection.js renders a real destructive confirmation with
+// any selected.size. Keep the quantity outside inflected singular/plural
+// noun phrases until a locale has an explicit plural-category runtime owner.
+const selectedDeleteRuntime=fs.readFileSync(path.resolve(rootOfExternalLocales,'../../webui/private/scripts/selection.js'),'utf8');
+assert.ok(selectedDeleteRuntime.includes("tr('selection.deleteSelected').replace('{n}',selected.size)"),
+  'Selection delete prompt caller changed; revisit plural safety');
+assert.equal(canonicalEnglishMessages['selection.deleteSelected'],'Delete {n} selected torrent(s).');
+for(const [locale,expected] of [
+  ['cs','Smazat vybrané torrenty (počet: {n}).'],
+  ['fi','Poista valitut torrentit (määrä: {n}).'],
+  ['he','מחיקת הטורנטים שנבחרו (כמות: {n}).'],
+  ['sr','Обриши изабране торенте (број: {n}).'],
+  ['sr-Latn','Obriši izabrane torente (broj: {n}).'],
+  ['sv','Ta bort markerade torrenter (antal: {n}).']
+]){
+  const payload=JSON.parse(fs.readFileSync(path.join(rootOfExternalLocales,locale+'.json'),'utf8'));
+  assert.equal(payload.messages['selection.deleteSelected'],expected,'Selected-delete scope: '+locale);
+  assert.equal(payload.translationStatus,'draft');
+  for(const count of [1,2,17]){
+    const rendered=expected.replace('{n}',String(count));
+    assert.ok(rendered.includes('('+expected.slice(expected.lastIndexOf('(')+1).replace('{n}',String(count))),
+      'Selected-delete quantity must stay in an uninflected parenthesized count: '+locale);
+    assert.ok(!rendered.includes('{n}'));
+  }
+}
+
 // A78-260: selection.js uses allMatchingHashes() to invert only torrents
 // matching the current filters, not the entire selected set.
 // Preserve that scope in the Brazilian Portuguese bulk-selection UI.

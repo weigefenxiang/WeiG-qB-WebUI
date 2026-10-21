@@ -428,7 +428,7 @@
     "selection.back": "← Tillbaka",
     "selection.loadingActions": "Läser in åtgärder…",
     "selection.actionsUnavailable": "Åtgärder är inte tillgängliga.",
-    "selection.deleteSelected": "Ta bort {n} markerade torrenter.",
+    "selection.deleteSelected": "Ta bort markerade torrenter (antal: {n}).",
     "selection.group.category": "Kategori",
     "selection.group.tags": "Etiketter",
     "selection.group.queue": "Kö",

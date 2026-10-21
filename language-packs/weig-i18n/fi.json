@@ -424,7 +424,7 @@
     "selection.back": "← Takaisin",
     "selection.loadingActions": "Toimintoja ladataan…",
     "selection.actionsUnavailable": "Toiminnot eivät ole käytettävissä.",
-    "selection.deleteSelected": "Poista {n} valittua torrentia.",
+    "selection.deleteSelected": "Poista valitut torrentit (määrä: {n}).",
     "selection.group.category": "Luokka",
     "selection.group.tags": "Tunnisteet",
     "selection.group.queue": "Jono",

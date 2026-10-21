@@ -388,7 +388,7 @@
     "selection.back": "← Zpět",
     "selection.loadingActions": "Načítají se operace…",
     "selection.actionsUnavailable": "Operace nejsou dostupné.",
-    "selection.deleteSelected": "Smazat {n} vybraných torrentů.",
+    "selection.deleteSelected": "Smazat vybrané torrenty (počet: {n}).",
     "selection.group.category": "Kategorie",
     "selection.group.tags": "Štítky",
     "selection.group.queue": "Fronta",

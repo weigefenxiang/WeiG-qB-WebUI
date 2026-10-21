@@ -394,7 +394,7 @@
     "selection.back": "← Nazad",
     "selection.loadingActions": "Učitavanje radnji…",
     "selection.actionsUnavailable": "Radnje nisu dostupne.",
-    "selection.deleteSelected": "Obriši {n} izabranih torenata.",
+    "selection.deleteSelected": "Obriši izabrane torente (broj: {n}).",
     "selection.group.category": "Kategorija",
     "selection.group.tags": "Oznake",
     "selection.group.queue": "Red čekanja",

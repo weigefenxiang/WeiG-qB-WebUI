@@ -393,7 +393,7 @@
     "selection.back": "← חזרה",
     "selection.loadingActions": "טוען פעולות…",
     "selection.actionsUnavailable": "הפעולות אינן זמינות.",
-    "selection.deleteSelected": "מחיקת {n} טורנטים שנבחרו.",
+    "selection.deleteSelected": "מחיקת הטורנטים שנבחרו (כמות: {n}).",
     "selection.group.category": "קטגוריה",
     "selection.group.tags": "תגיות",
     "selection.group.queue": "תור",

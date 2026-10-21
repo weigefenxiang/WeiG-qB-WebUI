@@ -394,7 +394,7 @@
     "selection.back": "← Назад",
     "selection.loadingActions": "Учитавање радњи…",
     "selection.actionsUnavailable": "Радње нису доступне.",
-    "selection.deleteSelected": "Обриши {n} изабраних торената.",
+    "selection.deleteSelected": "Обриши изабране торенте (број: {n}).",
     "selection.group.category": "Категорија",
     "selection.group.tags": "Ознаке",
     "selection.group.queue": "Ред чекања",
