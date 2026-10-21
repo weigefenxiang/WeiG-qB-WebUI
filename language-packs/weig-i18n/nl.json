@@ -464,7 +464,7 @@
     "selection.back": "← Terug",
     "selection.loadingActions": "Acties laden…",
     "selection.actionsUnavailable": "Acties niet beschikbaar.",
-    "selection.deleteSelected": "{n} geselecteerde torrents verwijderen.",
+    "selection.deleteSelected": "Geselecteerde torrents verwijderen (aantal: {n}).",
     "selection.group.category": "Categorie",
     "selection.group.tags": "Labels",
     "selection.group.queue": "Wachtrij",

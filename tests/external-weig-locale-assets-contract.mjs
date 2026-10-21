@@ -450,7 +450,7 @@ for(const [locale,expected] of [["it","Una pagina esterna ha fornito indirizzi d
   assert.deepEqual(placeholders,['count','source'],'Missing import placeholders in '+locale);
 }
 
-// A78-288: the torrent selection, instance import and virtual-list owners
+// A78-288/290: torrent selection, instance import and virtual-list owners
 // interpolate bare counts, without CLDR plural selection. Keep UI phrases
 // natural at count=1 and count>1 using neutral labels plus explicit totals.
 // Do not invent a second plural runtime or promote any draft locale.
@@ -489,6 +489,39 @@ for(const [locale,keys] of Object.entries({
   ],
   "it": [
     "selection.deleteSelected"
+  ],
+  "nb": [
+    "selection.deleteSelected",
+    "instances.torrentCount"
+  ],
+  "nl": [
+    "selection.deleteSelected"
+  ],
+  "pl": [
+    "selection.deleteSelected"
+  ],
+  "ro": [
+    "selection.deleteSelected",
+    "instances.torrentCount"
+  ],
+  "sk": [
+    "selection.deleteSelected",
+    "detail.virtualSummary",
+    "instances.importHint"
+  ],
+  "sl": [
+    "selection.deleteSelected",
+    "instances.torrentCount"
+  ],
+  "lt": [
+    "selection.deleteSelected",
+    "detail.virtualSummary",
+    "instances.importHint"
+  ],
+  "lv-LV": [
+    "selection.deleteSelected",
+    "detail.virtualSummary",
+    "instances.importHint"
   ]
 })){
   const overlay=JSON.parse(fs.readFileSync(path.join(rootOfExternalLocales,locale+'.json'),'utf8'));

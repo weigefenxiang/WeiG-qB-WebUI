@@ -425,7 +425,7 @@
     "selection.back": "← Wstecz",
     "selection.loadingActions": "Wczytywanie operacji…",
     "selection.actionsUnavailable": "Operacje niedostępne.",
-    "selection.deleteSelected": "Usuń {n} zaznaczonych torrentów.",
+    "selection.deleteSelected": "Usuń zaznaczone torrenty (łącznie: {n}).",
     "selection.group.category": "Kategoria",
     "selection.group.tags": "Etykiety",
     "selection.group.queue": "Kolejka",
