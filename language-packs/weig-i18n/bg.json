@@ -326,7 +326,7 @@
     "detail.duration.hoursMinutes": "{hours} ч. {minutes} мин.",
     "detail.duration.minutesSeconds": "{minutes} мин. {seconds} сек.",
     "detail.duration.seconds": "{seconds} секунди",
-    "detail.piecesHave": "налични {count}",
+    "detail.piecesHave": "локално налични части: {count}",
     "detail.secondary.session": "за тази сесия",
     "detail.secondary.average": "средно",
     "detail.secondary.max": "максимум",

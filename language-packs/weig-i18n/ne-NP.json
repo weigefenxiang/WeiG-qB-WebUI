@@ -290,7 +290,7 @@
     "detail.duration.hoursMinutes": "{hours} घण्टा {minutes} मिनेट",
     "detail.duration.minutesSeconds": "{minutes} मिनेट {seconds} सेकेन्ड",
     "detail.duration.seconds": "{seconds} सेकेन्ड",
-    "detail.piecesHave": "उपलब्ध {count}",
+    "detail.piecesHave": "स्थानीय रूपमा उपलब्ध टुक्राहरू: {count}",
     "detail.secondary.session": "यो सत्रमा",
     "detail.secondary.average": "औसत",
     "detail.secondary.max": "अधिकतम",

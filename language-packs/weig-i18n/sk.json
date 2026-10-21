@@ -291,7 +291,7 @@
     "detail.duration.hoursMinutes": "{hours} hod. {minutes} min.",
     "detail.duration.minutesSeconds": "{minutes} min. {seconds} s",
     "detail.duration.seconds": "{seconds} s",
-    "detail.piecesHave": "dostupných {count}",
+    "detail.piecesHave": "lokálne dostupných častí: {count}",
     "detail.secondary.session": "táto relácia",
     "detail.secondary.average": "priemer",
     "detail.secondary.max": "maximum",

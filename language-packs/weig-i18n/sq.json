@@ -275,7 +275,7 @@
     "detail.duration.hoursMinutes": "{hours} orë {minutes} minuta",
     "detail.duration.minutesSeconds": "{minutes} minuta {seconds} sekonda",
     "detail.duration.seconds": "{seconds} sekonda",
-    "detail.piecesHave": "disponohen {count}",
+    "detail.piecesHave": "pjesë të disponueshme lokalisht: {count}",
     "detail.secondary.session": "në këtë seancë",
     "detail.secondary.average": "mesatare",
     "detail.secondary.max": "maksimumi",

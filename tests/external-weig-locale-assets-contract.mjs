@@ -384,6 +384,21 @@ for(const [code,expectedCount,terms,extras] of [
   assert.equal(overlay.translationStatus,'draft','Native review is still pending '+code);
 }
 
+// A78-281: the real General Details caller renders the qBittorrent
+// pieces_have count for locally possessed pieces. Explicitly qualify
+// availability as local in these eight overlays to avoid swarm ambiguity.
+// This focused check does not certify any complete 693-key locale review.
+assert.equal(canonicalEnglishMessages['detail.piecesHave'],'have {count}');
+for(const [locale,copy] of [["ar","القطع الموجودة محليًا: {count}"],["bg","локално налични части: {count}"],["gl","pezas dispoñibles localmente: {count}"],["hi-IN","स्थानीय रूप से मौजूद हिस्से: {count}"],["lv-LV","lokāli pieejami fragmenti: {count}"],["ne-NP","स्थानीय रूपमा उपलब्ध टुक्राहरू: {count}"],["sk","lokálne dostupných častí: {count}"],["sq","pjesë të disponueshme lokalisht: {count}"]]){
+  const overlay=JSON.parse(fs.readFileSync(path.join(rootOfExternalLocales,locale+'.json'),'utf8'));
+  assert.equal(overlay.messages['detail.piecesHave'],copy,
+    'pieces_have must describe locally held pieces: '+locale);
+  assert.equal(overlay.translationStatus,'draft',
+    'Local semantics correction is not an independent AI quality PASS: '+locale);
+  assert.deepEqual([...copy.matchAll(/\{([^{}]+)\}/gu)].map(x=>x[1]),['count'],
+    'Translation must preserve the count placeholder: '+locale);
+}
+
 // A78-259: Evidence correction. The BitTorrent app's own Malay description
 // uses "rakan sebaya" for peers within a torrent swarm. A financial P2P term
 // ("rakan setara") alone cannot disqualify that BitTorrent usage.

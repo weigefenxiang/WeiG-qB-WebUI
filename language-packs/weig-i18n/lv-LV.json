@@ -277,7 +277,7 @@
     "detail.duration.hoursMinutes": "{hours}st. {minutes}min.",
     "detail.duration.minutesSeconds": "{minutes}min. {seconds}s",
     "detail.duration.seconds": "{seconds} sek.",
-    "detail.piecesHave": "pieejami {count}",
+    "detail.piecesHave": "lokāli pieejami fragmenti: {count}",
     "detail.secondary.session": "šajā sesijā",
     "detail.secondary.average": "vidēji",
     "detail.secondary.max": "maksimāli",

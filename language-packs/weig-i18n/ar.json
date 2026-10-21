@@ -276,7 +276,7 @@
     "detail.duration.hoursMinutes": "{hours} ساعة و{minutes} دقيقة",
     "detail.duration.minutesSeconds": "{minutes} دقيقة و{seconds} ثانية",
     "detail.duration.seconds": "{seconds} ثانية",
-    "detail.piecesHave": "المتوافر {count}",
+    "detail.piecesHave": "القطع الموجودة محليًا: {count}",
     "detail.secondary.session": "في هذه الجلسة",
     "detail.secondary.average": "المتوسط",
     "detail.secondary.max": "الأقصى",

@@ -271,7 +271,7 @@
     "detail.duration.hoursMinutes": "{hours} horas e {minutes} minutos",
     "detail.duration.minutesSeconds": "{minutes} minutos e {seconds} segundos",
     "detail.duration.seconds": "{seconds} segundos",
-    "detail.piecesHave": "dispoñibles {count}",
+    "detail.piecesHave": "pezas dispoñibles localmente: {count}",
     "detail.secondary.session": "nesta sesión",
     "detail.secondary.average": "media",
     "detail.secondary.max": "máximo",

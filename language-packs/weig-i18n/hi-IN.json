@@ -277,7 +277,7 @@
     "detail.duration.hoursMinutes": "{hours} घंटे {minutes} मिनट",
     "detail.duration.minutesSeconds": "{minutes} मिनट {seconds} सेकंड",
     "detail.duration.seconds": "{seconds} सेकंड",
-    "detail.piecesHave": "उपलब्ध {count}",
+    "detail.piecesHave": "स्थानीय रूप से मौजूद हिस्से: {count}",
     "detail.secondary.session": "इस सत्र में",
     "detail.secondary.average": "औसत",
     "detail.secondary.max": "अधिकतम",
