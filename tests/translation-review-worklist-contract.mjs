@@ -573,6 +573,23 @@ for(const key of ['instances.importHint','instances.online','instances.lastRepor
 }
 assert.equal(ptFull.independentErrorReviewRecorded,false);
 
+// A78-296: dynamic capability copy derives only from real registry feature
+// IDs, not from guesswork or an approved locale state.
+for(const id of ['privateFilter','categoryFacet','tagFacet','search','rss','logs','stalledFilter']){
+  for(const part of ['title','reason']){
+    const key='capability.'+id+'.'+part;
+    const item=ptFull.items.find(x=>x.key===key);
+    assert.ok(item&&item.callerCandidates.some(x=>
+      x.file==='webui/private/scripts/capabilities.js'&&
+      x.registry==='webui/private/data/capabilities.json'&&
+      x.featureId===id&&
+      x.evidence==='static-feature-registry-candidate-not-verified'),
+      'Missing real-registry static caller candidate: '+key);
+    assert.equal(item.semanticAndIndependentReview,'pending');
+  }
+}
+assert.equal(ptFull.independentErrorReviewRecorded,false);
+
 // A78-287: HTML data-i18n bindings are also source-proven static caller
 // candidates. The app menu aria label and skip link reside in index.html,
 // not a JS literal caller; candidate status never implies QA approval.

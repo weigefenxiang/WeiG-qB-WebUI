@@ -160,6 +160,32 @@ function getStaticCallerCandidates(){
       }
     }
   }
+  // A78-296: capability dialogs construct `capability.<feature>.<part>`
+  // from a real feature registry id. A bare literal grep cannot see these
+  // runtime-consumed keys, so connect them to the precise source registry
+  // without EVER promoting a source candidate to semantic QA approval.
+  const capabilityFile='webui/private/scripts/capabilities.js';
+  const capabilityContent=fs.readFileSync(path.join(root,capabilityFile),'utf8');
+  const dynamicFeatureKey="var key='capability.'+String(id||'')+'.'+String(part||'')";
+  if(capabilityContent.includes(dynamicFeatureKey)&&
+     capabilityContent.includes("featureCopy(id,'title'")&&
+     capabilityContent.includes("featureCopy(id,'reason'")){
+    const registryPath=path.join(root,'webui/private/data/capabilities.json');
+    const registry=JSON.parse(fs.readFileSync(registryPath,'utf8'));
+    assert(registry.schemaVersion===2&&registry.features&&
+      typeof registry.features==='object'&&!Array.isArray(registry.features),
+      'Invalid source feature registry for translation caller candidates');
+    const line=capabilityContent.slice(0,capabilityContent.indexOf(dynamicFeatureKey)).split(/\\r?\
+/u).length;
+    for(const id of Object.keys(registry.features)){
+      for(const part of ['title','reason']){
+        const key='capability.'+id+'.'+part,owners=index.get(key);
+        if(!owners||owners.some(item=>item.file===capabilityFile&&item.line===line))continue;
+        owners.push({file:capabilityFile,line,registry:'webui/private/data/capabilities.json',
+          featureId:id,evidence:'static-feature-registry-candidate-not-verified'});
+      }
+    }
+  }
   // Declarative HTML bindings are genuine static UI reference candidates,
   // even though a JS-only scan cannot see them. Still NOT semantic QA proof.
   const htmlPath=path.join(root,'webui/private/index.html');
