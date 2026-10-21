@@ -271,6 +271,21 @@ for(const [key,val] of Object.entries({
 }
 assert.equal(turkish.translationStatus,'draft','Source term review != independent QA approval');
 
+// A78-276: selection.js interpolates the selected count directly, with no
+// plural engine. Also, capabilities.js warns users to back up torrent DATA,
+// not merely the .torrent descriptors before a qBittorrent version upgrade.
+assert.equal(canonicalEnglishMessages['selection.deleteSelected'],
+  'Delete {n} selected torrent(s).');
+assert.equal(portugueseVirtual.messages['selection.deleteSelected'],
+  'Excluir torrents selecionados ({n}).');
+assert.equal(portugueseVirtual.messages['selection.deleteSelected'].replace('{n}','1'),
+  'Excluir torrents selecionados (1).');
+assert.equal(canonicalEnglishMessages['capability.advice'],
+  'Availability is determined by the detected qBittorrent / WebAPI capability. Back up qBittorrent configuration and torrent data before upgrading.');
+assert.match(portugueseVirtual.messages['capability.advice'],
+  /backup da configuração do qBittorrent e dos dados dos torrents antes de atualizar\./u,
+  'Portuguese upgrade warning must explicitly include torrent data backup');
+
 // A78-259: Evidence correction. The BitTorrent app's own Malay description
 // uses "rakan sebaya" for peers within a torrent swarm. A financial P2P term
 // ("rakan setara") alone cannot disqualify that BitTorrent usage.
