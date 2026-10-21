@@ -118,6 +118,16 @@ for(const locale of ['th','tr','az-Latn','ro','id','it','nl','fi']){
   assert.equal(overlay.translationStatus,'draft','Cross-surface consistency is not full QA');
 }
 
+// A78-265: The same EN DHT/Peers caption appears in statistics and
+// connection status. Review RTL scripts and other source-owned translations
+// against the existing locale's network wording, without approval promotion.
+for(const locale of ['el','fa','he','gl','hi-IN','is','ms-MY','lt']){
+  const overlay=JSON.parse(fs.readFileSync(path.join(rootOfExternalLocales,locale+'.json'),'utf8'));
+  assert.equal(overlay.messages['stats.dhtPeers'],overlay.messages['connection.networkSnapshot'],
+    'Same English source diverges across UI surfaces: '+locale);
+  assert.equal(overlay.translationStatus,'draft','Parallel wording is not AI review approval');
+}
+
 // A78-259: Evidence correction. The BitTorrent app's own Malay description
 // uses "rakan sebaya" for peers within a torrent swarm. A financial P2P term
 // ("rakan setara") alone cannot disqualify that BitTorrent usage.

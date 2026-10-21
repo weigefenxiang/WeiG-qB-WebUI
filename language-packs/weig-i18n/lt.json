@@ -661,6 +661,7 @@
     "instances.import": "Importuoti",
     "instances.exportFile": "Eksportuoti JSON",
     "instances.importFile": "Importuoti JSON",
-    "instances.loadFailed": "Nepavyko įkelti egzempliorių tvarkytuvės."
+    "instances.loadFailed": "Nepavyko įkelti egzempliorių tvarkytuvės.",
+    "stats.dhtPeers": "DHT {dht} · partneriai {peers}"
   }
 }

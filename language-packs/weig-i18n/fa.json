@@ -659,6 +659,7 @@
     "instances.import": "وارد کردن",
     "instances.exportFile": "برون‌بری JSON",
     "instances.importFile": "درون‌ریزی JSON",
-    "instances.loadFailed": "بارگذاری مدیریت نمونه‌ها ناموفق بود."
+    "instances.loadFailed": "بارگذاری مدیریت نمونه‌ها ناموفق بود.",
+    "stats.dhtPeers": "DHT {dht} · همتایان {peers}"
   }
 }

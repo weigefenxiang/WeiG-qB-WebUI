@@ -659,6 +659,7 @@
     "instances.import": "Εισαγωγή",
     "instances.exportFile": "Εξαγωγή JSON",
     "instances.importFile": "Εισαγωγή JSON",
-    "instances.loadFailed": "Δεν ήταν δυνατή η φόρτωση της διαχείρισης εγκαταστάσεων."
+    "instances.loadFailed": "Δεν ήταν δυνατή η φόρτωση της διαχείρισης εγκαταστάσεων.",
+    "stats.dhtPeers": "DHT {dht} · Ομότιμοι {peers}"
   }
 }

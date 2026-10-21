@@ -659,6 +659,7 @@
     "instances.import": "ייבוא",
     "instances.exportFile": "ייצוא JSON",
     "instances.importFile": "ייבוא JSON",
-    "instances.loadFailed": "לא ניתן לטעון את מנהל המופעים."
+    "instances.loadFailed": "לא ניתן לטעון את מנהל המופעים.",
+    "stats.dhtPeers": "DHT {dht} · עמיתים {peers}"
   }
 }

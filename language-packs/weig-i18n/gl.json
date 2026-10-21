@@ -652,6 +652,7 @@
     "instances.import": "Importar",
     "instances.exportFile": "Exportar JSON",
     "instances.importFile": "Importar JSON",
-    "instances.loadFailed": "Non foi posible cargar o xestor de instancias."
+    "instances.loadFailed": "Non foi posible cargar o xestor de instancias.",
+    "stats.dhtPeers": "DHT {dht} · pares {peers}"
   }
 }

@@ -660,6 +660,7 @@
     "instances.import": "आयात करें",
     "instances.exportFile": "JSON निर्यात करें",
     "instances.importFile": "JSON आयात करें",
-    "instances.loadFailed": "इंस्टेंस प्रबंधक लोड नहीं हो सका।"
+    "instances.loadFailed": "इंस्टेंस प्रबंधक लोड नहीं हो सका।",
+    "stats.dhtPeers": "DHT {dht} · पीयर {peers}"
   }
 }

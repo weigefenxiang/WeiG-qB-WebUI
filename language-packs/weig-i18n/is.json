@@ -660,6 +660,7 @@
     "instances.import": "Flytja inn",
     "instances.exportFile": "Flytja út JSON",
     "instances.importFile": "Flytja inn JSON",
-    "instances.loadFailed": "Ekki tókst að hlaða tilvikastjóranum."
+    "instances.loadFailed": "Ekki tókst að hlaða tilvikastjóranum.",
+    "stats.dhtPeers": "DHT {dht} · jafningjar {peers}"
   }
 }

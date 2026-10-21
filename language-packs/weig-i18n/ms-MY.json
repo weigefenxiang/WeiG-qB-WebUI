@@ -659,6 +659,7 @@
     "instances.importTitle": "Import senarai instans?",
     "instances.importHint": "Halaman luar menyediakan {count} alamat instans daripada {source}. Semak sebelum menyimpan; kata laluan dan sesi tidak disertakan.",
     "instances.exportFile": "Eksport JSON",
-    "instances.loadFailed": "Pengurus instans tidak dapat dimuatkan."
+    "instances.loadFailed": "Pengurus instans tidak dapat dimuatkan.",
+    "stats.dhtPeers": "DHT {dht} · rakan sebaya {peers}"
   }
 }
