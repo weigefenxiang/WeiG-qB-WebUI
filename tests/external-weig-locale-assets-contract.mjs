@@ -68,6 +68,24 @@ assert.match(romanianDensity.messages['settings.weig.density.description'],/dime
 assert.match(romanianDensity.messages['settings.weig.density.description'],/lățimea coloanelor/u,
   'Romanian density description must preserve the column-width distinction');
 
+// A78-262: Bulgarian/Ukrainian missing canonical keys have exact
+// English fallback provenance (eight source-preserved labels plus five
+// individually documented draft scope decisions). This does NOT approve
+// the 680 localized values for either language.
+for(const locale of ['bg','uk']){
+  const source=JSON.parse(fs.readFileSync(path.join(rootOfExternalLocales,locale+'.json'),'utf8'));
+  const scope=getTranslationDraftScopeWorklist(locale);
+  const scopeIntentionallyEnglish=scope.items.filter(item=>item.classification==='intentional_english').map(item=>item.key);
+  const proven=new Set([...Object.keys(SOURCE_PRESERVED_UI_LABELS),...scopeIntentionallyEnglish]);
+  const missing=canonicalEnglishTranslationKeys.filter(key=>!Object.hasOwn(source.messages,key));
+  assert.equal(scopeIntentionallyEnglish.length,5);
+  assert.equal(proven.size,13);
+  assert.deepEqual([...proven].sort(),missing.slice().sort(),'Unsourced English fallback: '+locale);
+  assert.deepEqual(source.reviewedEnglishFallbackKeys,missing,'Unreviewed English fallback: '+locale);
+  assert.equal(source.englishSourceSha256,canonicalEnglishSourceSha256,'English fingerprint: '+locale);
+  assert.equal(source.translationStatus,'draft','Fallback proof is not whole-language approval: '+locale);
+}
+
 // A78-259: Evidence correction. The BitTorrent app's own Malay description
 // uses "rakan sebaya" for peers within a torrent swarm. A financial P2P term
 // ("rakan setara") alone cannot disqualify that BitTorrent usage.
