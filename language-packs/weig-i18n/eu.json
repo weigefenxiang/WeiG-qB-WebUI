@@ -637,7 +637,7 @@
     "instances.connectTitle": "Instantziara konektatu?",
     "instances.connectHint": "Ireki {name} beste fitxa batean eta eskatu bere uneko qB egoera partekatzeko baimena?",
     "instances.allowTitle": "Partekatuko da zuzeneko egoera?",
-    "instances.allowHint": "Baimendu {source}(r)i instantzia honen lineako egoera eta torrent kopuru osoa irakurtzea? Ez dira pasahitzak, saioak edo torrenten izenak partekatuko.",
+    "instances.allowHint": "Baimendu {source}(r)i instantzia honen lineako egoera eta torrent kopuru osoa irakurtzea? Ez dira saioa hasteko kredentzialak edo torrenten izenak partekatuko.",
     "instances.allow": "Baimendu",
     "instances.manage": "Kudeatu instantziak",
     "instances.name": "Instantziaren izena",

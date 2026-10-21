@@ -182,6 +182,26 @@ for(const [locale,expected] of [
   }
 }
 
+// A78-310: InstancePeerBridge's cross-window consent is about *all*
+// authentication credentials, not just passwords, and does not promise a
+// separate session-data category. Verify the actual consent UI call path.
+const instanceConsentUI=fs.readFileSync(path.resolve(rootOfExternalLocales,'../../webui/private/scripts/instances-ui.js'),'utf8');
+assert.ok(instanceConsentUI.includes("W.I18n.t('instances.'+key,vars)"));
+assert.ok(instanceConsentUI.includes("tr('allowHint',{source:invite.source})"));
+assert.match(canonicalEnglishMessages['instances.allowHint'],/No credentials or torrent names are shared\./u);
+for(const [locale,expected] of [
+  ['be','Даныя для ўваходу і назвы торэнтаў не перадаюцца.'],
+  ['eu','Ez dira saioa hasteko kredentzialak edo torrenten izenak partekatuko.'],
+  ['fa','هیچ اطلاعات ورود یا نام تورنتی به اشتراک گذاشته نمی‌شود.'],
+  ['hy','Մուտքի տվյալներ կամ տորենտների անուններ չեն փոխանցվում։'],
+  ['ka','შესვლის მონაცემები და ტორენტების სახელები არ გაზიარდება.']
+]){
+  const data=JSON.parse(fs.readFileSync(path.join(rootOfExternalLocales,locale+'.json'),'utf8'));
+  assert.ok(data.messages['instances.allowHint'].endsWith(expected),'Credentials and names scope: '+locale);
+  assert.equal([...data.messages['instances.allowHint'].matchAll(/\{source\}/gu)].length,1);
+  assert.equal(data.translationStatus,'draft');
+}
+
 // A78-260: selection.js uses allMatchingHashes() to invert only torrents
 // matching the current filters, not the entire selected set.
 // Preserve that scope in the Brazilian Portuguese bulk-selection UI.
