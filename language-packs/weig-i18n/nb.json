@@ -281,7 +281,7 @@
     "detail.backShort": "Tilbake",
     "columns.eyebrow": "TABELL",
     "columns.aux.stateIcon": "Statusikon",
-    "detail.secondary.seeding": "deler ut",
+    "detail.secondary.seeding": "Delingstid",
     "detail.duration.daysHours": "{days} d {hours} t",
     "detail.duration.hoursMinutes": "{hours} t {minutes} min",
     "detail.duration.minutesSeconds": "{minutes} min {seconds} s",

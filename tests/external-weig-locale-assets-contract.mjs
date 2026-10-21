@@ -78,6 +78,17 @@ for(const [locale,expected] of [['be','Час раздачы'],['cs','Čas seedo
   assert.equal(data.translationStatus,'draft','Unapproved locale must remain draft: '+locale);
 }
 
+// A78-303: qB 5.2.4 native vocabulary for *elapsed seeding time*
+// in eight additional WeiG-owned draft language overlays.
+for(const [locale,expected] of [['bs','Vrijeme dijeljenja'],['eu','Emaritza denbora'],
+  ['hr','Vrijeme seedanja'],['nb','Delingstid'],['sk','Čas seedovania'],
+  ['sr','Време сетве'],['sv','Distributionstid'],['vi','Thời gian seeding']]){
+  const data=JSON.parse(fs.readFileSync(path.join(rootOfExternalLocales,locale+'.json'),'utf8'));
+  assert.equal(data.messages['detail.secondary.seeding'],expected,
+    'Seeding duration translation must not denote an ongoing state: '+locale);
+  assert.equal(data.translationStatus,'draft','No independent approval: '+locale);
+}
+
 // A78-260: selection.js uses allMatchingHashes() to invert only torrents
 // matching the current filters, not the entire selected set.
 // Preserve that scope in the Brazilian Portuguese bulk-selection UI.

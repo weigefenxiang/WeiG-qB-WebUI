@@ -321,7 +321,7 @@
     "columns.aux.stateIcon": "Biểu tượng trạng thái",
     "common.yes": "Có",
     "common.no": "Không",
-    "detail.secondary.seeding": "đang chia sẻ",
+    "detail.secondary.seeding": "Thời gian seeding",
     "detail.duration.daysHours": "{days} ngày {hours} giờ",
     "detail.duration.hoursMinutes": "{hours} giờ {minutes} phút",
     "detail.duration.minutesSeconds": "{minutes} phút {seconds} giây",

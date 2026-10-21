@@ -272,7 +272,7 @@
     "columns.aux.stateIcon": "Икона стања",
     "common.yes": "Да",
     "common.no": "Не",
-    "detail.secondary.seeding": "дељење у току",
+    "detail.secondary.seeding": "Време сетве",
     "detail.duration.daysHours": "{days} д {hours} ч",
     "detail.duration.hoursMinutes": "{hours} ч {minutes} мин",
     "detail.duration.minutesSeconds": "{minutes} мин {seconds} с",

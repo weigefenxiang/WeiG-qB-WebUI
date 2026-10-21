@@ -319,7 +319,7 @@
     "detail.backShort": "Tillbaka",
     "columns.eyebrow": "TABELL",
     "columns.aux.stateIcon": "Statusikon",
-    "detail.secondary.seeding": "delar ut",
+    "detail.secondary.seeding": "Distributionstid",
     "detail.duration.daysHours": "{days} d {hours} tim",
     "detail.duration.hoursMinutes": "{hours} tim {minutes} min",
     "detail.duration.minutesSeconds": "{minutes} min {seconds} sek",

@@ -286,7 +286,7 @@
     "detail.backShort": "Späť",
     "columns.eyebrow": "TABUĽKA",
     "columns.aux.stateIcon": "Ikona stavu",
-    "detail.secondary.seeding": "odosieľa sa",
+    "detail.secondary.seeding": "Čas seedovania",
     "detail.duration.daysHours": "{days} dní {hours} hod.",
     "detail.duration.hoursMinutes": "{hours} hod. {minutes} min.",
     "detail.duration.minutesSeconds": "{minutes} min. {seconds} s",

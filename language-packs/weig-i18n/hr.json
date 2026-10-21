@@ -286,7 +286,7 @@
     "detail.backShort": "Natrag",
     "columns.eyebrow": "TABLICA",
     "columns.aux.stateIcon": "Ikona stanja",
-    "detail.secondary.seeding": "dijeljenje u tijeku",
+    "detail.secondary.seeding": "Vrijeme seedanja",
     "detail.duration.daysHours": "{days} dana {hours} h",
     "detail.duration.hoursMinutes": "{hours} h {minutes} min",
     "detail.duration.minutesSeconds": "{minutes} min {seconds} s",
