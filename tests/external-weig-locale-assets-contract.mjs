@@ -359,6 +359,31 @@ for(const [key,value] of Object.entries({
 }
 assert.equal(plAccounted.translationStatus,'draft','Fallback provenance does not establish full quality approval');
 
+// A78-280: Swedish and Danish qB 5.2.4 source uses Spårare/Trackere
+// and Distributioner/Seeds for native labels; W.I18n keeps already authored
+// Peer terminology in the status surface. A qB-owned caption (or exact
+// English technical label) is fallback rather than copied English text.
+// Upstream: qbittorrent/qBittorrent release-5.2.4 src/lang/qbittorrent_{sv,da}.ts.
+for(const [code,expectedCount,terms,extras] of [
+  ['sv',35,{"stats.dhtPeers":"DHT {dht} · Peernoder {peers}","detail.trackers":"Spårare","detail.peers":"Peernoder","detail.seeds":"Distributioner","detail.peersCount":"Peernoder","transfer.dhtPeers":"DHT / Peernoder","capability.privateFilter.title":"Privat / PT","settings.update.channelVirtual":"Virtuell"},["torrent.eta","torrent.ratio","torrent.tracker","settings.about.version"]],
+  ['da',44,{"stats.dhtPeers":"DHT {dht} · Peer-enheder {peers}","detail.trackers":"Trackere","detail.peers":"Modparter","detail.peersCount":"Modparter","transfer.dhtPeers":"DHT / Peer-enheder","capability.privateFilter.title":"Privat / PT","settings.update.channelVirtual":"Virtuel"},["torrent.eta","torrent.ratio","torrent.tracker","detail.seeds","settings.about.version"]]
+]){
+  const overlay=JSON.parse(fs.readFileSync(path.join(rootOfExternalLocales,code+'.json'),'utf8'));
+  const scope=getTranslationDraftScopeWorklist(code);
+  const expected=new Set([...Object.keys(SOURCE_PRESERVED_UI_LABELS),
+    ...scope.items.filter(item=>item.classification!=='localized').map(item=>item.key),
+    ...extras]);
+  const missing=canonicalEnglishTranslationKeys.filter(k=>!Object.hasOwn(overlay.messages,k));
+  assert.equal(expected.size,expectedCount,'Scoped English labels '+code);
+  assert.deepEqual([...expected].sort(),missing.slice().sort());
+  assert.deepEqual(overlay.reviewedEnglishFallbackKeys,missing);
+  assert.equal(overlay.englishSourceSha256,canonicalEnglishSourceSha256);
+  for(const [key,value] of Object.entries(terms)){
+    assert.equal(overlay.messages[key],value,'Source terminology '+code+'/'+key);
+  }
+  assert.equal(overlay.translationStatus,'draft','Native review is still pending '+code);
+}
+
 // A78-259: Evidence correction. The BitTorrent app's own Malay description
 // uses "rakan sebaya" for peers within a torrent swarm. A financial P2P term
 // ("rakan setara") alone cannot disqualify that BitTorrent usage.
