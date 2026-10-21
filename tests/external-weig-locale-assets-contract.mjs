@@ -194,6 +194,27 @@ for(const [key,val] of Object.entries({
 }
 assert.equal(italianAccounted.translationStatus,'draft','No complete independent review has occurred');
 
+// A78-272: qB 5.2.4 Dutch source retains borrowed Tracker/Trackers,
+// Peers and Seeds unchanged. W.I18n must fallback, not duplicate English
+// strings; actual native qB captions remain owned by their source context.
+// Source: qbittorrent-5.2.4/src/lang/qbittorrent_nl.ts.
+const dutchAccounted=JSON.parse(fs.readFileSync(path.join(rootOfExternalLocales,'nl.json'),'utf8'));
+const dutchScope=getTranslationDraftScopeWorklist('nl');
+const dutchBase=dutchScope.items.filter(item=>item.classification!=='localized').map(item=>item.key);
+const dutchReasons=new Set([...Object.keys(SOURCE_PRESERVED_UI_LABELS),...dutchBase,
+  'torrent.tracker','detail.trackers','detail.peers','detail.seeds','detail.peersCount']);
+const dutchMissing=canonicalEnglishTranslationKeys.filter(key=>!Object.hasOwn(dutchAccounted.messages,key));
+assert.equal(dutchReasons.size,39,'Unexplained Dutch fallback');
+assert.deepEqual([...dutchReasons].sort(),dutchMissing.slice().sort());
+assert.deepEqual(dutchAccounted.reviewedEnglishFallbackKeys,dutchMissing);
+assert.equal(dutchAccounted.englishSourceSha256,canonicalEnglishSourceSha256);
+for(const [key,val] of Object.entries({
+  'transfer.dhtPeers':'DHT / peers','settings.about.version':'Versie',
+  'capability.privateFilter.title':'Privé / PT','settings.update.channelVirtual':'Virtueel'})){
+  assert.equal(dutchAccounted.messages[key],val,'Dutch source context mismatch: '+key);
+}
+assert.equal(dutchAccounted.translationStatus,'draft','Fallback accounting is not locale QA approval');
+
 // A78-259: Evidence correction. The BitTorrent app's own Malay description
 // uses "rakan sebaya" for peers within a torrent swarm. A financial P2P term
 // ("rakan setara") alone cannot disqualify that BitTorrent usage.
