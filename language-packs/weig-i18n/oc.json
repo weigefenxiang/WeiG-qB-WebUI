@@ -653,7 +653,7 @@
     "instances.online": "En linha",
     "instances.denied": "Connexion requerida",
     "instances.unverified": "Impossible de verificar",
-    "instances.torrentCount": "{count} torrents dins l'instància",
+    "instances.torrentCount": "Torrents dins l'instància: {count}",
     "instances.importTitle": "Importar la lista de las instàncias ?",
     "instances.importHint": "Una pagina extèrna a provesit {count} adreças d'instàncias dempuèi {source}. Verificatz-las abans d'enregistrar; cap de senhal d'accès ni session es inclus.",
     "instances.import": "Importar",

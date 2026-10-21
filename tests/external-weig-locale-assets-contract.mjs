@@ -540,6 +540,20 @@ for(const [locale,keys] of Object.entries({
   assert.equal(overlay.translationStatus,'draft','Targeted count corrections are not full AI approval');
 }
 
+// A78-291: instances-ui.js directly interpolates live and historical
+// torrent counts without locale plural inflection. Use quantity-neutral
+// captions rather than rendering incorrect singular values (e.g. 1 torentoj).
+// This is a focused copy fix; it is not an independent 693-key quality review.
+assert.equal(canonicalEnglishMessages['instances.torrentCount'],'{count} torrents');
+for(const [locale,label] of [["eo","Torentoj: {count}"],["fi","Torrentit: {count}"],["he","טורנטים: {count}"],["sv","Torrenter: {count}"],["ne-NP","टोरेन्टहरू: {count}"],["lt","Torrentų: {count}"],["oc","Torrents dins l'instància: {count}"],["is","Torrentar: {count}"]]){
+  const overlay=JSON.parse(fs.readFileSync(path.join(rootOfExternalLocales,locale+'.json'),'utf8'));
+  const copy=overlay.messages['instances.torrentCount'];
+  assert.equal(copy,label,'Incorrect count-neutral instance tooltip in '+locale);
+  assert.equal(copy.replace('{count}','1'),label.replace('{count}','1'));
+  assert.deepEqual([...copy.matchAll(/\{([^{}]+)\}/gu)].map(x=>x[1]),['count']);
+  assert.equal(overlay.translationStatus,'draft','Count repair must not promote '+locale);
+}
+
 // A78-259: Evidence correction. The BitTorrent app's own Malay description
 // uses "rakan sebaya" for peers within a torrent swarm. A financial P2P term
 // ("rakan setara") alone cannot disqualify that BitTorrent usage.

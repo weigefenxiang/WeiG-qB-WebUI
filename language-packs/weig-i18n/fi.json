@@ -684,7 +684,7 @@
     "instances.online": "Verkossa",
     "instances.denied": "Kirjautuminen vaaditaan",
     "instances.unverified": "Ei voida vahvistaa",
-    "instances.torrentCount": "{count} torrenttia",
+    "instances.torrentCount": "Torrentit: {count}",
     "instances.importTitle": "Tuodaanko instanssiluettelo?",
     "instances.importHint": "Ulkoinen sivu toimitti {count} instanssiosoitetta lähteestä {source}. Tarkista ne ennen tallentamista; salasanoja tai istuntoja ei ole mukana.",
     "instances.import": "Tuo",

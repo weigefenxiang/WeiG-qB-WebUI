@@ -655,7 +655,7 @@
     "instances.online": "Enrete",
     "instances.denied": "Ensaluto necesas",
     "instances.unverified": "Ne eblas kontroli",
-    "instances.torrentCount": "{count} torentoj",
+    "instances.torrentCount": "Torentoj: {count}",
     "instances.importTitle": "Ĉu importi instancoliston?",
     "instances.importHint": "Ekstera paĝo disponigis instancajn adresojn de {source} (entute: {count}). Reviziu ilin antaŭ konservado; pasvortoj kaj seancoj ne estas inkluzivitaj.",
     "instances.import": "Importi",

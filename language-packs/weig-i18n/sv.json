@@ -685,7 +685,7 @@
     "instances.continue": "Fortsätt",
     "instances.denied": "Inloggning krävs",
     "instances.unverified": "Kan inte verifiera",
-    "instances.torrentCount": "{count} torrenter",
+    "instances.torrentCount": "Torrenter: {count}",
     "instances.importTitle": "Importera instanslista?",
     "instances.importHint": "En extern sida angav {count} instansadresser från {source}. Kontrollera dem före lagring; inga lösenord eller sessioner ingår.",
     "instances.import": "Importera",

@@ -655,7 +655,7 @@
     "instances.online": "Prisijungęs",
     "instances.denied": "Reikia prisijungti",
     "instances.unverified": "Nepavyko patikrinti",
-    "instances.torrentCount": "{count} torrentų",
+    "instances.torrentCount": "Torrentų: {count}",
     "instances.importTitle": "Importuoti egzempliorių sąrašą?",
     "instances.importHint": "Išorinis puslapis pateikė egzempliorių adresus iš {source} (iš viso: {count}). Prieš išsaugodami peržiūrėkite; slaptažodžiai ir seansai nepridedami.",
     "instances.import": "Importuoti",

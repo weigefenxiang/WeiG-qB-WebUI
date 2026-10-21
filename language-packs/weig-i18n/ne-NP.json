@@ -657,7 +657,7 @@
     "instances.online": "अनलाइन",
     "instances.denied": "लगइन आवश्यक छ",
     "instances.unverified": "प्रमाणित गर्न सकिँदैन",
-    "instances.torrentCount": "{count} टोरेन्टहरू",
+    "instances.torrentCount": "टोरेन्टहरू: {count}",
     "instances.importTitle": "इन्स्ट्यान्स सूची आयात गर्ने?",
     "instances.importHint": "बाहिरी पृष्ठले {source} बाट {count} इन्स्ट्यान्स ठेगानाहरू दिएको छ। सुरक्षित गर्नुअघि समीक्षा गर्नुहोस्; पासवर्ड र सत्रहरू समावेश छैनन्।",
     "instances.import": "आयात गर्नुहोस्",

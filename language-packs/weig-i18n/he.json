@@ -653,7 +653,7 @@
     "instances.online": "מחובר",
     "instances.denied": "נדרשת התחברות",
     "instances.unverified": "לא ניתן לאמת",
-    "instances.torrentCount": "{count} טורנטים",
+    "instances.torrentCount": "טורנטים: {count}",
     "instances.importTitle": "לייבא רשימת מופעים?",
     "instances.importHint": "דף חיצוני סיפק {count} כתובות של מופעים מתוך {source}. בדקו לפני השמירה; לא נכללות סיסמאות או הפעלות.",
     "instances.import": "ייבוא",
