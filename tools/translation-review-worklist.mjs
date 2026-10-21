@@ -130,7 +130,13 @@ function getStaticCallerCandidates(){
     const filename=path.join(dir,entry.name);
     if(fs.statSync(filename).size>1000000)continue;
     const file='webui/private/scripts/'+entry.name;
-    const lines=fs.readFileSync(filename,'utf8').split(/\r?\n/u);
+    const content=fs.readFileSync(filename,'utf8');
+    // A local tr() wrapper can prepend a proven namespace to short keys.
+    // Detect the exact literal I18n owner expression, never infer a prefix
+    // from filenames or UI feature names.
+    const wrapper=/function\s+tr\s*\(\s*key(?:\s*,[^)]*)?\)\s*\{\s*return\s+W\.I18n&&W\.I18n\.t\?W\.I18n\.t\(\s*(['"])([A-Za-z0-9_-]+\.)\1\s*\+\s*key\b/u.exec(content);
+    const scopedPrefix=wrapper?wrapper[2]:null;
+    const lines=content.split(/\r?\n/u);
     for(let i=0;i<lines.length;i++){
       // A literal reference is a caller *candidate*, never a verified UI owner.
       const literals=/(['"])([A-Za-z0-9_-]+(?:\.[A-Za-z0-9_-]+)+)\1/gu;
@@ -139,6 +145,17 @@ function getStaticCallerCandidates(){
         if(!owners||owners.length>=12)continue;
         if(!owners.some(item=>item.file===file&&item.line===i+1)){
           owners.push({file,line:i+1,evidence:'static-literal-candidate-not-verified'});
+        }
+      }
+      if(scopedPrefix){
+        // tr('importHint') -> instances.importHint, only when the wrapper
+        // visibly calls W.I18n.t('instances.'+key,vars) in this same file.
+        for(const match of lines[i].matchAll(/\btr\(\s*(['"])([A-Za-z0-9_-]+)\1/gu)){
+          const owners=index.get(scopedPrefix+match[2]);
+          if(!owners||owners.length>=12)continue;
+          if(!owners.some(item=>item.file===file&&item.line===i+1)){
+            owners.push({file,line:i+1,evidence:'static-scoped-wrapper-candidate-not-verified'});
+          }
         }
       }
     }

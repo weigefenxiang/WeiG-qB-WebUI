@@ -568,6 +568,20 @@ assert.ok(ptFull.items.every(item=>item.semanticAndIndependentReview==='pending'
 assert.ok(ptFull.items.some(item=>item.key==='settings.update.channelVirtual'&&item.disposition==='reviewed_english_fallback'));
 assert.ok(ptFull.items.find(item=>item.key==='selection.invertAllMatching')
   .callerCandidates.some(item=>item.file==='webui/private/scripts/selection.js'));
+// A78-286: instances-ui.js uses a proven scoped wrapper, not a
+// dotted literal at each caller. The review worklist must surface these
+// candidates without treating the presence of a candidate as QA PASS.
+for(const key of ['instances.importHint','instances.online','instances.lastReported']){
+  const record=ptFull.items.find(item=>item.key===key);
+  assert.ok(record,'Missing canonical key '+key);
+  assert.ok(record.callerCandidates.some(item=>
+    item.file==='webui/private/scripts/instances-ui.js'&&
+    item.evidence==='static-scoped-wrapper-candidate-not-verified'),
+    'Source-proven scoped caller is missing: '+key);
+  assert.equal(record.semanticAndIndependentReview,'pending');
+}
+assert.equal(ptFull.independentErrorReviewRecorded,false);
+
 assert.throws(()=>getTranslationFullQualityWorklist('zh-CN'),/Unknown or already bundled/);
 
 console.log('Translation worklist passed: source-bound English and Simplified Chinese semantic reference, no fabricated approvals.');
