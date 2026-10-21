@@ -284,7 +284,7 @@
     "detail.backShort": "უკან",
     "columns.eyebrow": "ცხრილი",
     "columns.aux.stateIcon": "სტატუსის ხატულა",
-    "detail.secondary.seeding": "გაცემის რეჟიმში",
+    "detail.secondary.seeding": "სიდინგის დრო",
     "detail.duration.daysHours": "{days} დღე {hours} სთ",
     "detail.duration.hoursMinutes": "{hours} სთ {minutes} წთ",
     "detail.duration.minutesSeconds": "{minutes} წთ {seconds} წმ",

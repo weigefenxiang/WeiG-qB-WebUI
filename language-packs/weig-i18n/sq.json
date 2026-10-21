@@ -270,7 +270,7 @@
     "columns.aux.stateIcon": "Ikona e gjendjes",
     "common.yes": "Po",
     "common.no": "Jo",
-    "detail.secondary.seeding": "ndarje aktive",
+    "detail.secondary.seeding": "Koha e shpërndarjes",
     "detail.duration.daysHours": "{days} ditë {hours} orë",
     "detail.duration.hoursMinutes": "{hours} orë {minutes} minuta",
     "detail.duration.minutesSeconds": "{minutes} minuta {seconds} sekonda",

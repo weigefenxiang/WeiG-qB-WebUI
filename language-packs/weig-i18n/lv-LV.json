@@ -272,7 +272,7 @@
     "columns.aux.stateIcon": "Statusa ikona",
     "common.yes": "Jā",
     "common.no": "Nē",
-    "detail.secondary.seeding": "Izplatīšana",
+    "detail.secondary.seeding": "Augšupielādes laiks",
     "detail.duration.daysHours": "{days}d {hours}st.",
     "detail.duration.hoursMinutes": "{hours}st. {minutes}min.",
     "detail.duration.minutesSeconds": "{minutes}min. {seconds}s",

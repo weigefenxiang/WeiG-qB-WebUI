@@ -272,7 +272,7 @@
     "columns.aux.stateIcon": "Ikona stanja",
     "common.yes": "Da",
     "common.no": "Ne",
-    "detail.secondary.seeding": "deljenje u toku",
+    "detail.secondary.seeding": "Vreme setve",
     "detail.duration.daysHours": "{days} d {hours} č",
     "detail.duration.hoursMinutes": "{hours} č {minutes} min",
     "detail.duration.minutesSeconds": "{minutes} min {seconds} s",

@@ -89,6 +89,16 @@ for(const [locale,expected] of [['bs','Vrijeme dijeljenja'],['eu','Emaritza denb
   assert.equal(data.translationStatus,'draft','No independent approval: '+locale);
 }
 
+// A78-304: regional-script matches from verified qB 5.2.4 translations;
+// these labels describe elapsed seeding duration in source-bound Detail UI.
+for(const [locale,expected] of [['az-Latn','Paylama vaxtı'],
+  ['ka','სიდინგის დრო'],['lv-LV','Augšupielādes laiks'],
+  ['sq','Koha e shpërndarjes'],['sr-Latn','Vreme setve']]){
+  const data=JSON.parse(fs.readFileSync(path.join(rootOfExternalLocales,locale+'.json'),'utf8'));
+  assert.equal(data.messages['detail.secondary.seeding'],expected,'Not a seeding duration: '+locale);
+  assert.equal(data.translationStatus,'draft','Unreviewed locale must stay draft: '+locale);
+}
+
 // A78-260: selection.js uses allMatchingHashes() to invert only torrents
 // matching the current filters, not the entire selected set.
 // Preserve that scope in the Brazilian Portuguese bulk-selection UI.
