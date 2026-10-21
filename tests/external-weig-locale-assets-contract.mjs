@@ -215,6 +215,30 @@ for(const [key,val] of Object.entries({
 }
 assert.equal(dutchAccounted.translationStatus,'draft','Fallback accounting is not locale QA approval');
 
+// A78-273: qB 5.2.4 Finnish source distinguishes seurantapalvelimet,
+// vertaiset and complete seeds (jakajat); native Torrent columns retain their
+// own exact copy ownership. Review does not imply AI/native approval.
+// Source: qbittorrent-5.2.4/src/lang/qbittorrent_fi.ts (PropTabBar).
+const finnish=JSON.parse(fs.readFileSync(path.join(rootOfExternalLocales,'fi.json'),'utf8'));
+const fiScope=getTranslationDraftScopeWorklist('fi');
+const fiReasons=new Set([...Object.keys(SOURCE_PRESERVED_UI_LABELS),
+  ...fiScope.items.filter(x=>x.classification!=='localized').map(x=>x.key),
+  'torrent.eta','torrent.ratio','torrent.tracker']);
+const fiUnstored=canonicalEnglishTranslationKeys.filter(key=>!Object.hasOwn(finnish.messages,key));
+assert.equal(fiReasons.size,27);
+assert.deepEqual([...fiReasons].sort(),fiUnstored.slice().sort());
+assert.deepEqual(finnish.reviewedEnglishFallbackKeys,fiUnstored);
+assert.equal(finnish.englishSourceSha256,canonicalEnglishSourceSha256);
+for(const [key,term] of Object.entries({
+  'detail.trackers':'Seurantapalvelimet','detail.peers':'Vertaiset',
+  'detail.seeds':'Jakajat','detail.peersCount':'Vertaiset',
+  'transfer.dhtPeers':'DHT / Vertaiset','settings.about.version':'Versio',
+  'capability.privateFilter.title':'Yksityinen / PT',
+  'settings.update.channelVirtual':'Virtuaalinen'})){
+  assert.equal(finnish.messages[key],term,'Source-aligned Finnish label: '+key);
+}
+assert.equal(finnish.translationStatus,'draft');
+
 // A78-259: Evidence correction. The BitTorrent app's own Malay description
 // uses "rakan sebaya" for peers within a torrent swarm. A financial P2P term
 // ("rakan setara") alone cannot disqualify that BitTorrent usage.
