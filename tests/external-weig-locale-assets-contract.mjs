@@ -248,6 +248,29 @@ assert.match(portugueseVirtual.messages['settings.weig.ptTrackers.description'],
   /domínios dos rastreadores, separados por vírgulas\./u,
   'Portuguese PT tracker-rule hint must preserve plural comma-separated domains');
 
+// A78-275: qB 5.2.4 Turkish UI uses İzleyiciler for Trackers,
+// Eşler for Peers and Gönderim for Seeds in native Properties context.
+// Exact source remains authoritative for native qB copy, while this WeiG
+// draft accounts for every EN canonical key without granting language PASS.
+// Source: qbittorrent-5.2.4/src/lang/qbittorrent_tr.ts.
+const turkish=JSON.parse(fs.readFileSync(path.join(rootOfExternalLocales,'tr.json'),'utf8'));
+const trScope=getTranslationDraftScopeWorklist('tr');
+const trReasons=new Set([...Object.keys(SOURCE_PRESERVED_UI_LABELS),
+  ...trScope.items.filter(x=>x.classification!=='localized').map(x=>x.key)]);
+const trMissing=canonicalEnglishTranslationKeys.filter(key=>!Object.hasOwn(turkish.messages,key));
+assert.equal(trReasons.size,19);
+assert.deepEqual([...trReasons].sort(),trMissing.slice().sort());
+assert.deepEqual(turkish.reviewedEnglishFallbackKeys,trMissing);
+assert.equal(turkish.englishSourceSha256,canonicalEnglishSourceSha256);
+for(const [key,val] of Object.entries({
+  'detail.trackers':'İzleyiciler','detail.peers':'Eşler',
+  'detail.seeds':'Gönderim','detail.peersCount':'Eşler',
+  'transfer.dhtPeers':'DHT / Eşler','settings.about.version':'Sürüm',
+  'capability.privateFilter.title':'Özel / PT','settings.update.channelVirtual':'Sanal'})){
+  assert.equal(turkish.messages[key],val,'Turkish source-aligned term: '+key);
+}
+assert.equal(turkish.translationStatus,'draft','Source term review != independent QA approval');
+
 // A78-259: Evidence correction. The BitTorrent app's own Malay description
 // uses "rakan sebaya" for peers within a torrent swarm. A financial P2P term
 // ("rakan setara") alone cannot disqualify that BitTorrent usage.
