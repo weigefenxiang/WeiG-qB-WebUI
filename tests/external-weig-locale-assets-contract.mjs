@@ -170,6 +170,30 @@ for(const [key,localeTerm] of Object.entries({
 }
 assert.equal(roAccounted.translationStatus,'draft','Formal English fallback is not independent AI QA');
 
+// A78-271: qB 5.2.4 Italian source uses Server traccia/Nodi/
+// Distributori for the native Trackers/Peers/Seeds detail surface.
+// The three native Torrent column captions are qB copy owned, while
+// fallback accounting cannot mark the whole 693-key locale AI approved.
+// Source: qbittorrent-5.2.4/src/lang/qbittorrent_it.ts (PropTabBar/PropertiesWidget).
+const italianAccounted=JSON.parse(fs.readFileSync(path.join(rootOfExternalLocales,'it.json'),'utf8'));
+const italianScope=getTranslationDraftScopeWorklist('it');
+const italianScopeFall=italianScope.items.filter(x=>x.classification!=='localized').map(x=>x.key);
+const italianReasons=new Set([...Object.keys(SOURCE_PRESERVED_UI_LABELS),
+  ...italianScopeFall,'torrent.eta','torrent.ratio','torrent.tracker']);
+const italianMissing=canonicalEnglishTranslationKeys.filter(key=>!Object.hasOwn(italianAccounted.messages,key));
+assert.equal(italianReasons.size,33);
+assert.deepEqual([...italianReasons].sort(),italianMissing.slice().sort());
+assert.deepEqual(italianAccounted.reviewedEnglishFallbackKeys,italianMissing);
+assert.equal(italianAccounted.englishSourceSha256,canonicalEnglishSourceSha256);
+for(const [key,val] of Object.entries({
+  'detail.trackers':'Server traccia','detail.peers':'Nodi',
+  'detail.seeds':'Distributori','detail.peersCount':'Nodi',
+  'transfer.dhtPeers':'DHT / Peer','settings.about.version':'Versione',
+  'capability.privateFilter.title':'Privato / PT','settings.update.channelVirtual':'Virtuale'})){
+  assert.equal(italianAccounted.messages[key],val,'Source-context Italian translation: '+key);
+}
+assert.equal(italianAccounted.translationStatus,'draft','No complete independent review has occurred');
+
 // A78-259: Evidence correction. The BitTorrent app's own Malay description
 // uses "rakan sebaya" for peers within a torrent swarm. A financial P2P term
 // ("rakan setara") alone cannot disqualify that BitTorrent usage.
