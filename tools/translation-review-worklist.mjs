@@ -175,8 +175,7 @@ function getStaticCallerCandidates(){
     assert(registry.schemaVersion===2&&registry.features&&
       typeof registry.features==='object'&&!Array.isArray(registry.features),
       'Invalid source feature registry for translation caller candidates');
-    const line=capabilityContent.slice(0,capabilityContent.indexOf(dynamicFeatureKey)).split(/\\r?\
-/u).length;
+    const line=capabilityContent.slice(0,capabilityContent.indexOf(dynamicFeatureKey)).split(String.fromCharCode(10)).length;
     for(const id of Object.keys(registry.features)){
       for(const part of ['title','reason']){
         const key='capability.'+id+'.'+part,owners=index.get(key);
