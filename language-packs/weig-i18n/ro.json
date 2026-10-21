@@ -687,7 +687,7 @@
     "instances.unverified": "Nu se poate verifica",
     "instances.torrentCount": "{count} torrente",
     "instances.importTitle": "Imporți lista de instanțe?",
-    "instances.importHint": "O pagină externă a furnizat {count} adrese de instanțe de la {source}. Verifică-le înainte de salvare; nu sunt incluse parole sau sesiuni.",
+    "instances.importHint": "O pagină externă a furnizat adrese de instanțe de la {source} (total: {count}). Verifică-le înainte de salvare; nu sunt incluse parole sau sesiuni.",
     "instances.import": "Importă",
     "instances.exportFile": "Exportă JSON",
     "instances.importFile": "Importă JSON",

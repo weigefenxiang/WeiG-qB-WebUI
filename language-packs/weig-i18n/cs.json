@@ -643,7 +643,7 @@
     "instances.unverified": "Nelze ověřit",
     "instances.torrentCount": "Počet torrentů: {count}",
     "instances.importTitle": "Importovat seznam instancí?",
-    "instances.importHint": "Externí stránka poskytla {count} adres instancí ze zdroje {source}. Před uložením je zkontrolujte; žádná hesla ani relace nejsou součástí.",
+    "instances.importHint": "Externí stránka poskytla adresy instancí ze zdroje {source} (celkem: {count}). Před uložením je zkontrolujte; žádná hesla ani relace nejsou součástí.",
     "instances.import": "Importovat",
     "instances.exportFile": "Exportovat JSON",
     "instances.importFile": "Importovat JSON",

@@ -438,6 +438,18 @@ for(const [locale,expected] of [["cs","Položky: {count} · do DOM se přidává
   assert.ok(expected.includes('{count}'),'Missing placeholder: '+locale);
 }
 
+// A78-285: instances-ui.js interpolates a total count of addresses,
+// including the case count=1. These translations avoid forced plural nouns,
+// preserve source and count, and retain the original no-credentials warning.
+for(const [locale,expected] of [["it","Una pagina esterna ha fornito indirizzi di istanze da {source} (totale: {count}). Controllali prima del salvataggio; non sono incluse password né sessioni."],["nl","Een externe pagina heeft instantieadressen van {source} aangeleverd (totaal: {count}). Controleer ze voordat je ze opslaat; er worden geen wachtwoorden of sessies meegeleverd."],["ro","O pagină externă a furnizat adrese de instanțe de la {source} (total: {count}). Verifică-le înainte de salvare; nu sunt incluse parole sau sesiuni."],["sl","Zunanja stran je posredovala naslove primerkov iz vira {source} (skupaj: {count}). Pred shranjevanjem jih preveri; gesla in seje niso vključeni."],["pl","Zewnętrzna strona udostępniła adresy instancji ze źródła {source} (łącznie: {count}). Sprawdź je przed zapisaniem; nie dołączono haseł ani sesji."],["da","En ekstern side leverede instansadresser fra {source} (i alt: {count}). Gennemgå dem før lagring; der medfølger ingen adgangskoder eller sessioner."],["nb","En ekstern side oppga instansadresser fra {source} (totalt: {count}). Kontroller dem før de lagres. Passord og økter er ikke inkludert."],["cs","Externí stránka poskytla adresy instancí ze zdroje {source} (celkem: {count}). Před uložením je zkontrolujte; žádná hesla ani relace nejsou součástí."]]){
+  const overlay=JSON.parse(fs.readFileSync(path.join(rootOfExternalLocales,locale+'.json'),'utf8'));
+  const actual=overlay.messages['instances.importHint'];
+  assert.equal(actual,expected,'Wrong count-neutral import prompt for '+locale);
+  assert.equal(overlay.translationStatus,'draft');
+  const placeholders=[...actual.matchAll(/\{([^{}]+)\}/gu)].map(m=>m[1]).sort();
+  assert.deepEqual(placeholders,['count','source'],'Missing import placeholders in '+locale);
+}
+
 // A78-259: Evidence correction. The BitTorrent app's own Malay description
 // uses "rakan sebaya" for peers within a torrent swarm. A financial P2P term
 // ("rakan setara") alone cannot disqualify that BitTorrent usage.

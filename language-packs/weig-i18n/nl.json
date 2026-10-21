@@ -187,7 +187,7 @@
     "instances.denied": "Aanmelden vereist",
     "instances.unverified": "Niet te verifiëren",
     "instances.importTitle": "Instantielijst importeren?",
-    "instances.importHint": "Een externe pagina heeft {count} instantieadressen van {source} aangeleverd. Controleer ze voordat je ze opslaat; er worden geen wachtwoorden of sessies meegeleverd.",
+    "instances.importHint": "Een externe pagina heeft instantieadressen van {source} aangeleverd (totaal: {count}). Controleer ze voordat je ze opslaat; er worden geen wachtwoorden of sessies meegeleverd.",
     "instances.import": "Importeren",
     "instances.exportFile": "JSON exporteren",
     "instances.importFile": "JSON importeren",

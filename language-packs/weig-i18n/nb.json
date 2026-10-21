@@ -650,7 +650,7 @@
     "instances.unverified": "Kan ikke bekrefte",
     "instances.torrentCount": "{count} torrenter",
     "instances.importTitle": "Importere instansliste?",
-    "instances.importHint": "En ekstern side oppga {count} instansadresser fra {source}. Kontroller dem før de lagres. Passord og økter er ikke inkludert.",
+    "instances.importHint": "En ekstern side oppga instansadresser fra {source} (totalt: {count}). Kontroller dem før de lagres. Passord og økter er ikke inkludert.",
     "instances.import": "Importer",
     "instances.exportFile": "Eksporter JSON",
     "instances.importFile": "Importer JSON",

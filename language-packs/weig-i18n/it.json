@@ -686,7 +686,7 @@
     "instances.unverified": "Impossibile verificare",
     "instances.torrentCount": "{count} torrent",
     "instances.importTitle": "Importare l'elenco delle istanze?",
-    "instances.importHint": "Una pagina esterna ha fornito {count} indirizzi di istanze provenienti da {source}. Controllali prima del salvataggio; non sono incluse password né sessioni.",
+    "instances.importHint": "Una pagina esterna ha fornito indirizzi di istanze da {source} (totale: {count}). Controllali prima del salvataggio; non sono incluse password né sessioni.",
     "instances.import": "Importa",
     "instances.exportFile": "Esporta JSON",
     "instances.importFile": "Importa JSON",

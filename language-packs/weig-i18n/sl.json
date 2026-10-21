@@ -686,7 +686,7 @@
     "instances.unverified": "Ni mogoče preveriti",
     "instances.torrentCount": "{count} torrentov",
     "instances.importTitle": "Uvozim seznam primerkov?",
-    "instances.importHint": "Zunanja stran je posredovala {count} naslovov primerkov iz vira {source}. Pred shranjevanjem jih preveri; gesla in seje niso vključeni.",
+    "instances.importHint": "Zunanja stran je posredovala naslove primerkov iz vira {source} (skupaj: {count}). Pred shranjevanjem jih preveri; gesla in seje niso vključeni.",
     "instances.import": "Uvozi",
     "instances.exportFile": "Izvozi JSON",
     "instances.importFile": "Uvozi JSON",

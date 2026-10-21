@@ -686,7 +686,7 @@
     "instances.unverified": "Nie można zweryfikować",
     "instances.torrentCount": "Torrenty: {count}",
     "instances.importTitle": "Zaimportować listę instancji?",
-    "instances.importHint": "Zewnętrzna strona udostępniła {count} adresów instancji ze źródła {source}. Sprawdź je przed zapisaniem; nie dołączono haseł ani sesji.",
+    "instances.importHint": "Zewnętrzna strona udostępniła adresy instancji ze źródła {source} (łącznie: {count}). Sprawdź je przed zapisaniem; nie dołączono haseł ani sesji.",
     "instances.import": "Importuj",
     "instances.exportFile": "Eksportuj JSON",
     "instances.importFile": "Importuj JSON",
