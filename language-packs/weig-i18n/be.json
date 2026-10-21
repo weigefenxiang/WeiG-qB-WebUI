@@ -3,6 +3,24 @@
   "source": "WeiG-runtime-locale-overlay",
   "locale": "be",
   "translationStatus": "draft",
+  "englishSourceSha256": "d0d6412654389081013f556747436862ef4c65ec6cc3410c267596055fd88959",
+  "reviewedEnglishFallbackKeys": [
+    "nav.rss",
+    "rss.title",
+    "language.en",
+    "language.zh-CN",
+    "language.zh-TW",
+    "language.zh-HK",
+    "language.ja",
+    "language.ko",
+    "settings.weig.title",
+    "settings.weig.unit.secondShort",
+    "common.na",
+    "header.blog",
+    "connection.environment.qb",
+    "connection.environment.webapi",
+    "capability.rss.title"
+  ],
   "messages": {
     "app.skip": "Перайсці да спіса торэнтаў",
     "app.back": "Назад",
@@ -680,6 +698,7 @@
     "settings.about.reportBug": "Паведаміць пра праблему",
     "app.ok": "Зразумела",
     "settings.update.channelDev": "Распрацоўка",
-    "settings.update.channelStable": "Стабільная"
+    "settings.update.channelStable": "Стабільная",
+    "settings.update.channelVirtual": "Віртуальная"
   }
 }

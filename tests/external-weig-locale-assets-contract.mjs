@@ -86,6 +86,26 @@ for(const locale of ['bg','uk']){
   assert.equal(source.translationStatus,'draft','Fallback proof is not whole-language approval: '+locale);
 }
 
+// A78-263: Belarusian and Czech fully evidenced fallbacks remain draft.
+// Belarusian Virtual describes the actual update channel (not virtualization);
+// the Czech singular Tracker is the canonical BitTorrent column term.
+for(const [locale,count,extra] of [['be',15,[]],['cs',16,['torrent.tracker']]]){
+  const data=JSON.parse(fs.readFileSync(path.join(rootOfExternalLocales,locale+'.json'),'utf8'));
+  const scope=getTranslationDraftScopeWorklist(locale);
+  const intentional=scope.items.filter(item=>item.classification==='intentional_english').map(item=>item.key);
+  const expected=new Set([...Object.keys(SOURCE_PRESERVED_UI_LABELS),...intentional,...extra]);
+  const absent=canonicalEnglishTranslationKeys.filter(key=>!Object.hasOwn(data.messages,key));
+  assert.equal(expected.size,count);
+  assert.deepEqual([...expected].sort(),absent.slice().sort(),'Unproven English fallback: '+locale);
+  assert.deepEqual(data.reviewedEnglishFallbackKeys,absent);
+  assert.equal(data.englishSourceSha256,canonicalEnglishSourceSha256);
+  assert.equal(data.translationStatus,'draft','Fallback accounting is not AI translation approval');
+}
+const belarusianVirtual=JSON.parse(fs.readFileSync(path.join(rootOfExternalLocales,'be.json'),'utf8'));
+assert.equal(canonicalEnglishMessages['settings.update.channelVirtual'],'Virtual');
+assert.equal(belarusianVirtual.messages['settings.update.channelVirtual'],'Віртуальная');
+assert.equal(canonicalEnglishMessages['torrent.tracker'],'Tracker');
+
 // A78-259: Evidence correction. The BitTorrent app's own Malay description
 // uses "rakan sebaya" for peers within a torrent swarm. A financial P2P term
 // ("rakan setara") alone cannot disqualify that BitTorrent usage.
