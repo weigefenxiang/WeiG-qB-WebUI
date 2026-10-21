@@ -417,7 +417,7 @@
     "selection.selectAllMatching": "Markera alla matchande ({n})",
     "selection.invertAllMatching": "Invertera markeringen för alla matchande",
     "selection.clear": "Rensa markering",
-    "selection.selected": "{n} markerade",
+    "selection.selected": "Markerade: {n}",
     "selection.actions": "Åtgärder för markerade objekt",
     "selection.renameSingle": "Du kan bara byta namn på en torrent i taget.",
     "selection.exportStarted": "Exporten av torrenten har startat",

@@ -422,7 +422,7 @@
     "selection.selectAllMatching": "Vælg alle matchende ({n})",
     "selection.invertAllMatching": "Invertér markering af alle matchende",
     "selection.clear": "Ryd markering",
-    "selection.selected": "{n} markerede",
+    "selection.selected": "Markeret: {n}",
     "selection.actions": "Handlinger på markerede elementer",
     "selection.renameSingle": "Kun én torrent kan omdøbes ad gangen.",
     "selection.exportStarted": "Eksport af torrent startet",

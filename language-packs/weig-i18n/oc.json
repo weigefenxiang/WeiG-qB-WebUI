@@ -381,7 +381,7 @@
     "selection.selectAllMatching": "Seleccionar totes los correspondents ({n})",
     "selection.invertAllMatching": "Inversar la seleccion de totes los correspondents",
     "selection.clear": "Escafar la seleccion",
-    "selection.selected": "{n} seleccionats",
+    "selection.selected": "Seleccionats: {n}",
     "selection.actions": "Accions sus la seleccion",
     "selection.renameSingle": "Se pòt renomenar sonque un torrent a l'encòp.",
     "selection.exportStarted": "Exportacion del torrent començada",

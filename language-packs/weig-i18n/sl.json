@@ -426,7 +426,7 @@
     "selection.selectAllMatching": "Izberi vse zadetke ({n})",
     "selection.invertAllMatching": "Obrni izbor vseh zadetkov",
     "selection.clear": "Počisti izbor",
-    "selection.selected": "{n} izbranih",
+    "selection.selected": "Izbrano: {n}",
     "selection.actions": "Dejanja z izborom",
     "selection.renameSingle": "Preimenuješ lahko samo en torrent naenkrat.",
     "selection.exportStarted": "Izvoz torrenta se je začel",

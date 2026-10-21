@@ -428,7 +428,7 @@
     "selection.selectAllMatching": "Selectează toate rezultatele ({n})",
     "selection.invertAllMatching": "Inversează selecția tuturor rezultatelor",
     "selection.clear": "Golește selecția",
-    "selection.selected": "{n} selectate",
+    "selection.selected": "Selectate: {n}",
     "selection.actions": "Acțiuni asupra selecției",
     "selection.renameSingle": "Poți redenumi un singur torrent odată.",
     "selection.exportStarted": "A început exportul torrentului",

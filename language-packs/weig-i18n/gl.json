@@ -376,7 +376,7 @@
     "selection.selectAllMatching": "Seleccionar todos os coincidentes ({n})",
     "selection.invertAllMatching": "Inverter a selección de todos os coincidentes",
     "selection.clear": "Limpar a selección",
-    "selection.selected": "{n} seleccionados",
+    "selection.selected": "Seleccionados: {n}",
     "selection.actions": "Accións sobre a selección",
     "selection.renameSingle": "Só se pode renomear un torrent de cada vez.",
     "selection.exportStarted": "Comezou a exportación do torrent",

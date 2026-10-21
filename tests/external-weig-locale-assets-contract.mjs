@@ -160,6 +160,28 @@ for(const [locale,expected] of [
   }
 }
 
+// A78-309: selection count is shown for every selected.size (including 1)
+// in the single-owner selection.js syncUi control. An uninflected counter
+// label avoids rendering a quantity directly beside a fixed plural adjective.
+assert.ok(selectedDeleteRuntime.includes("tr('selection.selected').replace('{n}',selected.size)"),
+  'Selection count live owner changed; review grammatical categories');
+for(const [locale,expected] of [
+  ['ca','Seleccionats: {n}'],['da','Markeret: {n}'],
+  ['gl','Seleccionados: {n}'],['oc','Seleccionats: {n}'],
+  ['ro','Selectate: {n}'],['sl','Izbrano: {n}'],
+  ['sv','Markerade: {n}']
+]){
+  const payload=JSON.parse(fs.readFileSync(path.join(rootOfExternalLocales,locale+'.json'),'utf8'));
+  assert.equal(payload.messages['selection.selected'],expected,
+    'Selected count must remain a neutral label outside plural agreement: '+locale);
+  assert.equal(payload.translationStatus,'draft');
+  for(const n of [0,1,2,17]){
+    const rendered=payload.messages['selection.selected'].replace('{n}',String(n));
+    assert.ok(rendered.endsWith(': '+n),'Selected count should be a suffix: '+locale);
+    assert.ok(!rendered.includes('{n}'));
+  }
+}
+
 // A78-260: selection.js uses allMatchingHashes() to invert only torrents
 // matching the current filters, not the entire selected set.
 // Preserve that scope in the Brazilian Portuguese bulk-selection UI.
