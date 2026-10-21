@@ -641,7 +641,7 @@
     "instances.connectTitle": "Bu nusxaga ulanilsinmi?",
     "instances.connectHint": "{name} alohida varaqqa ochilib, uning joriy qB holatini ulashishga ruxsat soʻralsinmi?",
     "instances.allowTitle": "Jonli holat ulashilsinmi?",
-    "instances.allowHint": "{source} ga ushbu nusxaning onlayn holati va jami torrentlar sonini koʻrishga ruxsat berilsinmi? Parollar, seanslar va torrent nomlari ulashilmaydi.",
+    "instances.allowHint": "{source} ga ushbu nusxaning onlayn holati va jami torrentlar sonini koʻrishga ruxsat berilsinmi? Kirish maʼlumotlari va torrent nomlari ulashilmaydi.",
     "instances.allow": "Ruxsat berish",
     "instances.manage": "Nusxalarni boshqarish",
     "instances.name": "Nusxa nomi",

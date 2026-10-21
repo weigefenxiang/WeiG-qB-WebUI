@@ -638,7 +638,7 @@
     "instances.connectTitle": "Vai savienot instanci?",
     "instances.connectHint": "Vai atvērt {name} atsevišķā cilnē un lūgt atļauju kopīgot tās pašreizējo qB statusu?",
     "instances.allowTitle": "Vai kopīgot tiešsaistes statusu?",
-    "instances.allowHint": "Vai ļaut {source} lasīt šīs instances tiešsaistes statusu un kopējo torrentu skaitu? Paroles, sesijas un torrentu nosaukumi netiks kopīgoti.",
+    "instances.allowHint": "Vai ļaut {source} lasīt šīs instances tiešsaistes statusu un kopējo torrentu skaitu? Pieteikšanās dati un torrentu nosaukumi netiks kopīgoti.",
     "instances.allow": "Atļaut",
     "instances.manage": "Pārvaldīt instances",
     "instances.name": "Instances nosaukums",

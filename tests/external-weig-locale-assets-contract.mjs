@@ -202,6 +202,20 @@ for(const [locale,expected] of [
   assert.equal(data.translationStatus,'draft');
 }
 
+// A78-311: More consent locales must describe credential-level scope,
+// not a narrower password-only claim or an unproven session-sharing promise.
+for(const [locale,expected] of [
+  ['kk','Кіру деректері мен торрент атаулары берілмейді.'],
+  ['lv-LV','Pieteikšanās dati un torrentu nosaukumi netiks kopīgoti.'],
+  ['mn-MN','Нэвтрэх мэдээлэл болон торрентын нэрийг хуваалцахгүй.'],
+  ['uz-Latn','Kirish maʼlumotlari va torrent nomlari ulashilmaydi.']
+]){
+  const data=JSON.parse(fs.readFileSync(path.join(rootOfExternalLocales,locale+'.json'),'utf8'));
+  assert.ok(data.messages['instances.allowHint'].endsWith(expected),'Consent privacy promise: '+locale);
+  assert.equal([...data.messages['instances.allowHint'].matchAll(/\{source\}/gu)].length,1);
+  assert.equal(data.translationStatus,'draft');
+}
+
 // A78-260: selection.js uses allMatchingHashes() to invert only torrents
 // matching the current filters, not the entire selected set.
 // Preserve that scope in the Brazilian Portuguese bulk-selection UI.
