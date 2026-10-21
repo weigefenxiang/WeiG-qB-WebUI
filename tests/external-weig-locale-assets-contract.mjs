@@ -22,6 +22,18 @@ for(const count of [1,2,17]){
 }
 assert.equal(portugueseVirtual.translationStatus,'draft');
 
+// A78-295: capability fallback is a *source-evidence* decision, not a
+// usable alternative Search/RSS API pathway. Preserve exact owner meaning.
+for(const [key,feature] of [['capability.search.reason','search'],['capability.rss.reason','rss']]){
+  const copy=portugueseVirtual.messages[key];
+  assert.equal(typeof copy,'string','Missing pt-BR capability copy: '+key);
+  assert.match(canonicalEnglishMessages[key],/fallback-only/, 'English provenance source missing');
+  assert.match(copy,/vers[oõ]es? n[aã]o certificadas/iu, 'pt-BR must preserve uncertified-release scope: '+key);
+  assert.match(copy,/crit[eé]rio de fallback/iu,'pt-BR must describe a fallback decision, not functional alternative: '+key);
+  assert.doesNotMatch(copy,/serve apenas como alternativa/iu,'Ambiguous alternative capability path: '+key);
+}
+assert.equal(portugueseVirtual.translationStatus,'draft');
+
 // A78-260: selection.js uses allMatchingHashes() to invert only torrents
 // matching the current filters, not the entire selected set.
 // Preserve that scope in the Brazilian Portuguese bulk-selection UI.
