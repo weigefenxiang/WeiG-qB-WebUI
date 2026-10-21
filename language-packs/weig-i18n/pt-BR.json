@@ -307,7 +307,7 @@
     "columns.aux.stateIcon": "Ícone de status",
     "common.yes": "Sim",
     "common.no": "Não",
-    "detail.secondary.seeding": "compartilhando",
+    "detail.secondary.seeding": "tempo de semeadura",
     "detail.duration.daysHours": "{days} d {hours} h",
     "detail.duration.hoursMinutes": "{hours} h {minutes} min",
     "detail.duration.minutesSeconds": "{minutes} min {seconds} s",

@@ -41,6 +41,12 @@ assert.equal(canonicalEnglishMessages['detail.secondary.total'],'total');
 assert.equal(portugueseVirtual.messages['detail.secondary.total'],'ao todo',
   'pt-BR detail swarm total must not say cumulative/accumulated');
 assert.equal(portugueseVirtual.translationStatus,'draft');
+// A78-300: detail-compat PropertiesWidget time_elapsed includes seeding_time;
+// this secondary value is elapsed seeding duration, not a present-tense status.
+assert.equal(canonicalEnglishMessages['detail.secondary.seeding'],'seeding');
+assert.equal(portugueseVirtual.messages['detail.secondary.seeding'],'tempo de semeadura',
+  'pt-BR must label seeding duration rather than an ongoing sharing action');
+assert.equal(portugueseVirtual.translationStatus,'draft');
 // A78-260: selection.js uses allMatchingHashes() to invert only torrents
 // matching the current filters, not the entire selected set.
 // Preserve that scope in the Brazilian Portuguese bulk-selection UI.
