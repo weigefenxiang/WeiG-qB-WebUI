@@ -131,7 +131,7 @@
     "torrent.stop": "Parar",
     "torrent.delete": "Excluir",
     "torrent.deleteData": "Excluir também os arquivos baixados",
-    "torrent.deleteSelected": "Excluir os {count} torrents selecionados?",
+    "torrent.deleteSelected": "Excluir os torrents selecionados ({count})?",
     "torrent.actions": "Ações do torrent",
     "torrent.forceStart": "Forçar início",
     "torrent.recheck": "Forçar verificação",

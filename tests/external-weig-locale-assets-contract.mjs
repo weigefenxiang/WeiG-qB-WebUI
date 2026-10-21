@@ -10,6 +10,18 @@ const portugueseVirtual=JSON.parse(fs.readFileSync(path.join(rootOfExternalLocal
 assert.equal(canonicalEnglishMessages['settings.update.channelVirtual'],'Virtual');
 assert.equal(Object.hasOwn(portugueseVirtual.messages,'settings.update.channelVirtual'),false,
   'Brazilian Portuguese must not relabel the simulator Virtual channel as Virtualizado');
+// A78-294: This canonical pt-BR copy can receive count=1 or >1.
+// Keep the quantity outside Portuguese plural inflection even while
+// the exact product runtime caller of this legacy key remains unverified.
+assert.equal(canonicalEnglishMessages['torrent.deleteSelected'],'Delete {count} selected torrents?');
+assert.equal(portugueseVirtual.messages['torrent.deleteSelected'],'Excluir os torrents selecionados ({count})?');
+for(const count of [1,2,17]){
+  const rendered=portugueseVirtual.messages['torrent.deleteSelected'].replace('{count}',String(count));
+  assert.equal(rendered,'Excluir os torrents selecionados ('+count+')?');
+  assert.ok(!rendered.includes('os 1 torrents'),'Invalid pt-BR singular noun phrase');
+}
+assert.equal(portugueseVirtual.translationStatus,'draft');
+
 // A78-260: selection.js uses allMatchingHashes() to invert only torrents
 // matching the current filters, not the entire selected set.
 // Preserve that scope in the Brazilian Portuguese bulk-selection UI.
