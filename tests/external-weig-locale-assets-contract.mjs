@@ -450,6 +450,63 @@ for(const [locale,expected] of [["it","Una pagina esterna ha fornito indirizzi d
   assert.deepEqual(placeholders,['count','source'],'Missing import placeholders in '+locale);
 }
 
+// A78-288: the torrent selection, instance import and virtual-list owners
+// interpolate bare counts, without CLDR plural selection. Keep UI phrases
+// natural at count=1 and count>1 using neutral labels plus explicit totals.
+// Do not invent a second plural runtime or promote any draft locale.
+for(const [locale,keys] of Object.entries({
+  "bs": [
+    "selection.deleteSelected",
+    "detail.virtualSummary",
+    "instances.importHint"
+  ],
+  "ca": [
+    "selection.deleteSelected",
+    "instances.importHint"
+  ],
+  "da": [
+    "selection.deleteSelected",
+    "instances.torrentCount"
+  ],
+  "eo": [
+    "selection.deleteSelected",
+    "detail.virtualSummary",
+    "instances.importHint"
+  ],
+  "gl": [
+    "selection.deleteSelected",
+    "detail.virtualSummary",
+    "instances.importHint"
+  ],
+  "hr": [
+    "selection.deleteSelected",
+    "detail.virtualSummary",
+    "instances.importHint"
+  ],
+  "is": [
+    "selection.deleteSelected",
+    "instances.importHint"
+  ],
+  "it": [
+    "selection.deleteSelected"
+  ]
+})){
+  const overlay=JSON.parse(fs.readFileSync(path.join(rootOfExternalLocales,locale+'.json'),'utf8'));
+  for(const key of keys){
+    const src=canonicalEnglishMessages[key],copy=overlay.messages[key];
+    assert.equal(typeof copy,'string','Missing localized dynamic label '+locale+'/'+key);
+    const sourcePlaceholders=[...src.matchAll(/\{([^{}]+)\}/gu)].map(m=>m[1]).sort();
+    const localPlaceholders=[...copy.matchAll(/\{([^{}]+)\}/gu)].map(m=>m[1]).sort();
+    assert.deepEqual(localPlaceholders,sourcePlaceholders,'Count placeholder changed '+locale+'/'+key);
+    const countKey=key==='selection.deleteSelected'?'n':'count';
+    assert.match(copy,new RegExp('[:(]\\s*\\{'+countKey+'\\}'),'u'),
+      'Use neutral count labeling, not count-dependent plural grammar: '+locale+'/'+key);
+    const rendered=copy.replace('{' + countKey + '}', '1');
+    assert.ok(rendered.includes('1'),'Lost singular value '+locale+'/'+key);
+  }
+  assert.equal(overlay.translationStatus,'draft','Targeted count corrections are not full AI approval');
+}
+
 // A78-259: Evidence correction. The BitTorrent app's own Malay description
 // uses "rakan sebaya" for peers within a torrent swarm. A financial P2P term
 // ("rakan setara") alone cannot disqualify that BitTorrent usage.

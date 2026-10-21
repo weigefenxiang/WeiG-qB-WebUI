@@ -424,7 +424,7 @@
     "selection.back": "← Indietro",
     "selection.loadingActions": "Caricamento azioni…",
     "selection.actionsUnavailable": "Azioni non disponibili.",
-    "selection.deleteSelected": "Elimina {n} torrent selezionati.",
+    "selection.deleteSelected": "Elimina i torrent selezionati (totale: {n}).",
     "selection.group.category": "Categoria",
     "selection.group.tags": "Etichette",
     "selection.group.queue": "Coda",
