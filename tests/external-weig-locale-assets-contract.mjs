@@ -135,6 +135,19 @@ assert.equal(canonicalEnglishMessages['detail.piecesHave'],'have {count}');
 assert.equal(portugueseVirtual.messages['detail.piecesHave'],'possui {count}',
   'Portuguese pieces_have must describe owned pieces, not generally available ones');
 
+// A78-269: layout.js interpolates counts without plural selection;
+// selection.js also renders count=1 directly. Portuguese labels must remain
+// grammatical for both one and many, while keeping original placeholders.
+for(const [key,source,localized] of [
+  ['settings.seconds','{n} seconds','{n} s'],
+  ['detail.duration.daysHours','{days}d {hours}h','{days} d {hours} h'],
+  ['detail.duration.seconds','{seconds}s','{seconds} s'],
+  ['selection.selected','{n} selected','Selecionados: {n}']
+]){
+  assert.equal(canonicalEnglishMessages[key],source,'Unexpected source duration/count contract '+key);
+  assert.equal(portugueseVirtual.messages[key],localized,'Portuguese count label must not force wrong plural: '+key);
+}
+
 // A78-259: Evidence correction. The BitTorrent app's own Malay description
 // uses "rakan sebaya" for peers within a torrent swarm. A financial P2P term
 // ("rakan setara") alone cannot disqualify that BitTorrent usage.
