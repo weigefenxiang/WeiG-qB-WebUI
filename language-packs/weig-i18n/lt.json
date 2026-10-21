@@ -272,7 +272,7 @@
     "columns.aux.stateIcon": "Būsenos piktograma",
     "common.yes": "Taip",
     "common.no": "Ne",
-    "detail.secondary.seeding": "platinama",
+    "detail.secondary.seeding": "platinimo trukmė",
     "detail.duration.daysHours": "{days} d. {hours} val.",
     "detail.duration.hoursMinutes": "{hours} val. {minutes} min.",
     "detail.duration.minutesSeconds": "{minutes} min. {seconds} sek.",

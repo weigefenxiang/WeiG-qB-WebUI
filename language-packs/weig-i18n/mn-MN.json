@@ -284,7 +284,7 @@
     "detail.backShort": "Буцах",
     "columns.eyebrow": "ХҮСНЭГТ",
     "columns.aux.stateIcon": "Төлөвийн дүрс",
-    "detail.secondary.seeding": "түгээж байна",
+    "detail.secondary.seeding": "түгээх хугацаа",
     "detail.duration.daysHours": "{days} өдөр {hours} цаг",
     "detail.duration.hoursMinutes": "{hours} цаг {minutes} минут",
     "detail.duration.minutesSeconds": "{minutes} минут {seconds} секунд",

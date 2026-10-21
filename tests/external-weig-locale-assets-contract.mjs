@@ -111,6 +111,18 @@ for(const [locale,expected] of [['ar','مدة التوزيع'],['bg','време
   assert.equal(data.translationStatus,'draft','AI correction does not constitute approval: '+locale);
 }
 
+// A78-306: AI-context draft correction for elapsed seeding duration.
+// Upstream qB seeding-time TS entries are unfinished in these locales.
+// No claim of upstream/native linguistic QA approval is made.
+for(const [locale,expected] of [['hi-IN','सीडिंग की अवधि'],
+  ['hy','տարածման տևողություն'],['id','durasi seeding'],
+  ['is','dreifingartími'],['kk','тарату уақыты'],
+  ['lt','platinimo trukmė'],['mn-MN','түгээх хугацаа']]){
+  const data=JSON.parse(fs.readFileSync(path.join(rootOfExternalLocales,locale+'.json'),'utf8'));
+  assert.equal(data.messages['detail.secondary.seeding'],expected,'Expected duration copy: '+locale);
+  assert.equal(data.translationStatus,'draft','Incomplete locale remains draft: '+locale);
+}
+
 // A78-260: selection.js uses allMatchingHashes() to invert only torrents
 // matching the current filters, not the entire selected set.
 // Preserve that scope in the Brazilian Portuguese bulk-selection UI.

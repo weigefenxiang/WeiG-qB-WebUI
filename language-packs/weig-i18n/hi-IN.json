@@ -272,7 +272,7 @@
     "columns.aux.stateIcon": "स्थिति का चिह्न",
     "common.yes": "हाँ",
     "common.no": "नहीं",
-    "detail.secondary.seeding": "सीड किया जा रहा है",
+    "detail.secondary.seeding": "सीडिंग की अवधि",
     "detail.duration.daysHours": "{days} दिन {hours} घंटे",
     "detail.duration.hoursMinutes": "{hours} घंटे {minutes} मिनट",
     "detail.duration.minutesSeconds": "{minutes} मिनट {seconds} सेकंड",

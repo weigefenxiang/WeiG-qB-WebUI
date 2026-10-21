@@ -284,7 +284,7 @@
     "detail.backShort": "Հետ",
     "columns.eyebrow": "ԱՂՅՈՒՍԱԿ",
     "columns.aux.stateIcon": "Կարգավիճակի պատկերակ",
-    "detail.secondary.seeding": "տարածվում է",
+    "detail.secondary.seeding": "տարածման տևողություն",
     "detail.duration.daysHours": "{days} օր {hours} ժ",
     "detail.duration.hoursMinutes": "{hours} ժ {minutes} ր",
     "detail.duration.minutesSeconds": "{minutes} ր {seconds} վ",

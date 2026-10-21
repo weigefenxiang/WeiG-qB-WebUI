@@ -284,7 +284,7 @@
     "detail.backShort": "Артқа",
     "columns.eyebrow": "КЕСТЕ",
     "columns.aux.stateIcon": "Күй белгішесі",
-    "detail.secondary.seeding": "таратылуда",
+    "detail.secondary.seeding": "тарату уақыты",
     "detail.duration.daysHours": "{days} күн {hours} сағ",
     "detail.duration.hoursMinutes": "{hours} сағ {minutes} мин",
     "detail.duration.minutesSeconds": "{minutes} мин {seconds} сек",

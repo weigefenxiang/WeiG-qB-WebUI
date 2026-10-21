@@ -272,7 +272,7 @@
     "columns.aux.stateIcon": "Stöðutákn",
     "common.yes": "Já",
     "common.no": "Nei",
-    "detail.secondary.seeding": "í dreifingu",
+    "detail.secondary.seeding": "dreifingartími",
     "detail.duration.daysHours": "{days}d {hours}klst.",
     "detail.duration.hoursMinutes": "{hours}klst. {minutes}mín.",
     "detail.duration.minutesSeconds": "{minutes}mín. {seconds}sek.",

@@ -290,7 +290,7 @@
     "detail.backShort": "Kembali",
     "columns.eyebrow": "TABEL",
     "columns.aux.stateIcon": "Ikon status",
-    "detail.secondary.seeding": "sedang berbagi",
+    "detail.secondary.seeding": "durasi seeding",
     "detail.duration.daysHours": "{days} hari {hours} jam",
     "detail.duration.hoursMinutes": "{hours} jam {minutes} menit",
     "detail.duration.minutesSeconds": "{minutes} menit {seconds} detik",
