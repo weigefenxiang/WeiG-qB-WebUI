@@ -660,6 +660,7 @@
     "instances.import": "Tuo",
     "instances.exportFile": "Vie JSON",
     "instances.importFile": "Tuo JSON",
-    "instances.loadFailed": "Instanssien hallintaa ei voitu ladata."
+    "instances.loadFailed": "Instanssien hallintaa ei voitu ladata.",
+    "stats.dhtPeers": "DHT {dht} · Vertaiset {peers}"
   }
 }

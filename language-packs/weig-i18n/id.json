@@ -665,6 +665,7 @@
     "instances.import": "Impor",
     "instances.exportFile": "Ekspor JSON",
     "instances.importFile": "Impor JSON",
-    "instances.loadFailed": "Pengelola instans tidak dapat dimuat."
+    "instances.loadFailed": "Pengelola instans tidak dapat dimuat.",
+    "stats.dhtPeers": "DHT {dht} · Peer {peers}"
   }
 }

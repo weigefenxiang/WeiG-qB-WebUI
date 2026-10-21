@@ -668,6 +668,7 @@
     "instances.import": "İçe aktar",
     "instances.exportFile": "JSON dışa aktar",
     "instances.importFile": "JSON içe aktar",
-    "instances.loadFailed": "Örnek yöneticisi yüklenemedi."
+    "instances.loadFailed": "Örnek yöneticisi yüklenemedi.",
+    "stats.dhtPeers": "DHT {dht} · Eşler {peers}"
   }
 }

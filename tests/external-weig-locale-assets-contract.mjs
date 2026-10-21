@@ -106,6 +106,18 @@ assert.equal(canonicalEnglishMessages['settings.update.channelVirtual'],'Virtual
 assert.equal(belarusianVirtual.messages['settings.update.channelVirtual'],'Віртуальная');
 assert.equal(canonicalEnglishMessages['torrent.tracker'],'Tracker');
 
+// A78-264: two UI callers share identical source text and placeholders.
+// Reuse each locale's already-authored DHT/Peers terminology, not an English
+// fallback for only the statistics card. This does not approve the locale.
+assert.equal(canonicalEnglishMessages['stats.dhtPeers'],
+  canonicalEnglishMessages['connection.networkSnapshot']);
+for(const locale of ['th','tr','az-Latn','ro','id','it','nl','fi']){
+  const overlay=JSON.parse(fs.readFileSync(path.join(rootOfExternalLocales,locale+'.json'),'utf8'));
+  assert.equal(overlay.messages['stats.dhtPeers'],overlay.messages['connection.networkSnapshot'],
+    'DHT/Peers differs between stats and network snapshot: '+locale);
+  assert.equal(overlay.translationStatus,'draft','Cross-surface consistency is not full QA');
+}
+
 // A78-259: Evidence correction. The BitTorrent app's own Malay description
 // uses "rakan sebaya" for peers within a torrent swarm. A financial P2P term
 // ("rakan setara") alone cannot disqualify that BitTorrent usage.

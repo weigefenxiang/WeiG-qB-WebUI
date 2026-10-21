@@ -672,6 +672,7 @@
     "instances.import": "นำเข้า",
     "instances.exportFile": "ส่งออก JSON",
     "instances.importFile": "นำเข้า JSON",
-    "instances.loadFailed": "โหลดตัวจัดการอินสแตนซ์ไม่สำเร็จ"
+    "instances.loadFailed": "โหลดตัวจัดการอินสแตนซ์ไม่สำเร็จ",
+    "stats.dhtPeers": "DHT {dht} · เพียร์ {peers}"
   }
 }

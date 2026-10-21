@@ -652,6 +652,7 @@
     "settings.weig.density.preview": "Livevoorbeeld",
     "settings.weig.density.reset": "Opnieuw instellen",
     "settings.weig.density.cancel": "Annuleren",
-    "settings.weig.density.apply": "Toepassen"
+    "settings.weig.density.apply": "Toepassen",
+    "stats.dhtPeers": "DHT {dht} · peers {peers}"
   }
 }

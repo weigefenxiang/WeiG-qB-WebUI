@@ -668,6 +668,7 @@
     "instances.import": "İdxal et",
     "instances.exportFile": "JSON ixrac et",
     "instances.importFile": "JSON idxal et",
-    "instances.loadFailed": "İnstansiya idarəedicisini yükləmək mümkün olmadı."
+    "instances.loadFailed": "İnstansiya idarəedicisini yükləmək mümkün olmadı.",
+    "stats.dhtPeers": "DHT {dht} · İştirakçılar {peers}"
   }
 }

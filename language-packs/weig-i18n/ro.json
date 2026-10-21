@@ -666,6 +666,7 @@
     "instances.import": "Importă",
     "instances.exportFile": "Exportă JSON",
     "instances.importFile": "Importă JSON",
-    "instances.loadFailed": "Modulul de gestionare a instanțelor nu s-a putut încărca."
+    "instances.loadFailed": "Modulul de gestionare a instanțelor nu s-a putut încărca.",
+    "stats.dhtPeers": "DHT {dht} · Parteneri {peers}"
   }
 }
