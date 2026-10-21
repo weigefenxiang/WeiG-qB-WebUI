@@ -499,7 +499,7 @@ for(const [locale,keys] of Object.entries({
     const localPlaceholders=[...copy.matchAll(/\{([^{}]+)\}/gu)].map(m=>m[1]).sort();
     assert.deepEqual(localPlaceholders,sourcePlaceholders,'Count placeholder changed '+locale+'/'+key);
     const countKey=key==='selection.deleteSelected'?'n':'count';
-    assert.match(copy,new RegExp('[:(]\\s*\\{'+countKey+'\\}'),'u'),
+    assert.ok(copy.includes(': {'+countKey+'}'),
       'Use neutral count labeling, not count-dependent plural grammar: '+locale+'/'+key);
     const rendered=copy.replace('{' + countKey + '}', '1');
     assert.ok(rendered.includes('1'),'Lost singular value '+locale+'/'+key);
