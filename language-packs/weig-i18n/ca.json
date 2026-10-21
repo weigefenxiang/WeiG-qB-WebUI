@@ -265,7 +265,7 @@
     "detail.duration.hoursMinutes": "{hours} hores i {minutes} minuts",
     "detail.duration.minutesSeconds": "{minutes} minuts i {seconds} segons",
     "detail.duration.seconds": "{seconds} segons",
-    "detail.piecesHave": "disponibles: {count}",
+    "detail.piecesHave": "en possessió: {count}",
     "detail.secondary.session": "en aquesta sessió",
     "detail.secondary.average": "mitjana",
     "detail.secondary.max": "màxim",

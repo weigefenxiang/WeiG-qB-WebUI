@@ -362,7 +362,7 @@
     "detail.duration.hoursMinutes": "{hours} uur {minutes} min",
     "detail.duration.minutesSeconds": "{minutes} min {seconds} sec",
     "detail.duration.seconds": "{seconds} sec",
-    "detail.piecesHave": "beschikbaar {count}",
+    "detail.piecesHave": "in bezit: {count}",
     "detail.secondary.session": "deze sessie",
     "detail.secondary.average": "gemiddeld",
     "detail.secondary.max": "maximum",

@@ -286,6 +286,20 @@ assert.match(portugueseVirtual.messages['capability.advice'],
   /backup da configuração do qBittorrent e dos dados dos torrents antes de atualizar\./u,
   'Portuguese upgrade warning must explicitly include torrent data backup');
 
+// A78-277: layout.js renders pieces_have (locally possessed torrent pieces),
+// not piece availability across the swarm. Preserve the placeholder while
+// disambiguating that source field in the four locale overlays below.
+assert.equal(canonicalEnglishMessages['detail.piecesHave'],'have {count}');
+for(const [locale,meaning] of [
+  ['it','in possesso: {count}'],['nl','in bezit: {count}'],
+  ['ca','en possessió: {count}'],['el','στην κατοχή: {count}']
+]){
+  const overlay=JSON.parse(fs.readFileSync(path.join(rootOfExternalLocales,locale+'.json'),'utf8'));
+  assert.equal(overlay.messages['detail.piecesHave'],meaning,
+    'pieces_have must mean locally possessed pieces, not globally available: '+locale);
+  assert.equal(overlay.translationStatus,'draft','Targeted meaning fix is not full QA');
+}
+
 // A78-259: Evidence correction. The BitTorrent app's own Malay description
 // uses "rakan sebaya" for peers within a torrent swarm. A financial P2P term
 // ("rakan setara") alone cannot disqualify that BitTorrent usage.

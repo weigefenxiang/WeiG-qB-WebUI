@@ -276,7 +276,7 @@
     "detail.duration.hoursMinutes": "{hours} ώρες {minutes} λεπτά",
     "detail.duration.minutesSeconds": "{minutes} λεπτά {seconds} δευτερόλεπτα",
     "detail.duration.seconds": "{seconds} δευτερόλεπτα",
-    "detail.piecesHave": "διαθέσιμα {count}",
+    "detail.piecesHave": "στην κατοχή: {count}",
     "detail.secondary.session": "σε αυτή τη συνεδρία",
     "detail.secondary.average": "μέσος όρος",
     "detail.secondary.max": "μέγιστο",
