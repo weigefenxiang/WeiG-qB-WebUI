@@ -316,7 +316,7 @@
     "detail.backShort": "Wstecz",
     "columns.eyebrow": "TABELA",
     "columns.aux.stateIcon": "Ikona stanu",
-    "detail.secondary.seeding": "wysyłanie",
+    "detail.secondary.seeding": "Czas seedowania",
     "detail.duration.daysHours": "{days} dni {hours} godz.",
     "detail.duration.hoursMinutes": "{hours} godz. {minutes} min",
     "detail.duration.minutesSeconds": "{minutes} min {seconds} s",

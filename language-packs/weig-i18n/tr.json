@@ -309,7 +309,7 @@
     "detail.backShort": "Geri",
     "columns.eyebrow": "TABLO",
     "columns.aux.stateIcon": "Durum simgesi",
-    "detail.secondary.seeding": "dağıtılıyor",
+    "detail.secondary.seeding": "Gönderim süresi",
     "detail.duration.daysHours": "{days} gün {hours} saat",
     "detail.duration.hoursMinutes": "{hours} saat {minutes} dakika",
     "detail.duration.minutesSeconds": "{minutes} dakika {seconds} saniye",

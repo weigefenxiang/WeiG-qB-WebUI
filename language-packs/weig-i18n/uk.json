@@ -321,7 +321,7 @@
     "columns.aux.stateIcon": "Піктограма стану",
     "common.yes": "Так",
     "common.no": "Ні",
-    "detail.secondary.seeding": "роздавання",
+    "detail.secondary.seeding": "Час роздачі",
     "detail.duration.daysHours": "{days} дн. {hours} год.",
     "detail.duration.hoursMinutes": "{hours} год. {minutes} хв.",
     "detail.duration.minutesSeconds": "{minutes} хв. {seconds} с",

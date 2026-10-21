@@ -67,6 +67,17 @@ for(const [locale,expected] of [['ca','temps de sembra'],['gl','tempo de semente
   assert.equal(data.translationStatus,'draft','Unreviewed locale must remain draft: '+locale);
 }
 
+// A78-302: Keep native qB 5.2.4 duration terminology for additional locales,
+// not verbs/states for a torrent that happens to be seeding right now.
+for(const [locale,expected] of [['be','Час раздачы'],['cs','Čas seedování'],
+  ['el','Χρόνος seeding'],['hu','Seedelési idő'],['pl','Czas seedowania'],
+  ['sl','Čas sejanja'],['tr','Gönderim süresi'],['uk','Час роздачі']]){
+  const data=JSON.parse(fs.readFileSync(path.join(rootOfExternalLocales,locale+'.json'),'utf8'));
+  assert.equal(data.messages['detail.secondary.seeding'],expected,
+    'pt-BR/other locale duration meaning drift: '+locale);
+  assert.equal(data.translationStatus,'draft','Unapproved locale must remain draft: '+locale);
+}
+
 // A78-260: selection.js uses allMatchingHashes() to invert only torrents
 // matching the current filters, not the entire selected set.
 // Preserve that scope in the Brazilian Portuguese bulk-selection UI.

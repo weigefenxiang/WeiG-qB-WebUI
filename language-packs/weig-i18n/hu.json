@@ -272,7 +272,7 @@
     "columns.aux.stateIcon": "Állapotikon",
     "common.yes": "Igen",
     "common.no": "Nem",
-    "detail.secondary.seeding": "megosztás",
+    "detail.secondary.seeding": "Seedelési idő",
     "detail.duration.daysHours": "{days} nap {hours} óra",
     "detail.duration.hoursMinutes": "{hours} óra {minutes} perc",
     "detail.duration.minutesSeconds": "{minutes} perc {seconds} másodperc",

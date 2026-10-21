@@ -364,7 +364,7 @@
     "detail.noWebseeds": "Ta torrent nima virov Web Seed / HTTP.",
     "detail.back": "Nazaj na torrente",
     "detail.backShort": "Nazaj",
-    "detail.secondary.seeding": "sejanje",
+    "detail.secondary.seeding": "Čas sejanja",
     "detail.duration.daysHours": "{days} dni {hours} ur",
     "detail.duration.hoursMinutes": "{hours} ur {minutes} minut",
     "detail.duration.minutesSeconds": "{minutes} minut {seconds} sekund",

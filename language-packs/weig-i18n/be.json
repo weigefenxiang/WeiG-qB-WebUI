@@ -323,7 +323,7 @@
     "columns.aux.stateIcon": "Значок стану",
     "common.yes": "Так",
     "common.no": "Не",
-    "detail.secondary.seeding": "раздача",
+    "detail.secondary.seeding": "Час раздачы",
     "detail.duration.daysHours": "{days} дзён {hours} гадз.",
     "detail.duration.hoursMinutes": "{hours} гадз. {minutes} хв.",
     "detail.duration.minutesSeconds": "{minutes} хв. {seconds} с",

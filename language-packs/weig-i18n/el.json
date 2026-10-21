@@ -271,7 +271,7 @@
     "columns.aux.stateIcon": "Εικονίδιο κατάστασης",
     "common.yes": "Ναι",
     "common.no": "Όχι",
-    "detail.secondary.seeding": "διαμοιράζεται",
+    "detail.secondary.seeding": "Χρόνος seeding",
     "detail.duration.daysHours": "{days} ημέρες {hours} ώρες",
     "detail.duration.hoursMinutes": "{hours} ώρες {minutes} λεπτά",
     "detail.duration.minutesSeconds": "{minutes} λεπτά {seconds} δευτερόλεπτα",

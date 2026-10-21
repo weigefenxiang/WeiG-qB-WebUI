@@ -269,7 +269,7 @@
     "common.yes": "Ano",
     "common.no": "Ne",
     "common.na": "Neuvedeno",
-    "detail.secondary.seeding": "probíhá sdílení",
+    "detail.secondary.seeding": "Čas seedování",
     "detail.duration.daysHours": "{days} d {hours} h",
     "detail.duration.hoursMinutes": "{hours} h {minutes} min",
     "detail.duration.minutesSeconds": "{minutes} min {seconds} s",
