@@ -266,7 +266,7 @@
     "columns.aux.stateIcon": "Icona de estado",
     "common.yes": "Si",
     "common.no": "Non",
-    "detail.secondary.seeding": "Compartindo",
+    "detail.secondary.seeding": "tempo de sementeira",
     "detail.duration.daysHours": "{days} días e {hours} horas",
     "detail.duration.hoursMinutes": "{hours} horas e {minutes} minutos",
     "detail.duration.minutesSeconds": "{minutes} minutos e {seconds} segundos",

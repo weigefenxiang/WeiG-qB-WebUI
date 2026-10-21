@@ -317,7 +317,7 @@
     "detail.backShort": "Indietro",
     "columns.eyebrow": "TABELLA",
     "columns.aux.stateIcon": "Icona di stato",
-    "detail.secondary.seeding": "in condivisione",
+    "detail.secondary.seeding": "tempo di seeding",
     "detail.duration.daysHours": "{days} giorni {hours} ore",
     "detail.duration.hoursMinutes": "{hours} ore {minutes} min",
     "detail.duration.minutesSeconds": "{minutes} min {seconds} s",

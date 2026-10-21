@@ -47,6 +47,26 @@ assert.equal(canonicalEnglishMessages['detail.secondary.seeding'],'seeding');
 assert.equal(portugueseVirtual.messages['detail.secondary.seeding'],'tempo de semeadura',
   'pt-BR must label seeding duration rather than an ongoing sharing action');
 assert.equal(portugueseVirtual.translationStatus,'draft');
+// A78-301: qB 5.2.4 detail-compat has time_elapsed + seeding_time.
+// layout.js renders detail.secondary.seeding for elapsed *duration*;
+// status verbs like "seeding now"/"sharing" would change the UI meaning.
+const detailLayoutSource=fs.readFileSync(path.resolve(rootOfExternalLocales,'../../webui/private/scripts/layout.js'),'utf8');
+assert.match(detailLayoutSource,/if\(key==='seeding_time'\)return tr\('detail\.secondary\.seeding'\)/u,
+  'Duration translation must keep its single real caller');
+const detailManifest=JSON.parse(fs.readFileSync(path.resolve(rootOfExternalLocales,'../../webui/private/data/detail-compat.json'),'utf8'));
+assert.ok(detailManifest.sourceFacts.torrentDetailUi.changes.some(change=>
+  (change.value?.propertyLayout||[]).some(group=>(group.fields||[]).some(field=>
+    field.id==='time_elapsed'&&field.dataProperties.includes('seeding_time')))),
+  'Seeding-time copy must be backed by the qB source detail contract');
+assert.equal(canonicalEnglishMessages['detail.secondary.seeding'],'seeding');
+for(const [locale,expected] of [['ca','temps de sembra'],['gl','tempo de sementeira'],
+  ['it','tempo di seeding'],['nl','seedtijd']]){
+  const data=JSON.parse(fs.readFileSync(path.join(rootOfExternalLocales,locale+'.json'),'utf8'));
+  assert.equal(data.messages['detail.secondary.seeding'],expected,
+    'Seeding elapsed duration must not be a status verb: '+locale);
+  assert.equal(data.translationStatus,'draft','Unreviewed locale must remain draft: '+locale);
+}
+
 // A78-260: selection.js uses allMatchingHashes() to invert only torrents
 // matching the current filters, not the entire selected set.
 // Preserve that scope in the Brazilian Portuguese bulk-selection UI.

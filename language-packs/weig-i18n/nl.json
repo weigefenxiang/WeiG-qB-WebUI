@@ -357,7 +357,7 @@
     "detail.backShort": "Terug",
     "columns.eyebrow": "TABEL",
     "columns.aux.stateIcon": "Statuspictogram",
-    "detail.secondary.seeding": "aan het seeden",
+    "detail.secondary.seeding": "seedtijd",
     "detail.duration.daysHours": "{days} dagen {hours} uur",
     "detail.duration.hoursMinutes": "{hours} uur {minutes} min",
     "detail.duration.minutesSeconds": "{minutes} min {seconds} sec",

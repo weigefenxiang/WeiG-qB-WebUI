@@ -260,7 +260,7 @@
     "columns.eyebrow": "TAULA",
     "columns.aux.stateIcon": "Icona d'estat",
     "common.yes": "Sí",
-    "detail.secondary.seeding": "sembra activa",
+    "detail.secondary.seeding": "temps de sembra",
     "detail.duration.daysHours": "{days} dies i {hours} hores",
     "detail.duration.hoursMinutes": "{hours} hores i {minutes} minuts",
     "detail.duration.minutesSeconds": "{minutes} minuts i {seconds} segons",
