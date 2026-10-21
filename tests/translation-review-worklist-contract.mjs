@@ -582,6 +582,17 @@ for(const key of ['instances.importHint','instances.online','instances.lastRepor
 }
 assert.equal(ptFull.independentErrorReviewRecorded,false);
 
+// A78-287: HTML data-i18n bindings are also source-proven static caller
+// candidates. The app menu aria label and skip link reside in index.html,
+// not a JS literal caller; candidate status never implies QA approval.
+for(const key of ['app.skip','app.menu','nav.torrents']){
+  const item=ptFull.items.find(entry=>entry.key===key);
+  assert.ok(item&&item.callerCandidates.some(candidate=>
+    candidate.file==='webui/private/index.html'&&
+    candidate.evidence==='static-html-attribute-candidate-not-verified'),
+    'Missing declarative HTML i18n caller candidate: '+key);
+  assert.equal(item.semanticAndIndependentReview,'pending');
+}
 assert.throws(()=>getTranslationFullQualityWorklist('zh-CN'),/Unknown or already bundled/);
 
 console.log('Translation worklist passed: source-bound English and Simplified Chinese semantic reference, no fabricated approvals.');

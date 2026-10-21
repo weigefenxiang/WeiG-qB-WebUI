@@ -160,6 +160,21 @@ function getStaticCallerCandidates(){
       }
     }
   }
+  // Declarative HTML bindings are genuine static UI reference candidates,
+  // even though a JS-only scan cannot see them. Still NOT semantic QA proof.
+  const htmlPath=path.join(root,'webui/private/index.html');
+  const htmlLines=fs.readFileSync(htmlPath,'utf8').split(/\r?\n/u);
+  for(let i=0;i<htmlLines.length;i++){
+    const attributes=/\bdata-i18n(?:-[a-z-]+)?\s*=\s*(['"])([A-Za-z0-9_.-]+)\1/gu;
+    for(const match of htmlLines[i].matchAll(attributes)){
+      const owners=index.get(match[2]);
+      if(!owners||owners.length>=12)continue;
+      if(!owners.some(item=>item.file==='webui/private/index.html'&&item.line===i+1)){
+        owners.push({file:'webui/private/index.html',line:i+1,
+          evidence:'static-html-attribute-candidate-not-verified'});
+      }
+    }
+  }
   staticCallerCandidateCache=index;
   return index;
 }
