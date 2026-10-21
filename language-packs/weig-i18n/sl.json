@@ -3,6 +3,28 @@
   "source": "WeiG-runtime-locale-overlay",
   "locale": "sl",
   "translationStatus": "draft",
+  "englishSourceSha256": "d0d6412654389081013f556747436862ef4c65ec6cc3410c267596055fd88959",
+  "reviewedEnglishFallbackKeys": [
+    "nav.rss",
+    "rss.title",
+    "torrent.eta",
+    "torrent.ratio",
+    "torrent.tracker",
+    "language.en",
+    "language.zh-CN",
+    "language.zh-TW",
+    "language.zh-HK",
+    "language.ja",
+    "language.ko",
+    "settings.weig.title",
+    "settings.weig.density.torrentExample",
+    "settings.weig.unit.secondShort",
+    "common.na",
+    "header.blog",
+    "connection.environment.qb",
+    "connection.environment.webapi",
+    "capability.rss.title"
+  ],
   "messages": {
     "app.skip": "Preskoči na seznam torrentov",
     "app.back": "Nazaj",
@@ -669,5 +691,15 @@
     "instances.exportFile": "Izvozi JSON",
     "instances.importFile": "Uvozi JSON",
     "instances.loadFailed": "Upravljalnika primerkov ni bilo mogoče naložiti."
+,
+    "stats.dhtPeers": "DHT {dht} · Vrstniki {peers}",
+    "detail.trackers": "Sledilniki",
+    "detail.peers": "Vrstniki",
+    "detail.seeds": "Semena",
+    "detail.peersCount": "Vrstniki",
+    "transfer.dhtPeers": "DHT / Vrstniki",
+    "settings.about.version": "Različica",
+    "capability.privateFilter.title": "Zasebni / PT",
+    "settings.update.channelVirtual": "Navidezna"
   }
 }

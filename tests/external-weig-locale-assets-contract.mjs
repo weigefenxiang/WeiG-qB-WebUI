@@ -300,6 +300,36 @@ for(const [locale,meaning] of [
   assert.equal(overlay.translationStatus,'draft','Targeted meaning fix is not full QA');
 }
 
+// A78-278: qBittorrent 5.2.4 Slovenian source uses Sledilniki
+// (Trackers), Semena (Seeds) and Različica (Version); existing WeiG
+// connection/peer UI consistently uses Vrstniki. Native torrent column
+// copy stays with qB source, while 693-key fallback is documented only.
+// Upstream reference: qbittorrent/qBittorrent release-5.2.4 src/lang/qbittorrent_sl.ts
+const slAccounted=JSON.parse(fs.readFileSync(path.join(rootOfExternalLocales,'sl.json'),'utf8'));
+const slScope=getTranslationDraftScopeWorklist('sl');
+const slFixed=new Set([...Object.keys(SOURCE_PRESERVED_UI_LABELS),
+  ...slScope.items.filter(item=>item.classification!=='localized').map(item=>item.key),
+  'torrent.eta','torrent.ratio','torrent.tracker']);
+const slMissing=canonicalEnglishTranslationKeys.filter(key=>!Object.hasOwn(slAccounted.messages,key));
+assert.equal(slFixed.size,19);
+assert.deepEqual([...slFixed].sort(),slMissing.slice().sort());
+assert.deepEqual(slAccounted.reviewedEnglishFallbackKeys,slMissing);
+assert.equal(slAccounted.englishSourceSha256,canonicalEnglishSourceSha256);
+for(const [key,value] of Object.entries({
+  "stats.dhtPeers": "DHT {dht} · Vrstniki {peers}",
+  "detail.trackers": "Sledilniki",
+  "detail.peers": "Vrstniki",
+  "detail.seeds": "Semena",
+  "detail.peersCount": "Vrstniki",
+  "transfer.dhtPeers": "DHT / Vrstniki",
+  "settings.about.version": "Različica",
+  "capability.privateFilter.title": "Zasebni / PT",
+  "settings.update.channelVirtual": "Navidezna"
+})){
+  assert.equal(slAccounted.messages[key],value,'Slovenian caller/source translation: '+key);
+}
+assert.equal(slAccounted.translationStatus,'draft','Source ownership is not independent language QA');
+
 // A78-259: Evidence correction. The BitTorrent app's own Malay description
 // uses "rakan sebaya" for peers within a torrent swarm. A financial P2P term
 // ("rakan setara") alone cannot disqualify that BitTorrent usage.
