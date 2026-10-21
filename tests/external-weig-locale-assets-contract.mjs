@@ -330,6 +330,35 @@ for(const [key,value] of Object.entries({
 }
 assert.equal(slAccounted.translationStatus,'draft','Source ownership is not independent language QA');
 
+// A78-279: qBittorrent 5.2.4 Polish upstream labels Trackery,
+// Seedy, Wersja; the existing WeiG peer actions/network status use peerzy.
+// The three exact native torrent column captions remain source owned.
+// Upstream: qbittorrent/qBittorrent release-5.2.4 src/lang/qbittorrent_pl.ts
+const plAccounted=JSON.parse(fs.readFileSync(path.join(rootOfExternalLocales,'pl.json'),'utf8'));
+const plScope=getTranslationDraftScopeWorklist('pl');
+const plSourceRetained=new Set([...Object.keys(SOURCE_PRESERVED_UI_LABELS),
+  ...plScope.items.filter(item=>item.classification!=='localized').map(item=>item.key),
+  'torrent.eta','torrent.ratio','torrent.tracker']);
+const plMissing=canonicalEnglishTranslationKeys.filter(k=>!Object.hasOwn(plAccounted.messages,k));
+assert.equal(plSourceRetained.size,27,'Polish fallback set must have evidence');
+assert.deepEqual([...plSourceRetained].sort(),plMissing.slice().sort());
+assert.deepEqual(plAccounted.reviewedEnglishFallbackKeys,plMissing);
+assert.equal(plAccounted.englishSourceSha256,canonicalEnglishSourceSha256);
+for(const [key,value] of Object.entries({
+  "stats.dhtPeers": "DHT {dht} · peerzy {peers}",
+  "detail.trackers": "Trackery",
+  "detail.peers": "Peerzy",
+  "detail.seeds": "Seedy",
+  "detail.peersCount": "Peerzy",
+  "transfer.dhtPeers": "DHT / peerzy",
+  "settings.about.version": "Wersja",
+  "capability.privateFilter.title": "Prywatne / PT",
+  "settings.update.channelVirtual": "Wirtualna"
+})){
+  assert.equal(plAccounted.messages[key],value,'Source-aligned Polish terminology: '+key);
+}
+assert.equal(plAccounted.translationStatus,'draft','Fallback provenance does not establish full quality approval');
+
 // A78-259: Evidence correction. The BitTorrent app's own Malay description
 // uses "rakan sebaya" for peers within a torrent swarm. A financial P2P term
 // ("rakan setara") alone cannot disqualify that BitTorrent usage.
