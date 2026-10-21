@@ -9,6 +9,13 @@ const portugueseVirtual=JSON.parse(fs.readFileSync(path.join(rootOfExternalLocal
 assert.equal(canonicalEnglishMessages['settings.update.channelVirtual'],'Virtual');
 assert.equal(Object.hasOwn(portugueseVirtual.messages,'settings.update.channelVirtual'),false,
   'Brazilian Portuguese must not relabel the simulator Virtual channel as Virtualizado');
+// A78-260: selection.js uses allMatchingHashes() to invert only torrents
+// matching the current filters, not the entire selected set.
+// Preserve that scope in the Brazilian Portuguese bulk-selection UI.
+assert.equal(canonicalEnglishMessages['selection.invertAllMatching'],'Invert all matching');
+assert.match(portugueseVirtual.messages['selection.invertAllMatching'],/torrents correspondentes/iu,
+  'Brazilian Portuguese invert-all action must retain the matching-filter scope');
+
 // The density preview caller appends A/B/C to the literal Torrent label; LINKS has no Useful qualifier.
 for(const [key,english] of [['settings.weig.density.torrentExample','Torrent'],['header.links','LINKS']]){
   assert.equal(canonicalEnglishMessages[key],english,'Canonical UI label changed: '+key);

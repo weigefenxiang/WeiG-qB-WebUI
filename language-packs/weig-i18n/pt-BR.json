@@ -578,7 +578,7 @@
     "selection.selectPage": "Selecionar página",
     "selection.invertPage": "Inverter seleção da página",
     "selection.selectAllMatching": "Selecionar todos os correspondentes ({n})",
-    "selection.invertAllMatching": "Inverter toda a seleção",
+    "selection.invertAllMatching": "Inverter seleção dos torrents correspondentes",
     "rss.workspace.subscriptions": "Assinaturas RSS",
     "rss.workspace.articles": "Artigos",
     "rss.workspace.loadingSubscriptions": "Carregando assinaturas RSS…",
