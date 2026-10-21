@@ -282,7 +282,7 @@
     "sidebar.collapse": "Sbalit postranní panel torrentů",
     "sidebar.expand": "Rozbalit postranní panel torrentů",
     "detail.loadFailed": "Nepodařilo se načíst: {error}",
-    "detail.virtualSummary": "{count} položek · do DOM se přidává jen viditelná oblast.",
+    "detail.virtualSummary": "Položky: {count} · do DOM se přidává jen viditelná oblast.",
     "library.totalUnavailable": "Celkový počet je dočasně nedostupný",
     "library.refreshFailedStatus": "Obnovení torrentů selhalo",
     "library.refreshFailedPrefix": "Obnovení torrentů selhalo: ",

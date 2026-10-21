@@ -274,7 +274,7 @@
     "sidebar.collapse": "Replega la barra lateral de torrents",
     "sidebar.expand": "Desplega la barra lateral de torrents",
     "detail.loadFailed": "No s'ha pogut carregar: {error}",
-    "detail.virtualSummary": "{count} elements · al DOM només es munten els elements visibles.",
+    "detail.virtualSummary": "Elements: {count} · al DOM només es munten els elements visibles.",
     "library.totalUnavailable": "El recompte total no està disponible temporalment",
     "library.refreshFailedStatus": "No s'han pogut actualitzar els torrents",
     "library.refreshFailedPrefix": "No s'han pogut actualitzar els torrents: ",

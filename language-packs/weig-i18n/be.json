@@ -385,7 +385,7 @@
     "sidebar.collapse": "Згарнуць бакавую панэль торэнтаў",
     "sidebar.expand": "Разгарнуць бакавую панэль торэнтаў",
     "detail.loadFailed": "Не ўдалося загрузіць: {error}",
-    "detail.virtualSummary": "{count} элементаў · у DOM дадаюцца толькі бачныя элементы.",
+    "detail.virtualSummary": "Элементы: {count} · у DOM дадаюцца толькі бачныя элементы.",
     "library.totalUnavailable": "Агульная колькасць часова недаступная",
     "library.refreshFailedStatus": "Не ўдалося абнавіць торэнты",
     "library.refreshFailedTitle": "Не ўдалося абнавіць торэнты",

@@ -286,7 +286,7 @@
     "sidebar.collapse": "طي الشريط الجانبي للتورنت",
     "sidebar.expand": "توسيع الشريط الجانبي للتورنت",
     "detail.loadFailed": "تعذّر التحميل: {error}",
-    "detail.virtualSummary": "{count} عنصر · لا يُحمَّل في DOM إلا الجزء المرئي.",
+    "detail.virtualSummary": "العناصر: {count} · لا يُحمَّل في DOM إلا الجزء المرئي.",
     "library.totalUnavailable": "العدد الإجمالي غير متاح مؤقتًا",
     "library.refreshFailedStatus": "تعذّر تحديث قائمة التورنتات",
     "library.refreshFailedPrefix": "تعذّر تحديث قائمة التورنتات: ",

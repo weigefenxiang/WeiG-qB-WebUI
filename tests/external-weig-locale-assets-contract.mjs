@@ -427,6 +427,17 @@ for(const [locale,copy] of [["it","Elementi: {count} · nel DOM sono presenti so
   assert.ok(copy.includes('{count}'),'Count placeholder lost: '+locale);
 }
 
+// A78-284: qB detail virtualization can show one item. These four
+// languages use a count-neutral status label to preserve valid grammar at 1,
+// without changing {count} or claiming completed native/AI quality review.
+for(const [locale,expected] of [["cs","Položky: {count} · do DOM se přidává jen viditelná oblast."],["be","Элементы: {count} · у DOM дадаюцца толькі бачныя элементы."],["ca","Elements: {count} · al DOM només es munten els elements visibles."],["ar","العناصر: {count} · لا يُحمَّل في DOM إلا الجزء المرئي."]]){
+  const overlay=JSON.parse(fs.readFileSync(path.join(rootOfExternalLocales,locale+'.json'),'utf8'));
+  assert.equal(overlay.messages['detail.virtualSummary'],expected,
+    'Count-neutral detail-summary expected in '+locale);
+  assert.equal(overlay.translationStatus,'draft');
+  assert.ok(expected.includes('{count}'),'Missing placeholder: '+locale);
+}
+
 // A78-259: Evidence correction. The BitTorrent app's own Malay description
 // uses "rakan sebaya" for peers within a torrent swarm. A financial P2P term
 // ("rakan setara") alone cannot disqualify that BitTorrent usage.
