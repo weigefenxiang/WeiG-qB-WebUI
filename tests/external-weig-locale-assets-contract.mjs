@@ -123,6 +123,17 @@ for(const [locale,expected] of [['hi-IN','सीडिंग की अवधि
   assert.equal(data.translationStatus,'draft','Incomplete locale remains draft: '+locale);
 }
 
+// A78-307: AI-context duration corrections in seven remaining external locales.
+// Upstream unfinished TS strings cannot count as native translation approval.
+for(const [locale,expected] of [['ltg','daleišonys laiks'],
+  ['ms-MY','tempoh perkongsian'],['ne-NP','सिडिङको अवधि'],
+  ['oc','temps de partatge'],['ro','durata distribuirii'],
+  ['th','ระยะเวลาปล่อยไฟล์'],['uz-Latn','ulashish vaqti']]){
+  const data=JSON.parse(fs.readFileSync(path.join(rootOfExternalLocales,locale+'.json'),'utf8'));
+  assert.equal(data.messages['detail.secondary.seeding'],expected,'Seeding duration: '+locale);
+  assert.equal(data.translationStatus,'draft','No quality/native approval: '+locale);
+}
+
 // A78-260: selection.js uses allMatchingHashes() to invert only torrents
 // matching the current filters, not the entire selected set.
 // Preserve that scope in the Brazilian Portuguese bulk-selection UI.

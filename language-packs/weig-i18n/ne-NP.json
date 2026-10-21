@@ -285,7 +285,7 @@
     "detail.backShort": "पछाडि",
     "columns.eyebrow": "तालिका",
     "columns.aux.stateIcon": "स्थितिको चिह्न",
-    "detail.secondary.seeding": "सिड गरिँदै",
+    "detail.secondary.seeding": "सिडिङको अवधि",
     "detail.duration.daysHours": "{days} दिन {hours} घण्टा",
     "detail.duration.hoursMinutes": "{hours} घण्टा {minutes} मिनेट",
     "detail.duration.minutesSeconds": "{minutes} मिनेट {seconds} सेकेन्ड",

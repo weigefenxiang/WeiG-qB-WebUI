@@ -276,7 +276,7 @@
     "columns.aux.stateIcon": "Ikon status",
     "common.yes": "Ya",
     "common.no": "Tidak",
-    "detail.secondary.seeding": "sedang berkongsi",
+    "detail.secondary.seeding": "tempoh perkongsian",
     "detail.duration.daysHours": "{days} hari {hours} jam",
     "detail.duration.hoursMinutes": "{hours} jam {minutes} minit",
     "detail.duration.minutesSeconds": "{minutes} minit {seconds} saat",

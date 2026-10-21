@@ -288,7 +288,7 @@
     "detail.backShort": "Orqaga",
     "columns.eyebrow": "JADVAL",
     "columns.aux.stateIcon": "Holat belgisi",
-    "detail.secondary.seeding": "ulashilmoqda",
+    "detail.secondary.seeding": "ulashish vaqti",
     "detail.duration.daysHours": "{days} kun {hours} soat",
     "detail.duration.hoursMinutes": "{hours} soat {minutes} daqiqa",
     "detail.duration.minutesSeconds": "{minutes} daqiqa {seconds} soniya",

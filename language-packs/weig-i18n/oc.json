@@ -279,7 +279,7 @@
     "detail.backShort": "Tornar",
     "columns.eyebrow": "TABLÈU",
     "columns.aux.stateIcon": "Icòna d'estat",
-    "detail.secondary.seeding": "en partatge",
+    "detail.secondary.seeding": "temps de partatge",
     "detail.duration.daysHours": "{days} j {hours} h",
     "detail.duration.hoursMinutes": "{hours} h {minutes} min",
     "detail.duration.minutesSeconds": "{minutes} min {seconds} s",

@@ -366,7 +366,7 @@
     "detail.noWebseeds": "Acest torrent nu are surse Web Seed / HTTP.",
     "detail.back": "Înapoi la torrente",
     "detail.backShort": "Înapoi",
-    "detail.secondary.seeding": "se distribuie",
+    "detail.secondary.seeding": "durata distribuirii",
     "detail.duration.daysHours": "{days} zile {hours} ore",
     "detail.duration.hoursMinutes": "{hours} ore {minutes} minute",
     "detail.duration.minutesSeconds": "{minutes} minute {seconds} secunde",

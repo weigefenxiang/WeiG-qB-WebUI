@@ -295,7 +295,7 @@
     "detail.backShort": "กลับ",
     "columns.eyebrow": "ตาราง",
     "columns.aux.stateIcon": "ไอคอนสถานะ",
-    "detail.secondary.seeding": "กำลังปล่อยไฟล์",
+    "detail.secondary.seeding": "ระยะเวลาปล่อยไฟล์",
     "detail.duration.daysHours": "{days} วัน {hours} ชั่วโมง",
     "detail.duration.hoursMinutes": "{hours} ชั่วโมง {minutes} นาที",
     "detail.duration.minutesSeconds": "{minutes} นาที {seconds} วินาที",
