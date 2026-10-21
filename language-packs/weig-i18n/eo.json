@@ -272,7 +272,7 @@
     "columns.aux.stateIcon": "Stata piktogramo",
     "common.yes": "Jes",
     "common.no": "Ne",
-    "detail.secondary.seeding": "semado",
+    "detail.secondary.seeding": "tempo de semado",
     "detail.duration.daysHours": "{days} tagoj kaj {hours} horoj",
     "detail.duration.hoursMinutes": "{hours} horoj kaj {minutes} minutoj",
     "detail.duration.minutesSeconds": "{minutes} minutoj kaj {seconds} sekundoj",

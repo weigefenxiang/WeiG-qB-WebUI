@@ -272,7 +272,7 @@
     "columns.aux.stateIcon": "Olekuikoon",
     "common.yes": "Jah",
     "common.no": "Ei",
-    "detail.secondary.seeding": "jagamisel",
+    "detail.secondary.seeding": "jagamise aeg",
     "detail.duration.daysHours": "{days} päeva {hours} tundi",
     "detail.duration.hoursMinutes": "{hours} tundi {minutes} minutit",
     "detail.duration.minutesSeconds": "{minutes} minutit {seconds} sekundit",

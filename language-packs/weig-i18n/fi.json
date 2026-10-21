@@ -315,7 +315,7 @@
     "detail.backShort": "Takaisin",
     "columns.eyebrow": "TAULUKKO",
     "columns.aux.stateIcon": "Tilakuvake",
-    "detail.secondary.seeding": "jaetaan",
+    "detail.secondary.seeding": "jakoaika",
     "detail.duration.daysHours": "{days} pv {hours} t",
     "detail.duration.hoursMinutes": "{hours} t {minutes} min",
     "detail.duration.minutesSeconds": "{minutes} min {seconds} s",

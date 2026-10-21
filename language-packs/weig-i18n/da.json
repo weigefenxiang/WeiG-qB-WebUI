@@ -327,7 +327,7 @@
     "detail.backShort": "Tilbage",
     "columns.eyebrow": "TABEL",
     "columns.aux.stateIcon": "Statusikon",
-    "detail.secondary.seeding": "deler",
+    "detail.secondary.seeding": "delingstid",
     "detail.duration.daysHours": "{days} dage {hours} timer",
     "detail.duration.hoursMinutes": "{hours} timer {minutes} min",
     "detail.duration.minutesSeconds": "{minutes} min {seconds} sek",

@@ -321,7 +321,7 @@
     "columns.aux.stateIcon": "Икона за състояние",
     "common.yes": "Да",
     "common.no": "Не",
-    "detail.secondary.seeding": "споделяне",
+    "detail.secondary.seeding": "време за споделяне",
     "detail.duration.daysHours": "{days} дни {hours} ч.",
     "detail.duration.hoursMinutes": "{hours} ч. {minutes} мин.",
     "detail.duration.minutesSeconds": "{minutes} мин. {seconds} сек.",

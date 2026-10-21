@@ -271,7 +271,7 @@
     "columns.aux.stateIcon": "نماد وضعیت",
     "common.yes": "بله",
     "common.no": "خیر",
-    "detail.secondary.seeding": "در حال بذردهی",
+    "detail.secondary.seeding": "مدت بذردهی",
     "detail.duration.daysHours": "{days} روز {hours} ساعت",
     "detail.duration.hoursMinutes": "{hours} ساعت {minutes} دقیقه",
     "detail.duration.minutesSeconds": "{minutes} دقیقه {seconds} ثانیه",

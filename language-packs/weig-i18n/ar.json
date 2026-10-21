@@ -271,7 +271,7 @@
     "columns.aux.stateIcon": "رمز الحالة",
     "common.yes": "نعم",
     "common.no": "لا",
-    "detail.secondary.seeding": "جارٍ التوزيع",
+    "detail.secondary.seeding": "مدة التوزيع",
     "detail.duration.daysHours": "{days} يوم و{hours} ساعة",
     "detail.duration.hoursMinutes": "{hours} ساعة و{minutes} دقيقة",
     "detail.duration.minutesSeconds": "{minutes} دقيقة و{seconds} ثانية",

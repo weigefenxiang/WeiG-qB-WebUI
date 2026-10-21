@@ -99,6 +99,18 @@ for(const [locale,expected] of [['az-Latn','Paylama vaxtı'],
   assert.equal(data.translationStatus,'draft','Unreviewed locale must stay draft: '+locale);
 }
 
+// A78-305: source-context AI draft corrections where qB's equivalent TS entry
+// is unfinished. Convert present-tense sharing states into duration labels;
+// these checks are technical guards, NOT independent/native quality approval.
+for(const [locale,expected] of [['ar','مدة التوزيع'],['bg','време за споделяне'],
+  ['da','delingstid'],['eo','tempo de semado'],['et','jagamise aeg'],
+  ['fa','مدت بذردهی'],['fi','jakoaika'],['he','משך זמן שיתוף']]){
+  const data=JSON.parse(fs.readFileSync(path.join(rootOfExternalLocales,locale+'.json'),'utf8'));
+  assert.equal(data.messages['detail.secondary.seeding'],expected,
+    'Seeding-time secondary label must describe duration: '+locale);
+  assert.equal(data.translationStatus,'draft','AI correction does not constitute approval: '+locale);
+}
+
 // A78-260: selection.js uses allMatchingHashes() to invert only torrents
 // matching the current filters, not the entire selected set.
 // Preserve that scope in the Brazilian Portuguese bulk-selection UI.

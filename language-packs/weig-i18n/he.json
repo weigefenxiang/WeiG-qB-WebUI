@@ -271,7 +271,7 @@
     "columns.aux.stateIcon": "סמל מצב",
     "common.yes": "כן",
     "common.no": "לא",
-    "detail.secondary.seeding": "מעלה ומשתף",
+    "detail.secondary.seeding": "משך זמן שיתוף",
     "detail.duration.daysHours": "{days} ימים {hours} שעות",
     "detail.duration.hoursMinutes": "{hours} שעות {minutes} דקות",
     "detail.duration.minutesSeconds": "{minutes} דקות {seconds} שניות",
