@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import path from 'node:path';
+import {getTranslationDraftScopeWorklist} from '../tools/translation-review-worklist.mjs';
 import {inspectExtendedLocaleSources,expectedExtendedLocales,validateExternalOverlay,canonicalEnglishTranslationKeys,canonicalEnglishSourceSha256,canonicalEnglishMessages,rootOfExternalLocales,SOURCE_PRESERVED_UI_LABELS} from '../tools/external-weig-locale-assets.mjs';
 
 // The update identity caller uses the "virtual" channel for simulator metadata,
@@ -15,6 +16,26 @@ assert.equal(Object.hasOwn(portugueseVirtual.messages,'settings.update.channelVi
 assert.equal(canonicalEnglishMessages['selection.invertAllMatching'],'Invert all matching');
 assert.match(portugueseVirtual.messages['selection.invertAllMatching'],/torrents correspondentes/iu,
   'Brazilian Portuguese invert-all action must retain the matching-filter scope');
+
+// A78-261: The 25 unlocalized pt-BR canonical values have individually
+// evidenced English fallback provenance: 16 draft scope decisions, eight
+// canonical preserved labels and the source-owned Virtual channel.
+// This is only fallback accounting, not 693-key semantic approval.
+const ptDraftScope=getTranslationDraftScopeWorklist('pt-BR');
+const ptScopeFallback=ptDraftScope.items
+  .filter(item=>item.classification==='intentional_english').map(item=>item.key);
+const ptProvenFallback=new Set([...Object.keys(SOURCE_PRESERVED_UI_LABELS),
+  ...ptScopeFallback,'settings.update.channelVirtual']);
+const ptUnstored=canonicalEnglishTranslationKeys.filter(key=>!Object.hasOwn(portugueseVirtual.messages,key));
+assert.equal(ptScopeFallback.length,16);
+assert.equal(ptProvenFallback.size,25);
+assert.deepEqual([...ptProvenFallback].sort(),ptUnstored.slice().sort());
+assert.deepEqual(portugueseVirtual.reviewedEnglishFallbackKeys,ptUnstored,
+  'Every pt-BR fallback must be sourced and explicitly accounted');
+assert.equal(portugueseVirtual.englishSourceSha256,canonicalEnglishSourceSha256,
+  'pt-BR review evidence must be bound to the exact canonical English text');
+assert.equal(portugueseVirtual.translationStatus,'draft',
+  'Reviewed fallback keys are not complete locale quality approval');
 
 // The density preview caller appends A/B/C to the literal Torrent label; LINKS has no Useful qualifier.
 for(const [key,english] of [['settings.weig.density.torrentExample','Torrent'],['header.links','LINKS']]){
