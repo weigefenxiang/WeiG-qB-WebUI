@@ -399,6 +399,21 @@ for(const [locale,copy] of [["ar","القطع الموجودة محليًا: {co
     'Translation must preserve the count placeholder: '+locale);
 }
 
+// A78-282: caller inserts item counts without Portuguese plural rules:
+// app.js detail items.length and instances-ui.js imported data.items.length.
+// Count-neutral copy must be grammatical at 1 and at multiple items, and
+// must preserve all EN placeholders and the no-credentials safety message.
+for(const [key,expected] of [
+  ['detail.virtualSummary','Itens: {count} · somente os elementos visíveis são montados no DOM.'],
+  ['instances.importHint','Uma página externa forneceu endereços de instâncias de {source} (total: {count}). Revise antes de salvar; nenhuma senha nem sessão está incluída.']
+]){
+  assert.equal(portugueseVirtual.messages[key],expected,
+    'Portuguese count-neutral copy required for direct caller interpolation: '+key);
+  assert.equal(portugueseVirtual.translationStatus,'draft');
+}
+assert.ok(portugueseVirtual.messages['instances.importHint'].includes('nenhuma senha nem sessão'),
+  'An imported instance list must not imply that credentials or sessions are included');
+
 // A78-259: Evidence correction. The BitTorrent app's own Malay description
 // uses "rakan sebaya" for peers within a torrent swarm. A financial P2P term
 // ("rakan setara") alone cannot disqualify that BitTorrent usage.
