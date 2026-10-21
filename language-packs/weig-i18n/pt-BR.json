@@ -271,7 +271,7 @@
     "settings.weig.refresh.title": "Intervalo de atualização",
     "settings.weig.global.description": "Preferência global de exibição.",
     "settings.weig.ptTrackers.title": "Regras de rastreadores PT",
-    "settings.weig.ptTrackers.description": "Os metadados privados são obtidos do qBittorrent; esta lista opcional identifica PT pelo domínio dos rastreadores, separado por vírgulas.",
+    "settings.weig.ptTrackers.description": "Os metadados privados são obtidos do qBittorrent; esta lista opcional identifica PT pelos domínios dos rastreadores, separados por vírgulas.",
     "settings.weig.timezone.title": "Fuso horário de exibição",
     "settings.weig.timezone.description": "Altera apenas a exibição de datas e registros; os horários do qBittorrent e do servidor não mudam.",
     "settings.weig.performance.title": "Desempenho",

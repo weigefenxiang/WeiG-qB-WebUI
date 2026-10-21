@@ -239,6 +239,15 @@ for(const [key,term] of Object.entries({
 }
 assert.equal(finnish.translationStatus,'draft');
 
+// A78-274: settings.js parses multiple comma-separated tracker hosts.
+// Brazilian Portuguese agreement must be plural for 'domínios ... separados'
+// and must not suggest a single domain when users enter multiple rules.
+assert.equal(canonicalEnglishMessages['settings.weig.ptTrackers.description'],
+  'Private metadata is resolved from qBittorrent; this optional list classifies PT by tracker domain, comma separated.');
+assert.match(portugueseVirtual.messages['settings.weig.ptTrackers.description'],
+  /domínios dos rastreadores, separados por vírgulas\./u,
+  'Portuguese PT tracker-rule hint must preserve plural comma-separated domains');
+
 // A78-259: Evidence correction. The BitTorrent app's own Malay description
 // uses "rakan sebaya" for peers within a torrent swarm. A financial P2P term
 // ("rakan setara") alone cannot disqualify that BitTorrent usage.
