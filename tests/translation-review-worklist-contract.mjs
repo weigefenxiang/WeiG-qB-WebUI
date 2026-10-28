@@ -663,7 +663,8 @@ for(const locale of ['ar','az-Latn','bs','ca','el','eo','et','eu','fa','gl','he'
 for(const [locale,required,unsupported] of [
   ['ko',/인증 정보/,/비밀번호|세션/u],
   ['ru',/Учётные данные для входа/u,/Пароли|сеансы/u],
-  ['zh-TW',/登入憑證/u,/密碼|工作階段/u]
+  ['zh-TW',/登入憑證/u,/密碼|工作階段/u],
+  ['zh-CN',/登录凭据/u,/密码|会话/u]
 ]){
   const bundle=JSON.parse(fs.readFileSync(
     new URL('../webui/private/data/weig-i18n/'+locale+'.json',import.meta.url),'utf8'));
@@ -671,4 +672,13 @@ for(const [locale,required,unsupported] of [
   assert.match(hint,required,'Login credential guarantee is missing in '+locale);
   assert.doesNotMatch(hint,unsupported,'Unsupported password/session privacy promise in '+locale);
   assert.ok(hint.includes('{source}'),'Consent source placeholder lost for '+locale);
+}
+
+// A78-322: every existing draft scope stays attached to the current 673-key
+// Simplified Chinese semantic reference after a corrected consent string.
+for(const locale of expectedExtendedLocales){
+  const scope=getTranslationDraftScopeWorklist(locale);
+  assert.equal(scope.simplifiedChineseSourceSha256,simplifiedChineseReferenceSha256,
+    'Stale Simplified Chinese scope fingerprint for '+locale);
+  assert.equal(scope.referenceKeys,673);
 }

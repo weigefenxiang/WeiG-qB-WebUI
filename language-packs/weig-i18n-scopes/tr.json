@@ -3,7 +3,7 @@
   "source": "WeiG-locale-draft-scope-decisions",
   "locale": "tr",
   "englishSourceSha256": "d0d6412654389081013f556747436862ef4c65ec6cc3410c267596055fd88959",
-  "simplifiedChineseSourceSha256": "fcaf060489856126fe909890100b8f3246c16231f139c86ddfaa8ee4a41eb627",
+  "simplifiedChineseSourceSha256": "3308d0291779016c84a8acdb1e0a925f9c776bdf04e594d435b2ce4b1143a1aa",
   "decisions": {
     "logs.ui.normal": {
       "classification": "intentional_english",

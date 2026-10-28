@@ -653,7 +653,7 @@
     "instances.connectTitle": "连接实例？",
     "instances.connectHint": "在新标签页中打开{name}，并请求共享当前 qB 状态，是否继续？",
     "instances.allowTitle": "允许共享实时状态？",
-    "instances.allowHint": "允许向{source}报告本实例的在线状态和种子总数吗？不会共享密码、会话或种子名称。",
+    "instances.allowHint": "允许向{source}报告本实例的在线状态和种子总数吗？不会共享登录凭据或种子名称。",
     "instances.allow": "允许",
     "instances.manage": "管理实例",
     "instances.name": "实例名称",
