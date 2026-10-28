@@ -96,7 +96,8 @@ for(const [locale,overlay] of messagesByLocale){
 assert.equal(checks,48*693,'All external canonical slots must be exercised');
 assert.equal(readPaths.filter(value=>value==='data/weig-i18n/extended-manifest.json').length,1,
   '48-locale runtime must coalesce extended inventory load');
-assert.equal(readPaths.filter(value=>/data\/weig-i18n\/[^/]+\.json$/.test(value)).length,48,
-  'Each external locale must be fetched once through the canonical RuntimeAssets owner');
+assert.equal(readPaths.filter(value=>/data\/weig-i18n\/[^/]+\.json$/.test(value)&&
+  !value.endsWith('/extended-manifest.json')).length,48,
+  'Each external locale must be fetched once, excluding the separate inventory manifest');
 console.log('WeiG extended runtime 48 × 693 PASS: '+checks+
   ' source-matched translation/fallback resolutions, 48 document language transitions; semantic/native/Chrome/RTL QA pending.');
