@@ -3,7 +3,7 @@ import {createHash} from 'node:crypto';
 import fs from 'node:fs';
 import path from 'node:path';
 import {fileURLToPath} from 'node:url';
-import {expectedExtendedLocales,rootOfExternalLocales,validateExternalOverlay,canonicalEnglishSourceSha256,canonicalEnglishTranslationKeys} from './external-weig-locale-assets.mjs';
+import {expectedExtendedLocales,rootOfExternalLocales,validateExternalOverlay,canonicalEnglishSourceSha256,canonicalEnglishTranslationKeys,SOURCE_PRESERVED_UI_LABELS} from './external-weig-locale-assets.mjs';
 
 const root=path.resolve(path.dirname(fileURLToPath(import.meta.url)),'..');
 const script=fs.readFileSync(path.join(root,'webui/private/scripts/i18n.js'),'utf8');
@@ -221,10 +221,22 @@ export function getTranslationSharedCallerCandidates(){
     evidence:'static-candidate-only-not-runtime-verified'
   }));
   const withCandidates=items.filter(item=>item.callerCandidates.length>0).length;
+  // The zh-CN overlay is a 673-key translation REFERENCE, not the 693-key
+  // approval inventory. Do not blindly classify the remaining 20 as English-only.
+  const referenceExceptions=canonicalEnglishTranslationKeys
+    .filter(key=>!Object.hasOwn(chinese.messages,key))
+    .map(key=>({key,english:english[key],classification:
+      Object.hasOwn(SOURCE_PRESERVED_UI_LABELS,key)
+        ?'source-preserved-label':'target-locale-context-review-required'}));
+  const preservedLabels=referenceExceptions.filter(item=>item.classification==='source-preserved-label').length;
   return {schemaVersion:1,source:'WeiG-shared-translation-caller-candidates',
     canonicalEnglishSourceSha256, simplifiedChineseSourceSha256:simplifiedChineseReferenceSha256,
-    candidateSourceSha256,sourceFiles,
-    counts:{canonicalKeys:items.length,withCandidates,withoutCandidates:items.length-withCandidates},
+    candidateSourceSha256,sourceFiles,referenceExceptions,
+    counts:{canonicalKeys:items.length,simplifiedChineseReferenceKeys:simplifiedChineseReferenceKeys.length,
+      englishOnlyReferenceExceptions:referenceExceptions.length,
+      sourcePreservedEnglishOnly:preservedLabels,
+      contextReviewEnglishOnly:referenceExceptions.length-preservedLabels,
+      withCandidates,withoutCandidates:items.length-withCandidates},
     verifiedRuntimeOwnerCount:0,independentSemanticReviewRecorded:false,
     items};
 }

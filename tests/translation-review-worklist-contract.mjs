@@ -626,3 +626,20 @@ for(const key of ['app.skip','instances.importHint','capability.search.title','s
     'Shared map must preserve existing caller candidates: '+key);
   assert.equal(sharedItem.evidence,'static-candidate-only-not-runtime-verified');
 }
+
+// A78-313: only 8 of 20 English-only keys have an explicit preserved-label
+// contract; contextual UI labels (e.g., Version, Ratio) are NOT auto-fallback.
+const exceptions=sharedCallers.referenceExceptions;
+assert.equal(exceptions.length,20);
+assert.equal(sharedCallers.counts.simplifiedChineseReferenceKeys,673);
+assert.equal(sharedCallers.counts.englishOnlyReferenceExceptions,20);
+assert.equal(sharedCallers.counts.sourcePreservedEnglishOnly,8);
+assert.equal(sharedCallers.counts.contextReviewEnglishOnly,12);
+assert.equal(exceptions.filter(item=>item.classification==='source-preserved-label').length,8);
+for(const key of ['nav.rss','rss.title','settings.weig.title','language.en']){
+  assert.equal(exceptions.find(item=>item.key===key)?.classification,'source-preserved-label');
+}
+for(const key of ['torrent.eta','torrent.ratio','settings.about.version','settings.update.channelVirtual']){
+  assert.equal(exceptions.find(item=>item.key===key)?.classification,'target-locale-context-review-required');
+}
+assert.equal(sharedCallers.verifiedRuntimeOwnerCount,0);
