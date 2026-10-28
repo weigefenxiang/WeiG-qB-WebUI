@@ -4,6 +4,11 @@ import vm from 'node:vm';
 import {fileURLToPath} from 'node:url';
 const source=fs.readFileSync(new URL('../webui/private/scripts/i18n.js',import.meta.url),'utf8');
 const builder=fs.readFileSync(new URL('../tools/build-webui-dist.mjs',import.meta.url),'utf8');
+const liveMobile=fs.readFileSync(new URL('./pages-live-mobile-layout.mjs',import.meta.url),'utf8');
+const sw=fs.readFileSync(new URL('../simulator/service-worker/service-worker.js',import.meta.url),'utf8');
+assert.ok(sw.includes("const SOURCE_PRIVATE='./__source/private/'")&&liveMobile.includes('await qaContext.route(')&&
+  liveMobile.includes('__source\\/private')&&!liveMobile.includes('await qaPage.route('),
+  'QA-only external locales must route Service Worker-originated __source/private network requests from BrowserContext, not Page');
 const sourceInventory=JSON.parse(fs.readFileSync(new URL('../webui/private/data/weig-i18n/extended-manifest.json',import.meta.url),'utf8'));
 assert.deepEqual(sourceInventory,{schemaVersion:1,source:'WeiG-extended-locale-inventory',locales:[]},
   'Raw WebUI and Pages dev must publish a valid empty extended-locale inventory before review approval; missing manifest triggers HTTP 404 on RTL preview');

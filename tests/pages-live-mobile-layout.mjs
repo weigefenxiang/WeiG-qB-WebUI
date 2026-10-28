@@ -675,6 +675,8 @@ try{
 
   // A78-341: Test 48 REAL draft sources in Chrome without changing the
   // production standard archive or fabricating translationStatus=approved.
+  // Context routing intercepts Service Worker-originated __source/private requests;
+  // page.route cannot see the Service Worker-owned virtual app asset request.
   // These are QA-only Playwright HTTP route fixtures, not published language assets.
   const draftSourceDir=path.resolve(path.dirname(fileURLToPath(import.meta.url)),'../language-packs/weig-i18n');
   const sourcePackNames=fs.readdirSync(draftSourceDir).filter(name=>name.endsWith('.json')).sort();
@@ -691,7 +693,7 @@ try{
     const qaPage=await qaContext.newPage(),qaErrors=[];
     qaPage.on('pageerror',error=>qaErrors.push(error?.stack||error?.message||String(error)));
     let injectedShards=0;
-    await qaPage.route(/\/data\/weig-i18n\/[^/?]+\.json(?:\?|$)/,route=>{
+    await qaContext.route(/\/(?:__source\/private\/)?data\/weig-i18n\/[^/?]+\.json(?:\?|$)/,route=>{
       const resource=new URL(route.request().url()).pathname.split('/').pop();
       if(resource==='extended-manifest.json')return route.fulfill({
         status:200,contentType:'application/json',
