@@ -142,6 +142,7 @@
     "torrent.autoTmm": "Quản lý torrent tự động",
     "torrent.top": "Chuyển lên đầu",
     "torrent.bottom": "Chuyển xuống cuối",
+    "torrent.name": "Tên",
     "torrent.rename": "Đổi tên",
     "torrent.location": "Đặt vị trí",
     "torrent.category": "Đặt danh mục",

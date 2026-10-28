@@ -102,9 +102,9 @@ assert.equal(ptScope.unresolvedKeys,0);
 assert.equal(ptScope.draftScopeComplete,true);
 assert.equal(ptScope.distributionApproved,false,'Draft scope must not imply distribution approval: ptScope');
 const viScope=getTranslationDraftScopeWorklist('vi');
-assert.equal(viScope.counts.localized,657);
+assert.equal(viScope.counts.localized,658);
 assert.equal(viScope.counts.intentional_english,9);
-assert.equal(viScope.counts.qb_owned,7);
+assert.equal(viScope.counts.qb_owned,6);
 assert.equal(viScope.unresolvedKeys,0);
 assert.equal(viScope.draftScopeComplete,true);
 assert.equal(viScope.distributionApproved,false,'Draft scope must not imply distribution approval: viScope');
@@ -123,9 +123,9 @@ assert.equal(plScope.unresolvedKeys,0);
 assert.equal(plScope.draftScopeComplete,true);
 assert.equal(plScope.distributionApproved,false,'Draft scope must not imply distribution approval: plScope');
 const skScope=getTranslationDraftScopeWorklist('sk');
-assert.equal(skScope.counts.localized,657);
+assert.equal(skScope.counts.localized,658);
 assert.equal(skScope.counts.intentional_english,9);
-assert.equal(skScope.counts.qb_owned,7);
+assert.equal(skScope.counts.qb_owned,6);
 assert.equal(skScope.unresolvedKeys,0);
 assert.equal(skScope.draftScopeComplete,true);
 assert.equal(skScope.distributionApproved,false,'Draft scope must not imply distribution approval: skScope');
@@ -187,17 +187,17 @@ assert.equal(bsScope.draftScopeComplete,true);
 assert.equal(bsScope.distributionApproved,false,'Draft scope must not imply distribution approval: bsScope');
 const srLatnScope=getTranslationDraftScopeWorklist('sr-Latn');
 assert.equal(srLatnScope.referenceKeys,673);
-assert.equal(srLatnScope.counts.localized,658);
+assert.equal(srLatnScope.counts.localized,659);
 assert.equal(srLatnScope.counts.intentional_english,8);
-assert.equal(srLatnScope.counts.qb_owned,7);
+assert.equal(srLatnScope.counts.qb_owned,6);
 assert.equal(srLatnScope.unresolvedKeys,0);
 assert.equal(srLatnScope.draftScopeComplete,true);
 assert.equal(srLatnScope.distributionApproved,false,'Draft scope must not imply distribution approval: srLatnScope');
 const srCyrillicScope=getTranslationDraftScopeWorklist('sr');
 assert.equal(srCyrillicScope.referenceKeys,673);
-assert.equal(srCyrillicScope.counts.localized,658);
+assert.equal(srCyrillicScope.counts.localized,659);
 assert.equal(srCyrillicScope.counts.intentional_english,8);
-assert.equal(srCyrillicScope.counts.qb_owned,7);
+assert.equal(srCyrillicScope.counts.qb_owned,6);
 assert.equal(srCyrillicScope.unresolvedKeys,0);
 assert.equal(srCyrillicScope.draftScopeComplete,true);
 assert.equal(srCyrillicScope.distributionApproved,false,'Draft scope must not imply distribution approval: srCyrillicScope');
@@ -293,18 +293,18 @@ assert.equal(esperantoScope.distributionApproved,false,'Draft scope must not imp
 const albanianScope=getTranslationDraftScopeWorklist('sq');
 assert.equal(albanianScope.referenceKeys,673);
 assert.equal(albanianScope.canonicalEnglishKeys,693);
-assert.equal(albanianScope.counts.localized,655);
+assert.equal(albanianScope.counts.localized,656);
 assert.equal(albanianScope.counts.intentional_english,11);
-assert.equal(albanianScope.counts.qb_owned,7);
+assert.equal(albanianScope.counts.qb_owned,6);
 assert.equal(albanianScope.unresolvedKeys,0);
 assert.equal(albanianScope.draftScopeComplete,true);
 assert.equal(albanianScope.distributionApproved,false,'Draft scope must not imply distribution approval: albanianScope');
 const uzbekScope=getTranslationDraftScopeWorklist('uz-Latn');
 assert.equal(uzbekScope.referenceKeys,673);
 assert.equal(uzbekScope.canonicalEnglishKeys,693);
-assert.equal(uzbekScope.counts.localized,657);
+assert.equal(uzbekScope.counts.localized,658);
 assert.equal(uzbekScope.counts.intentional_english,9);
-assert.equal(uzbekScope.counts.qb_owned,7);
+assert.equal(uzbekScope.counts.qb_owned,6);
 assert.equal(uzbekScope.unresolvedKeys,0);
 assert.equal(uzbekScope.draftScopeComplete,true);
 assert.equal(uzbekScope.distributionApproved,false,'Draft scope must not imply distribution approval: uzbekScope');
@@ -379,9 +379,9 @@ assert.equal(armenianScope.distributionApproved,false,'Draft scope must not impl
 const occitanScope=getTranslationDraftScopeWorklist('oc');
 assert.equal(occitanScope.referenceKeys,673);
 assert.equal(occitanScope.canonicalEnglishKeys,693);
-assert.equal(occitanScope.counts.localized,656);
+assert.equal(occitanScope.counts.localized,657);
 assert.equal(occitanScope.counts.intentional_english,10);
-assert.equal(occitanScope.counts.qb_owned,7);
+assert.equal(occitanScope.counts.qb_owned,6);
 assert.equal(occitanScope.unresolvedKeys,0);
 assert.equal(occitanScope.draftScopeComplete,true);
 assert.equal(occitanScope.distributionApproved,false,'Draft scope must not imply distribution approval: occitanScope');
@@ -701,7 +701,7 @@ assert.ok(a78324Components.includes("T('torrent.name')+': '"),'WeiG selection AR
 assert.ok(a78324Components.includes('paintSelectionHit(row.querySelector'), 'Mobile ARIA rebind missing');
 assert.ok(a78324Components.includes('paintSelectionHit(name.querySelector'), 'Desktop ARIA rebind missing');
 assert.ok(a78324Fields.includes("qbText('column.'+field.key,fallback)"),'Official qB column Copy owner changed');
-for(const locale of ['ar','bs','ca','eo','et','fa','gl','he','el','eu','hi-IN','hr','hu','hy','is','ka','kk','lt','ltg','lv-LV','mn-MN','ms-MY','nb','ne-NP']){
+for(const locale of ['ar','bs','ca','eo','et','fa','gl','he','el','eu','hi-IN','hr','hu','hy','is','ka','kk','lt','ltg','lv-LV','mn-MN','ms-MY','nb','ne-NP','oc','sk','sq','sr-Latn','sr','uz-Latn','vi']){
   const overlay=JSON.parse(fs.readFileSync(new URL('../language-packs/weig-i18n/'+locale+'.json',import.meta.url),'utf8'));
   const scope=getTranslationDraftScopeWorklist(locale);
   assert.ok(overlay.messages['torrent.name']&&overlay.messages['torrent.name']!=='Name',
@@ -719,3 +719,7 @@ for(const locale of ['ar','bs','ca','eo','et','fa','gl','he','el','eu','hi-IN','
 // A78-328: repair all remaining stale scope-count fixtures discovered by
 // A78-326 Core smoke; on top of preserved A78-327 translations. A static
 // candidate is still not owner-verified language QA.
+
+// A78-329: all source-proven WeiG torrent-name ARIA callers are now
+// distinguishable from the official qB column.name copy owner. Other
+// qb_owned draft claims remain pending independent runtime proof.

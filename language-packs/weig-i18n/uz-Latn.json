@@ -125,6 +125,7 @@
     "torrent.autoTmm": "Torrentlarni avtomatik boshqarish",
     "torrent.top": "Eng yuqoriga koʻchirish",
     "torrent.bottom": "Eng pastga koʻchirish",
+    "torrent.name": "Nomi",
     "torrent.rename": "Nomini oʻzgartirish",
     "torrent.location": "Joylashuvni belgilash",
     "torrent.category": "Toifani belgilash",

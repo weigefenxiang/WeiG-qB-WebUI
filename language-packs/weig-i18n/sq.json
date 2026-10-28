@@ -142,6 +142,7 @@
     "torrent.autoTmm": "Menaxhim automatik i torrenteve",
     "torrent.top": "Zhvendos në krye",
     "torrent.bottom": "Zhvendos në fund",
+    "torrent.name": "Emri",
     "torrent.rename": "Riemërto",
     "torrent.location": "Cakto vendndodhjen",
     "torrent.category": "Cakto kategorinë",

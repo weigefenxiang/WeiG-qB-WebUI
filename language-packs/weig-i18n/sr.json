@@ -143,6 +143,7 @@
     "torrent.autoTmm": "Аутоматско управљање торентима",
     "torrent.top": "Премести на врх",
     "torrent.bottom": "Премести на дно",
+    "torrent.name": "Назив",
     "torrent.rename": "Преименуј",
     "torrent.location": "Постави локацију",
     "torrent.category": "Постави категорију",

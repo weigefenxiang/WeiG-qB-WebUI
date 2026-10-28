@@ -141,6 +141,7 @@
     "torrent.autoTmm": "Automatická správa torrentov",
     "torrent.top": "Presunúť úplne nahor",
     "torrent.bottom": "Presunúť úplne nadol",
+    "torrent.name": "Názov",
     "torrent.rename": "Premenovať",
     "torrent.location": "Nastaviť umiestnenie",
     "torrent.category": "Nastaviť kategóriu",

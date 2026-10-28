@@ -108,6 +108,7 @@
     "torrent.autoTmm": "Gestion automatica dels torrents",
     "torrent.top": "Desplaçar tot amont",
     "torrent.bottom": "Desplaçar tot aval",
+    "torrent.name": "Nom",
     "torrent.rename": "Tornar nomenar",
     "torrent.location": "Definir l'emplaçament",
     "torrent.category": "Definir la categoria",
