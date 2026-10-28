@@ -435,50 +435,51 @@ assert.equal(hebrewScope.counts.qb_owned,6);
 assert.equal(hebrewScope.unresolvedKeys,0);
 assert.equal(hebrewScope.draftScopeComplete,true);
 assert.equal(hebrewScope.distributionApproved,false,'Draft scope must not imply distribution approval: hebrewScope');
-for(const field of ['name','size','progress','download','upload','status','categoryColumn']){
+// qB column Copy stays source-owned, while `torrent.name` is WeiG selection ARIA.
+for(const field of ['size','progress','download','upload','status','categoryColumn']){
   assert.equal(hebrewScope.items.find(item=>item.key==='torrent.'+field)?.classification,'qb_owned',
     'qBittorrent source owns Hebrew torrent column '+field);
 }
 
-for(const field of ['name','size','progress','download','upload','status','categoryColumn']){
+for(const field of ['size','progress','download','upload','status','categoryColumn']){
   assert.equal(persianScope.items.find(item=>item.key==='torrent.'+field)?.classification,'qb_owned',
     'qBittorrent source owns Persian torrent column '+field);
 }
 
-for(const field of ['name','size','progress','download','upload','status','categoryColumn']){
+for(const field of ['size','progress','download','upload','status','categoryColumn']){
   assert.equal(arabicScope.items.find(item=>item.key==='torrent.'+field)?.classification,'qb_owned',
     'qBittorrent source owns Arabic torrent column '+field);
 }
 
-for(const field of ['name','size','progress','download','upload','status','categoryColumn']){
+for(const field of ['size','progress','download','upload','status','categoryColumn']){
   assert.equal(latgalianScope.items.find(item=>item.key==='torrent.'+field)?.classification,'qb_owned',
     'qBittorrent source owns Latgalian torrent column '+field);
 }
-for(const field of ['name','size','progress','download','upload','status','categoryColumn']){
+for(const field of ['size','progress','download','upload','status','categoryColumn']){
   assert.equal(basqueScope.items.find(item=>item.key==='torrent.'+field)?.classification,'qb_owned',
     'qBittorrent source owns Basque torrent column '+field);
 }
-for(const field of ['name','size','progress','download','upload','status','categoryColumn']){
+for(const field of ['size','progress','download','upload','status','categoryColumn']){
   assert.equal(occitanScope.items.find(item=>item.key==='torrent.'+field)?.classification,'qb_owned',
     'qBittorrent source owns Occitan torrent column '+field);
 }
-for(const field of ['name','size','progress','download','upload','status','categoryColumn']){
+for(const field of ['size','progress','download','upload','status','categoryColumn']){
   assert.equal(armenianScope.items.find(item=>item.key==='torrent.'+field)?.classification,'qb_owned');
 }
-for(const field of ['name','size','progress','download','upload','status','categoryColumn']){
+for(const field of ['size','progress','download','upload','status','categoryColumn']){
   assert.equal(mongolianScope.items.find(item=>item.key==='torrent.'+field)?.classification,'qb_owned');
 }
-for(const field of ['name','size','progress','download','upload','status','categoryColumn']){
+for(const field of ['size','progress','download','upload','status','categoryColumn']){
   assert.equal(kazakhScope.items.find(item=>item.key==='torrent.'+field)?.classification,'qb_owned');
 }
-for(const field of ['name','size','progress','download','upload','status','categoryColumn']){
+for(const field of ['size','progress','download','upload','status','categoryColumn']){
   assert.equal(georgianScope.items.find(item=>item.key==='torrent.'+field)?.classification,'qb_owned',
     'qBittorrent source owns Georgian torrent column '+field);
 }
-for(const field of ['name','size','progress','download','upload','status','categoryColumn']){
+for(const field of ['size','progress','download','upload','status','categoryColumn']){
  assert.equal(nepaliScope.items.find(item=>item.key==='torrent.'+field)?.classification,'qb_owned','qB owns torrent column '+field);
 }
-for(const field of ['name','size','progress','download','upload','status','categoryColumn']){
+for(const field of ['size','progress','download','upload','status','categoryColumn']){
   assert.equal(uzbekScope.items.find(item=>item.key==='torrent.'+field)?.classification,'qb_owned',
     'The qBittorrent source must own torrent column '+field);
 }
@@ -723,3 +724,6 @@ for(const locale of ['ar','bs','ca','eo','et','fa','gl','he','el','eu','hi-IN','
 // A78-329: all source-proven WeiG torrent-name ARIA callers are now
 // distinguishable from the official qB column.name copy owner. Other
 // qb_owned draft claims remain pending independent runtime proof.
+
+// A78-330: remove the false qB ownership assertion for torrent.name from
+// 12 source-scope loops; retain all six genuine qB column-label contracts.
