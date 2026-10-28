@@ -68,10 +68,10 @@ assert.equal(slScope.draftScopeComplete,true);
 assert.equal(slScope.distributionApproved,false,'Draft scope must not imply distribution approval: slScope');
 // Catalan A78-223 completed the 673-key AI draft. The older 45-key
 // bootstrap fixture must not outlive the actual shipped language pack.
-assert.equal(caScope.counts.localized,642);
+assert.equal(caScope.counts.localized,643);
 assert.equal(caScope.counts.localized,ca.suppliedKeys);
 assert.equal(caScope.counts.intentional_english,24);
-assert.equal(caScope.counts.qb_owned,7);
+assert.equal(caScope.counts.qb_owned,6);
 assert.equal(caScope.unresolvedKeys,0);
 assert.equal(caScope.draftScopeComplete,true);
 assert.equal(caScope.distributionApproved,false,'Draft scope must not imply distribution approval: caScope');
@@ -179,9 +179,9 @@ assert.equal(nbScope.unresolvedKeys,0);
 assert.equal(nbScope.draftScopeComplete,true);
 assert.equal(nbScope.distributionApproved,false,'Draft scope must not imply distribution approval: nbScope');
 const bsScope=getTranslationDraftScopeWorklist('bs');
-assert.equal(bsScope.counts.localized,658);
+assert.equal(bsScope.counts.localized,659);
 assert.equal(bsScope.counts.intentional_english,8);
-assert.equal(bsScope.counts.qb_owned,7);
+assert.equal(bsScope.counts.qb_owned,6);
 assert.equal(bsScope.unresolvedKeys,0);
 assert.equal(bsScope.draftScopeComplete,true);
 assert.equal(bsScope.distributionApproved,false,'Draft scope must not imply distribution approval: bsScope');
@@ -692,3 +692,20 @@ assert.match(ltgConsent,/Pīsaslēgšonys dati/u);
 assert.doesNotMatch(ltgConsent,/Parolis, seansi/u);
 assert.ok(ltgConsent.includes('{source}'));
 assert.equal(latgalian.translationStatus,'draft');
+
+// A78-324: qB's official column.name label is distinct from the WeiG-owned
+// desktop/mobile selection aria-label. The latter uses W.t('torrent.name').
+const a78324Components=fs.readFileSync(new URL('../webui/private/scripts/components.js',import.meta.url),'utf8');
+const a78324Fields=fs.readFileSync(new URL('../webui/private/scripts/torrent-fields.js',import.meta.url),'utf8');
+assert.ok(a78324Components.includes("T('torrent.name')+': '"),'WeiG selection ARIA caller missing');
+assert.ok(a78324Components.includes('paintSelectionHit(row.querySelector'), 'Mobile ARIA rebind missing');
+assert.ok(a78324Components.includes('paintSelectionHit(name.querySelector'), 'Desktop ARIA rebind missing');
+assert.ok(a78324Fields.includes("qbText('column.'+field.key,fallback)"),'Official qB column Copy owner changed');
+for(const locale of ['ar','bs','ca','eo','et','fa','gl','he']){
+  const overlay=JSON.parse(fs.readFileSync(new URL('../language-packs/weig-i18n/'+locale+'.json',import.meta.url),'utf8'));
+  const scope=getTranslationDraftScopeWorklist(locale);
+  assert.ok(overlay.messages['torrent.name']&&overlay.messages['torrent.name']!=='Name',
+    'WeiG screenreader label must localize Name: '+locale);
+  assert.equal(scope.items.find(item=>item.key==='torrent.name')?.classification,'localized');
+  assert.equal(scope.distributionApproved,false);
+}

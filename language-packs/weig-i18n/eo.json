@@ -143,6 +143,7 @@
     "torrent.autoTmm": "Aŭtomata administrado de torentoj",
     "torrent.top": "Movi plej supren",
     "torrent.bottom": "Movi plej malsupren",
+    "torrent.name": "Nomo",
     "torrent.rename": "Renomi",
     "torrent.location": "Agordi lokon",
     "torrent.category": "Agordi kategorion",

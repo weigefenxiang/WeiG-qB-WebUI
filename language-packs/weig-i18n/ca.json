@@ -135,6 +135,7 @@
     "torrent.autoTmm": "Gestió automàtica de torrents",
     "torrent.top": "Mou a dalt de tot",
     "torrent.bottom": "Mou a baix de tot",
+    "torrent.name": "Nom",
     "torrent.rename": "Canvia el nom",
     "torrent.location": "Defineix la ubicació",
     "torrent.category": "Defineix la categoria",

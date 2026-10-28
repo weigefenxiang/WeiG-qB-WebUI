@@ -142,6 +142,7 @@
     "torrent.autoTmm": "ניהול טורנטים אוטומטי",
     "torrent.top": "העברה לראש התור",
     "torrent.bottom": "העברה לסוף התור",
+    "torrent.name": "שם",
     "torrent.rename": "שינוי שם",
     "torrent.location": "הגדרת מיקום",
     "torrent.category": "הגדרת קטגוריה",

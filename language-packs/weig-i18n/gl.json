@@ -140,6 +140,7 @@
     "torrent.autoTmm": "Xestión automática de torrents",
     "torrent.top": "Mover arriba de todo",
     "torrent.bottom": "Mover abaixo de todo",
+    "torrent.name": "Nome",
     "torrent.rename": "Renomear",
     "torrent.location": "Establecer localización",
     "torrent.category": "Establecer categoría",

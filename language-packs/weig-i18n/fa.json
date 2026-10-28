@@ -142,6 +142,7 @@
     "torrent.autoTmm": "مدیریت خودکار تورنت",
     "torrent.top": "انتقال به ابتدای صف",
     "torrent.bottom": "انتقال به انتهای صف",
+    "torrent.name": "نام",
     "torrent.rename": "تغییر نام",
     "torrent.location": "تنظیم مکان",
     "torrent.category": "تنظیم دسته",

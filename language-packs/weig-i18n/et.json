@@ -143,6 +143,7 @@
     "torrent.autoTmm": "Torrentite automaatne haldamine",
     "torrent.top": "Liiguta kõige üles",
     "torrent.bottom": "Liiguta kõige alla",
+    "torrent.name": "Nimi",
     "torrent.rename": "Nimeta ümber",
     "torrent.location": "Määra asukoht",
     "torrent.category": "Määra kategooria",

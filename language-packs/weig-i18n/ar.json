@@ -142,6 +142,7 @@
     "torrent.autoTmm": "إدارة التورنت تلقائيًا",
     "torrent.top": "النقل إلى أعلى القائمة",
     "torrent.bottom": "النقل إلى أسفل القائمة",
+    "torrent.name": "الاسم",
     "torrent.rename": "إعادة تسمية",
     "torrent.location": "تعيين الموقع",
     "torrent.category": "تعيين الفئة",
