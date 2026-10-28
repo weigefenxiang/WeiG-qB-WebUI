@@ -682,3 +682,13 @@ for(const locale of expectedExtendedLocales){
     'Stale Simplified Chinese scope fingerprint for '+locale);
   assert.equal(scope.referenceKeys,673);
 }
+
+// A78-323: the Latgalian consent wording must not claim session sharing
+// guarantees or narrow credentials to passwords. Native QA remains pending.
+const latgalian=JSON.parse(fs.readFileSync(
+  new URL('../language-packs/weig-i18n/ltg.json',import.meta.url),'utf8'));
+const ltgConsent=latgalian.messages['instances.allowHint'];
+assert.match(ltgConsent,/Pīsaslēgšonys dati/u);
+assert.doesNotMatch(ltgConsent,/Parolis, seansi/u);
+assert.ok(ltgConsent.includes('{source}'));
+assert.equal(latgalian.translationStatus,'draft');

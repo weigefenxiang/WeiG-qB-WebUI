@@ -648,7 +648,7 @@
     "instances.connectTitle": "Savīnuot instanceju?",
     "instances.connectHint": "Attaiseit {name} atseviškā cilnē i pīpraseit atļauju dalēt pašreizejū qB statusu?",
     "instances.allowTitle": "Dalēt statusu realajā laikā?",
-    "instances.allowHint": "Atļaut {source} nūlaseit itys instancejis tīšsaistis statusu i kūpejū torrentu skaitu? Parolis, seansi i torrentu nūsaukumi natīk daleiti.",
+    "instances.allowHint": "Atļaut {source} nūlaseit itys instancejis tīšsaistis statusu i kūpejū torrentu skaitu? Pīsaslēgšonys dati i torrentu nūsaukumi natīk daleiti.",
     "instances.allow": "Atļaut",
     "instances.manage": "Puorvaļdeit instancejis",
     "instances.name": "Instancejis nūsaukums",
