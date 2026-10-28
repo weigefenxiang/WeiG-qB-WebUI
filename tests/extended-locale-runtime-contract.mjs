@@ -4,6 +4,11 @@ import vm from 'node:vm';
 import {fileURLToPath} from 'node:url';
 const source=fs.readFileSync(new URL('../webui/private/scripts/i18n.js',import.meta.url),'utf8');
 const builder=fs.readFileSync(new URL('../tools/build-webui-dist.mjs',import.meta.url),'utf8');
+const sourceInventory=JSON.parse(fs.readFileSync(new URL('../webui/private/data/weig-i18n/extended-manifest.json',import.meta.url),'utf8'));
+assert.deepEqual(sourceInventory,{schemaVersion:1,source:'WeiG-extended-locale-inventory',locales:[]},
+  'Raw WebUI and Pages dev must publish a valid empty extended-locale inventory before review approval; missing manifest triggers HTTP 404 on RTL preview');
+assert.ok(fs.readFileSync(new URL('../simulator/build/build-pages.mjs',import.meta.url),'utf8').includes("await copyDir(privateRoot,path.join(out,'__source/private'))"),
+  'Virtual Pages dev must keep copying the same raw private runtime assets, including the empty locale manifest');
 assert.ok(builder.includes('inspectExtendedLocaleSources({sourceDir:extendedLocaleDir})')&&builder.includes('weig-qb-webui-all-languages.zip'));
 assert.ok(builder.includes('allLanguagesArtifact')&&builder.includes('extendedManifestPath'));
 function setup(available){
