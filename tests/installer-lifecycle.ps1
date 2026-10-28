@@ -1,10 +1,10 @@
 $ErrorActionPreference='Stop'
 
 $Root=(Resolve-Path (Join-Path $PSScriptRoot '..')).Path
-$Tmp=Join-Path ([IO.Path]::GetTempPath()) ('weigg-installer-lifecycle-'+[guid]::NewGuid().ToString('N'))
+$Tmp=Join-Path ([IO.Path]::GetTempPath()) ('weigg-中文路径-生命周期-'+[guid]::NewGuid().ToString('N'))
 $Fixtures=Join-Path $Tmp 'releases'
 $HomeDir=Join-Path $Tmp 'home'
-$Destination=Join-Path $Tmp 'install\weig-qb-webui'
+$Destination=Join-Path $Tmp '安装升级回滚\日本語と空格 folder\weig-qb-webui'
 $VersionOne='9.9.90'
 $VersionTwo='9.9.91'
 $ShaOne='1111111111111111111111111111111111111111'
@@ -107,6 +107,7 @@ try {
     [pscustomobject]@{StatusCode=200}
   }
 
+  Assert-True ($Tmp.Contains('中文路径') -and $Destination.Contains('安装升级回滚') -and $Destination.Contains('日本語と空格 folder')) 'Windows lifecycle fixture must actually use non-ASCII temp/installation paths.'
   $Installer=Join-Path $Root 'installers\install.ps1'
   $State=Join-Path $env:APPDATA 'weig-qb-webui'
   $LegacyState=Join-Path $env:APPDATA 'WeiG_qB-WebUI'
@@ -340,6 +341,7 @@ try {
     }
     checks=[ordered]@{
       initialInstall=$true
+      unicodeTempAndInstallPaths=$true
       releaseChecksum=$true
       packedCatalog=$true
       installMetadata=$true
@@ -366,7 +368,7 @@ try {
   }
   Write-Utf8NoBom (Join-Path $artifactDir 'windows.json') (($evidence | ConvertTo-Json -Depth 8)+"`n")
 
-  Write-Host "Windows installer lifecycle passed: install $VersionOne -> upgrade $VersionTwo -> rollback $VersionOne -> uninstall -> rollback -> purge uninstall -> clean reinstall -> disabled-state plain update"
+  Write-Host "Windows installer lifecycle with Chinese/Japanese Unicode paths passed: install $VersionOne -> upgrade $VersionTwo -> rollback $VersionOne -> uninstall -> rollback -> purge uninstall -> clean reinstall -> disabled-state plain update"
 }
 finally {
   Remove-Item Env:WEIGG_INSTALLER_FIXTURE_ROOT -ErrorAction SilentlyContinue
