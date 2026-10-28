@@ -142,6 +142,7 @@
     "torrent.autoTmm": "Αυτόματη διαχείριση torrent",
     "torrent.top": "Μετακίνηση στην κορυφή",
     "torrent.bottom": "Μετακίνηση στο τέλος",
+    "torrent.name": "Όνομα",
     "torrent.rename": "Μετονομασία",
     "torrent.location": "Ορισμός τοποθεσίας",
     "torrent.category": "Ορισμός κατηγορίας",

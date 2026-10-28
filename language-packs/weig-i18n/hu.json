@@ -143,6 +143,7 @@
     "torrent.autoTmm": "Automatikus torrentkezelés",
     "torrent.top": "Áthelyezés legfelülre",
     "torrent.bottom": "Áthelyezés legalulra",
+    "torrent.name": "Név",
     "torrent.rename": "Átnevezés",
     "torrent.location": "Hely beállítása",
     "torrent.category": "Kategória beállítása",

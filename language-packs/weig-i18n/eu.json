@@ -126,6 +126,7 @@
     "torrent.autoTmm": "Torrenten kudeaketa automatikoa",
     "torrent.top": "Eraman goialdera",
     "torrent.bottom": "Eraman behealdera",
+    "torrent.name": "Izena",
     "torrent.rename": "Aldatu izena",
     "torrent.location": "Ezarri kokapena",
     "torrent.category": "Ezarri kategoria",

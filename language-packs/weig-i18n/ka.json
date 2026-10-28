@@ -111,6 +111,7 @@
     "torrent.autoTmm": "ტორენტების ავტომატური მართვა",
     "torrent.top": "ზემოთ გადატანა",
     "torrent.bottom": "ქვემოთ გადატანა",
+    "torrent.name": "სახელი",
     "torrent.rename": "სახელის შეცვლა",
     "torrent.location": "მდებარეობის მითითება",
     "torrent.category": "კატეგორიის მითითება",

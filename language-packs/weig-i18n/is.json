@@ -143,6 +143,7 @@
     "torrent.autoTmm": "Sjálfvirk stjórnun torrenta",
     "torrent.top": "Færa efst",
     "torrent.bottom": "Færa neðst",
+    "torrent.name": "Heiti",
     "torrent.rename": "Endurnefna",
     "torrent.location": "Velja vistunarstað",
     "torrent.category": "Velja flokk",

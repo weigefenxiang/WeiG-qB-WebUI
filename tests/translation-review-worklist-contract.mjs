@@ -130,9 +130,9 @@ assert.equal(skScope.unresolvedKeys,0);
 assert.equal(skScope.draftScopeComplete,true);
 assert.equal(skScope.distributionApproved,false,'Draft scope must not imply distribution approval: skScope');
 const hrScope=getTranslationDraftScopeWorklist('hr');
-assert.equal(hrScope.counts.localized,658);
+assert.equal(hrScope.counts.localized,659);
 assert.equal(hrScope.counts.intentional_english,8);
-assert.equal(hrScope.counts.qb_owned,7);
+assert.equal(hrScope.counts.qb_owned,6);
 assert.equal(hrScope.unresolvedKeys,0);
 assert.equal(hrScope.draftScopeComplete,true);
 assert.equal(hrScope.distributionApproved,false,'Draft scope must not imply distribution approval: hrScope');
@@ -701,7 +701,7 @@ assert.ok(a78324Components.includes("T('torrent.name')+': '"),'WeiG selection AR
 assert.ok(a78324Components.includes('paintSelectionHit(row.querySelector'), 'Mobile ARIA rebind missing');
 assert.ok(a78324Components.includes('paintSelectionHit(name.querySelector'), 'Desktop ARIA rebind missing');
 assert.ok(a78324Fields.includes("qbText('column.'+field.key,fallback)"),'Official qB column Copy owner changed');
-for(const locale of ['ar','bs','ca','eo','et','fa','gl','he']){
+for(const locale of ['ar','bs','ca','eo','et','fa','gl','he','el','eu','hi-IN','hr','hu','hy','is','ka']){
   const overlay=JSON.parse(fs.readFileSync(new URL('../language-packs/weig-i18n/'+locale+'.json',import.meta.url),'utf8'));
   const scope=getTranslationDraftScopeWorklist(locale);
   assert.ok(overlay.messages['torrent.name']&&overlay.messages['torrent.name']!=='Name',
@@ -709,3 +709,6 @@ for(const locale of ['ar','bs','ca','eo','et','fa','gl','he']){
   assert.equal(scope.items.find(item=>item.key==='torrent.name')?.classification,'localized');
   assert.equal(scope.distributionApproved,false);
 }
+
+// A78-325: the second eight draft locales also use the WeiG-owned ARIA
+// translation. The same source-owner assertion above protects qB Copy separation.
