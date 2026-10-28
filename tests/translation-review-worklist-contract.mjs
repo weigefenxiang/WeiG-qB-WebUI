@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import {getTranslationFullQualityWorklist,getTranslationReviewWorklist,getTranslationDraftScopeWorklist,simplifiedChineseReferenceSha256} from '../tools/translation-review-worklist.mjs';
+import {getTranslationFullQualityWorklist,getTranslationSharedCallerCandidates,getTranslationReviewWorklist,getTranslationDraftScopeWorklist,simplifiedChineseReferenceSha256} from '../tools/translation-review-worklist.mjs';
 import {canonicalEnglishSourceSha256} from '../tools/external-weig-locale-assets.mjs';
 import {expectedExtendedLocales} from '../tools/external-weig-locale-assets.mjs';
 const ca=getTranslationReviewWorklist('ca');
@@ -604,3 +604,25 @@ for(const key of ['app.skip','app.menu','nav.torrents']){
 assert.throws(()=>getTranslationFullQualityWorklist('zh-CN'),/Unknown or already bundled/);
 
 console.log('Translation worklist passed: source-bound English and Simplified Chinese semantic reference, no fabricated approvals.');
+
+// A78-312: shared, source-fingerprinted candidates; zero automatic QA approvals.
+const sharedCallers=getTranslationSharedCallerCandidates();
+assert.equal(sharedCallers.source,'WeiG-shared-translation-caller-candidates');
+assert.equal(sharedCallers.canonicalEnglishSourceSha256,canonicalEnglishSourceSha256);
+assert.equal(sharedCallers.simplifiedChineseSourceSha256,simplifiedChineseReferenceSha256);
+assert.match(sharedCallers.candidateSourceSha256,/^[a-f0-9]{64}$/);
+assert.equal(sharedCallers.counts.canonicalKeys,693);
+assert.equal(sharedCallers.items.length,693);
+assert.equal(sharedCallers.counts.withCandidates+sharedCallers.counts.withoutCandidates,693);
+assert.equal(sharedCallers.verifiedRuntimeOwnerCount,0);
+assert.equal(sharedCallers.independentSemanticReviewRecorded,false);
+assert.ok(sharedCallers.sourceFiles.some(item=>item.file==='webui/private/index.html'));
+assert.ok(sharedCallers.sourceFiles.some(item=>item.file==='webui/private/data/capabilities.json'));
+assert.ok(sharedCallers.sourceFiles.every(item=>/^[a-f0-9]{64}$/.test(item.sha256)));
+for(const key of ['app.skip','instances.importHint','capability.search.title','selection.deleteSelected']){
+  const sharedItem=sharedCallers.items.find(item=>item.key===key);
+  const perLocaleItem=ptFull.items.find(item=>item.key===key);
+  assert.deepEqual(sharedItem.callerCandidates,perLocaleItem.callerCandidates,
+    'Shared map must preserve existing caller candidates: '+key);
+  assert.equal(sharedItem.evidence,'static-candidate-only-not-runtime-verified');
+}

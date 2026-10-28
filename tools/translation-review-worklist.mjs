@@ -203,6 +203,32 @@ function getStaticCallerCandidates(){
   staticCallerCandidateCache=index;
   return index;
 }
+// A78-312: locale-neutral static caller candidates, not verified UI ownership.
+export function getTranslationSharedCallerCandidates(){
+  const dir=path.join(root,'webui/private/scripts');
+  const files=fs.readdirSync(dir,{withFileTypes:true})
+    .filter(entry=>entry.isFile()&&entry.name.endsWith('.js')&&entry.name!=='i18n.js'&&
+      fs.statSync(path.join(dir,entry.name)).size<=1000000)
+    .map(entry=>'webui/private/scripts/'+entry.name);
+  const sourceFiles=[...files,'webui/private/index.html',
+    'webui/private/data/capabilities.json'].sort().map(file=>({
+      file,sha256:createHash('sha256').update(fs.readFileSync(path.join(root,file))).digest('hex')
+    }));
+  const candidateSourceSha256=createHash('sha256').update(JSON.stringify(sourceFiles)).digest('hex');
+  const index=getStaticCallerCandidates();
+  const items=canonicalEnglishTranslationKeys.map(key=>({
+    key,callerCandidates:index.get(key)||[],
+    evidence:'static-candidate-only-not-runtime-verified'
+  }));
+  const withCandidates=items.filter(item=>item.callerCandidates.length>0).length;
+  return {schemaVersion:1,source:'WeiG-shared-translation-caller-candidates',
+    canonicalEnglishSourceSha256, simplifiedChineseSourceSha256:simplifiedChineseReferenceSha256,
+    candidateSourceSha256,sourceFiles,
+    counts:{canonicalKeys:items.length,withCandidates,withoutCandidates:items.length-withCandidates},
+    verifiedRuntimeOwnerCount:0,independentSemanticReviewRecorded:false,
+    items};
+}
+
 export function getTranslationFullQualityWorklist(locale){
   assert(known.has(locale),'Unknown or already bundled external locale: '+locale);
   const filename=path.join(rootOfExternalLocales,locale+'.json');
@@ -245,18 +271,25 @@ export function getTranslationFullQualityWorklist(locale){
 
 if(process.argv[1]&&path.resolve(process.argv[1])===fileURLToPath(import.meta.url)){
   const localeArg=process.argv.find(arg=>arg.startsWith('--locale='));
-  assert(localeArg,'Usage: node tools/translation-review-worklist.mjs --locale=ca [--limit=30]');
-  const locale=localeArg.slice('--locale='.length);
+  const sharedArg=process.argv.includes('--shared-callers');
+  assert(sharedArg||localeArg,
+    'Usage: --locale=ca [--full|--scope=zh-CN] or --shared-callers [--limit=693]');
+  const locale=localeArg?.slice('--locale='.length);
   const scopeArg=process.argv.find(arg=>arg.startsWith('--scope='));
   assert(!scopeArg||scopeArg==='--scope=zh-CN','Only the Simplified Chinese draft reference scope is supported');
   const fullArg=process.argv.includes('--full');
   assert(!(fullArg&&scopeArg),'--full and --scope are mutually exclusive');
-  const result=fullArg?getTranslationFullQualityWorklist(locale):scopeArg?getTranslationDraftScopeWorklist(locale):getTranslationReviewWorklist(locale);
+  assert(!sharedArg||(!localeArg&&!scopeArg&&!fullArg),
+    'The shared caller map must not depend on a locale, scope or review mode');
+  const result=sharedArg?getTranslationSharedCallerCandidates()
+    :fullArg?getTranslationFullQualityWorklist(locale)
+    :scopeArg?getTranslationDraftScopeWorklist(locale):getTranslationReviewWorklist(locale);
   const limArg=process.argv.find(arg=>arg.startsWith('--limit='));
   const limit=limArg?Number(limArg.split('=')[1]):30;
   assert(Number.isSafeInteger(limit)&&limit>=0&&limit<=canonicalEnglishTranslationKeys.length,'Invalid --limit');
-  console.log(JSON.stringify(fullArg
+  console.log(JSON.stringify(sharedArg
     ?{...result,items:result.items.slice(0,limit)}
+    :fullArg?{...result,items:result.items.slice(0,limit)}
     :scopeArg?{...result,items:result.items.slice(0,limit),work:result.work.slice(0,limit)}
     :{...result,work:result.work.slice(0,limit)},null,2));
 }
