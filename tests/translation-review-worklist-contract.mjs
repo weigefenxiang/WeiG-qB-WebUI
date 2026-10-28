@@ -694,6 +694,17 @@ assert.doesNotMatch(ltgConsent,/Parolis, seansi/u);
 assert.ok(ltgConsent.includes('{source}'));
 assert.equal(latgalian.translationStatus,'draft');
 
+// A78-334: Occitan consent cannot reduce credentials to a password/access code.
+// The other instances warnings deliberately mention passwords/sessions and
+// must not be conflated with the broader allowHint authorization promise.
+const occitan=JSON.parse(fs.readFileSync(new URL('../language-packs/weig-i18n/oc.json',import.meta.url),'utf8'));
+const occitanConsent=occitan.messages['instances.allowHint'];
+assert.match(occitanConsent,/donadas d'autentificacion/u);
+assert.match(occitanConsent,/noms de torrents son pas partejats/u);
+assert.doesNotMatch(occitanConsent,/senhal d'accès|session/u);
+assert.ok(occitanConsent.includes('{source}'));
+assert.equal(occitan.translationStatus,'draft');
+
 // A78-324: qB's official column.name label is distinct from the WeiG-owned
 // desktop/mobile selection aria-label. The latter uses W.t('torrent.name').
 const a78324Components=fs.readFileSync(new URL('../webui/private/scripts/components.js',import.meta.url),'utf8');

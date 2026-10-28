@@ -649,7 +649,7 @@
     "instances.connectTitle": "Connectar l'instància ?",
     "instances.connectHint": "Dobrir {name} dins un onglet separat e demandar la permission de partejar son estat qB actual ?",
     "instances.allowTitle": "Partejar l'estat en temps real ?",
-    "instances.allowHint": "Permetre a {source} de legir l'estat de connexion e lo nombre total de torrents d'aquesta instància ? Cap de senhal d'accès ni nom de torrent serà partejat.",
+    "instances.allowHint": "Permetre a {source} de legir l'estat de connexion e lo nombre total de torrents d'aquesta instància ? Las donadas d'autentificacion e los noms de torrents son pas partejats.",
     "instances.allow": "Autorizar",
     "instances.manage": "Gerir las instàncias",
     "instances.name": "Nom de l'instància",
