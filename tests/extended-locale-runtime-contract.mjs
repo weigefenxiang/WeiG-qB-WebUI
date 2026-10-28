@@ -87,12 +87,16 @@ for(const [locale,overlay] of messagesByLocale){
   for(let i=0;i<6;i++)await Promise.resolve();
   assert.equal(I48.getLocale(),locale,'Current WeiG locale drifted: '+locale);
   assert.equal(fullDocument.documentElement.lang,locale,'Document language was not painted: '+locale);
+  assert.equal(fullDocument.documentElement.dir,['ar','fa','he'].includes(locale)?'rtl':'ltr',
+    'Document writing direction mismatch for extended locale '+locale);
   for(const [key,englishValue] of Object.entries(canonical)){
     const expected=Object.hasOwn(overlay,key)?overlay[key]:englishValue;
     assert.equal(I48.t(key),expected,'WeiG runtime translation or English fallback drift: '+locale+'/'+key);
     checks++;
   }
 }
+I48.applyLocale('en',{reload:false});
+assert.equal(fullDocument.documentElement.dir,'ltr','Returning from RTL to English must restore LTR');
 assert.equal(checks,48*693,'All external canonical slots must be exercised');
 assert.equal(readPaths.filter(value=>value==='data/weig-i18n/extended-manifest.json').length,1,
   '48-locale runtime must coalesce extended inventory load');
