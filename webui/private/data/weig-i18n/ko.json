@@ -482,7 +482,7 @@
     "instances.connectTitle": "인스턴스를 연결할까요?",
     "instances.connectHint": "새 탭에서 {name}을(를) 열고 현재 qB 상태 공유를 요청합니다. 계속할까요?",
     "instances.allowTitle": "실시간 상태를 공유할까요?",
-    "instances.allowHint": "{source}에 이 인스턴스의 온라인 상태와 토렌트 총수를 공유할까요? 비밀번호, 세션 및 토렌트 이름은 공유하지 않습니다.",
+    "instances.allowHint": "{source}에 이 인스턴스의 온라인 상태와 토렌트 총수를 공유할까요? 인증 정보나 토렌트 이름은 공유하지 않습니다.",
     "instances.allow": "허용",
     "instances.manage": "인스턴스 관리",
     "instances.name": "인스턴스 이름",

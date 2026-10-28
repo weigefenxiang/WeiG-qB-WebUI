@@ -1,4 +1,5 @@
 import assert from 'node:assert/strict';
+import fs from 'node:fs';
 import {getTranslationFullQualityWorklist,getTranslationSharedCallerCandidates,getTranslationReviewWorklist,getTranslationDraftScopeWorklist,simplifiedChineseReferenceSha256} from '../tools/translation-review-worklist.mjs';
 import {canonicalEnglishSourceSha256} from '../tools/external-weig-locale-assets.mjs';
 import {expectedExtendedLocales} from '../tools/external-weig-locale-assets.mjs';
@@ -655,4 +656,19 @@ for(const locale of ['ar','az-Latn','bs','ca','el','eo','et','eu','fa','gl','he'
     assert.ok(!work.work.some(item=>item.key===key),
       'Fixed source label must be formal English fallback: '+locale+'/'+key);
   }
+}
+
+// A78-321: consent text must not promise session isolation or narrow all
+// credentials to passwords; this is a static wording gate, not real-qB QA.
+for(const [locale,required,unsupported] of [
+  ['ko',/인증 정보/,/비밀번호|세션/u],
+  ['ru',/Учётные данные для входа/u,/Пароли|сеансы/u],
+  ['zh-TW',/登入憑證/u,/密碼|工作階段/u]
+]){
+  const bundle=JSON.parse(fs.readFileSync(
+    new URL('../webui/private/data/weig-i18n/'+locale+'.json',import.meta.url),'utf8'));
+  const hint=bundle.messages['instances.allowHint'];
+  assert.match(hint,required,'Login credential guarantee is missing in '+locale);
+  assert.doesNotMatch(hint,unsupported,'Unsupported password/session privacy promise in '+locale);
+  assert.ok(hint.includes('{source}'),'Consent source placeholder lost for '+locale);
 }

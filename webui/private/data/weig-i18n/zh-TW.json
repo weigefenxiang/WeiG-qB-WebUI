@@ -657,7 +657,7 @@
     "instances.connectTitle": "連線至實例？",
     "instances.connectHint": "在新分頁開啟{name}，並要求分享目前的 qB 狀態，是否繼續？",
     "instances.allowTitle": "允許分享即時狀態？",
-    "instances.allowHint": "允許向{source}回報本實例的連線狀態和種子總數嗎？不會分享密碼、工作階段或種子名稱。",
+    "instances.allowHint": "允許向{source}回報本實例的連線狀態和種子總數嗎？不會分享登入憑證或種子名稱。",
     "instances.allow": "允許",
     "instances.manage": "管理執行個體",
     "instances.name": "執行個體名稱",
