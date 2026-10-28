@@ -387,7 +387,7 @@ const italianScopeFall=italianScope.items.filter(x=>x.classification!=='localize
 const italianReasons=new Set([...Object.keys(SOURCE_PRESERVED_UI_LABELS),
   ...italianScopeFall,'torrent.eta','torrent.ratio','torrent.tracker']);
 const italianMissing=canonicalEnglishTranslationKeys.filter(key=>!Object.hasOwn(italianAccounted.messages,key));
-assert.equal(italianReasons.size,33);
+assert.equal(italianReasons.size,32);
 assert.deepEqual([...italianReasons].sort(),italianMissing.slice().sort());
 assert.deepEqual(italianAccounted.reviewedEnglishFallbackKeys,italianMissing);
 assert.equal(italianAccounted.englishSourceSha256,canonicalEnglishSourceSha256);
@@ -431,7 +431,7 @@ const fiReasons=new Set([...Object.keys(SOURCE_PRESERVED_UI_LABELS),
   ...fiScope.items.filter(x=>x.classification!=='localized').map(x=>x.key),
   'torrent.eta','torrent.ratio','torrent.tracker']);
 const fiUnstored=canonicalEnglishTranslationKeys.filter(key=>!Object.hasOwn(finnish.messages,key));
-assert.equal(fiReasons.size,27);
+assert.equal(fiReasons.size,26);
 assert.deepEqual([...fiReasons].sort(),fiUnstored.slice().sort());
 assert.deepEqual(finnish.reviewedEnglishFallbackKeys,fiUnstored);
 assert.equal(finnish.englishSourceSha256,canonicalEnglishSourceSha256);
@@ -546,7 +546,7 @@ const plSourceRetained=new Set([...Object.keys(SOURCE_PRESERVED_UI_LABELS),
   ...plScope.items.filter(item=>item.classification!=='localized').map(item=>item.key),
   'torrent.eta','torrent.ratio','torrent.tracker']);
 const plMissing=canonicalEnglishTranslationKeys.filter(k=>!Object.hasOwn(plAccounted.messages,k));
-assert.equal(plSourceRetained.size,27,'Polish fallback set must have evidence');
+assert.equal(plSourceRetained.size,26,'Polish fallback set must have evidence');
 assert.deepEqual([...plSourceRetained].sort(),plMissing.slice().sort());
 assert.deepEqual(plAccounted.reviewedEnglishFallbackKeys,plMissing);
 assert.equal(plAccounted.englishSourceSha256,canonicalEnglishSourceSha256);
@@ -571,8 +571,8 @@ assert.equal(plAccounted.translationStatus,'draft','Fallback provenance does not
 // English technical label) is fallback rather than copied English text.
 // Upstream: qbittorrent/qBittorrent release-5.2.4 src/lang/qbittorrent_{sv,da}.ts.
 for(const [code,expectedCount,terms,extras] of [
-  ['sv',35,{"stats.dhtPeers":"DHT {dht} · Peernoder {peers}","detail.trackers":"Spårare","detail.peers":"Peernoder","detail.seeds":"Distributioner","detail.peersCount":"Peernoder","transfer.dhtPeers":"DHT / Peernoder","capability.privateFilter.title":"Privat / PT","settings.update.channelVirtual":"Virtuell"},["torrent.eta","torrent.ratio","torrent.tracker","settings.about.version"]],
-  ['da',44,{"stats.dhtPeers":"DHT {dht} · Peer-enheder {peers}","detail.trackers":"Trackere","detail.peers":"Modparter","detail.peersCount":"Modparter","transfer.dhtPeers":"DHT / Peer-enheder","capability.privateFilter.title":"Privat / PT","settings.update.channelVirtual":"Virtuel"},["torrent.eta","torrent.ratio","torrent.tracker","detail.seeds","settings.about.version"]]
+  ['sv',34,{"stats.dhtPeers":"DHT {dht} · Peernoder {peers}","detail.trackers":"Spårare","detail.peers":"Peernoder","detail.seeds":"Distributioner","detail.peersCount":"Peernoder","transfer.dhtPeers":"DHT / Peernoder","capability.privateFilter.title":"Privat / PT","settings.update.channelVirtual":"Virtuell"},["torrent.eta","torrent.ratio","torrent.tracker","settings.about.version"]],
+  ['da',43,{"stats.dhtPeers":"DHT {dht} · Peer-enheder {peers}","detail.trackers":"Trackere","detail.peers":"Modparter","detail.peersCount":"Modparter","transfer.dhtPeers":"DHT / Peer-enheder","capability.privateFilter.title":"Privat / PT","settings.update.channelVirtual":"Virtuel"},["torrent.eta","torrent.ratio","torrent.tracker","detail.seeds","settings.about.version"]]
 ]){
   const overlay=JSON.parse(fs.readFileSync(path.join(rootOfExternalLocales,code+'.json'),'utf8'));
   const scope=getTranslationDraftScopeWorklist(code);
@@ -877,3 +877,7 @@ const oldSparseApproved={...valid,translationStatus:'approved',englishSourceSha2
 assert.throws(()=>validateExternalOverlay('ca',oldSparseApproved),/10% English fallback/,'One translated key cannot certify a fully localized package');
 
 assert.throws(()=>validateExternalOverlay('ca',{...valid,messages:{...valid.messages,'logs.ui.normal':'Normal'}}),/duplicates canonical English/,'Drafts must omit intentional English fallback values too');
+
+// A78-332: repaired five stale fallback cardinality fixtures after replacing
+// the WeiG-owned ARIA name English fallback with a real draft translation;
+// official qB column labels remain separately source-owned.
