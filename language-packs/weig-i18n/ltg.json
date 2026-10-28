@@ -87,6 +87,7 @@
     "torrent.forceStart": "Pīspīdu suokt",
     "torrent.recheck": "Pīspīdu puorbaudeit",
     "torrent.reannounce": "Atkuortuot paziņuošonu",
+    "torrent.name": "Nūsaukums",
     "torrent.rename": "Mainēt nūsaukumu",
     "torrent.location": "Nūruodeit vītu",
     "torrent.category": "Nūruodeit kategoreju",

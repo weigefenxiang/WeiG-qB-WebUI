@@ -143,6 +143,7 @@
     "torrent.autoTmm": "Automatinis torrentų valdymas",
     "torrent.top": "Perkelti į viršų",
     "torrent.bottom": "Perkelti į apačią",
+    "torrent.name": "Pavadinimas",
     "torrent.rename": "Pervadinti",
     "torrent.location": "Nustatyti vietą",
     "torrent.category": "Nustatyti kategoriją",

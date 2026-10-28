@@ -111,6 +111,7 @@
     "torrent.autoTmm": "Торрентыг автоматаар удирдах",
     "torrent.top": "Хамгийн дээр зөөх",
     "torrent.bottom": "Хамгийн доор зөөх",
+    "torrent.name": "Нэр",
     "torrent.rename": "Нэр өөрчлөх",
     "torrent.location": "Байршил тохируулах",
     "torrent.category": "Ангилал тохируулах",

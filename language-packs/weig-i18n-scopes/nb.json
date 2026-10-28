@@ -5,13 +5,6 @@
   "englishSourceSha256": "d0d6412654389081013f556747436862ef4c65ec6cc3410c267596055fd88959",
   "simplifiedChineseSourceSha256": "3308d0291779016c84a8acdb1e0a925f9c776bdf04e594d435b2ce4b1143a1aa",
   "decisions": {
-    "torrent.name": {
-      "classification": "qb_owned",
-      "reason": "The locale- and source-version-aware qBittorrent torrent-column owner provides this caption in the table and column picker; WeiG must not duplicate its translated label.",
-      "evidence": "TorrentFieldRegistry FIELDS declares field.key='name' and label(field) invokes qbText('column.'+field.key,fallback).",
-      "ownerFile": "webui/private/scripts/torrent-fields.js",
-      "caller": "label(field) -> qbText('column.'+field.key,fallback), field.key='name'"
-    },
     "torrent.size": {
       "classification": "qb_owned",
       "reason": "The locale- and source-version-aware qBittorrent torrent-column owner provides this caption in the table and column picker; WeiG must not duplicate its translated label.",

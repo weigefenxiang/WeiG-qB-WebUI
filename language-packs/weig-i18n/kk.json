@@ -111,6 +111,7 @@
     "torrent.autoTmm": "Торренттерді автоматты басқару",
     "torrent.top": "Ең жоғарыға жылжыту",
     "torrent.bottom": "Ең төменге жылжыту",
+    "torrent.name": "Атауы",
     "torrent.rename": "Атауын өзгерту",
     "torrent.location": "Орнын орнату",
     "torrent.category": "Санатын орнату",

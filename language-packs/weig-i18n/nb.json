@@ -138,6 +138,7 @@
     "torrent.autoTmm": "Automatisk torrentbehandling",
     "torrent.top": "Flytt øverst",
     "torrent.bottom": "Flytt nederst",
+    "torrent.name": "Navn",
     "torrent.rename": "Gi nytt navn",
     "torrent.location": "Angi plassering",
     "torrent.category": "Angi kategori",

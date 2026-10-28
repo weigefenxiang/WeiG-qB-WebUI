@@ -143,6 +143,7 @@
     "torrent.autoTmm": "Automātiska torrentu pārvaldība",
     "torrent.top": "Pārvietot uz augšu",
     "torrent.bottom": "Pārvietot uz leju",
+    "torrent.name": "Nosaukums",
     "torrent.rename": "Pārdēvēt",
     "torrent.location": "Iestatīt atrašanās vietu",
     "torrent.category": "Iestatīt kategoriju",

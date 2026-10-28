@@ -172,9 +172,9 @@ assert.equal(fiScope.unresolvedKeys,0);
 assert.equal(fiScope.draftScopeComplete,true);
 assert.equal(fiScope.distributionApproved,false,'Draft scope must not imply distribution approval: fiScope');
 const nbScope=getTranslationDraftScopeWorklist('nb');
-assert.equal(nbScope.counts.localized,651);
+assert.equal(nbScope.counts.localized,652);
 assert.equal(nbScope.counts.intentional_english,15);
-assert.equal(nbScope.counts.qb_owned,7);
+assert.equal(nbScope.counts.qb_owned,6);
 assert.equal(nbScope.unresolvedKeys,0);
 assert.equal(nbScope.draftScopeComplete,true);
 assert.equal(nbScope.distributionApproved,false,'Draft scope must not imply distribution approval: nbScope');
@@ -211,9 +211,9 @@ assert.equal(idScope.draftScopeComplete,true);
 assert.equal(idScope.distributionApproved,false,'Draft scope must not imply distribution approval: idScope');
 const msMYScope=getTranslationDraftScopeWorklist('ms-MY');
 assert.equal(msMYScope.referenceKeys,673);
-assert.equal(msMYScope.counts.localized,652);
+assert.equal(msMYScope.counts.localized,653);
 assert.equal(msMYScope.counts.intentional_english,14);
-assert.equal(msMYScope.counts.qb_owned,7);
+assert.equal(msMYScope.counts.qb_owned,6);
 assert.equal(msMYScope.unresolvedKeys,0);
 assert.equal(msMYScope.draftScopeComplete,true);
 assert.equal(msMYScope.distributionApproved,false,'Draft scope must not imply distribution approval: msMYScope');
@@ -235,9 +235,9 @@ assert.equal(azLatnScope.draftScopeComplete,true);
 assert.equal(azLatnScope.distributionApproved,false,'Draft scope must not imply distribution approval: azLatnScope');
 const ltScope=getTranslationDraftScopeWorklist('lt');
 assert.equal(ltScope.referenceKeys,673);
-assert.equal(ltScope.counts.localized,658);
+assert.equal(ltScope.counts.localized,659);
 assert.equal(ltScope.counts.intentional_english,8);
-assert.equal(ltScope.counts.qb_owned,7);
+assert.equal(ltScope.counts.qb_owned,6);
 assert.equal(ltScope.unresolvedKeys,0);
 assert.equal(ltScope.draftScopeComplete,true);
 assert.equal(ltScope.distributionApproved,false,'Draft scope must not imply distribution approval: ltScope');
@@ -399,9 +399,9 @@ assert.equal(basqueScope.distributionApproved,false,'Draft scope must not imply 
 const latgalianScope=getTranslationDraftScopeWorklist('ltg');
 assert.equal(latgalianScope.referenceKeys,673);
 assert.equal(latgalianScope.canonicalEnglishKeys,693);
-assert.equal(latgalianScope.counts.localized,656);
+assert.equal(latgalianScope.counts.localized,657);
 assert.equal(latgalianScope.counts.intentional_english,10);
-assert.equal(latgalianScope.counts.qb_owned,7);
+assert.equal(latgalianScope.counts.qb_owned,6);
 assert.equal(latgalianScope.unresolvedKeys,0);
 assert.equal(latgalianScope.draftScopeComplete,true);
 assert.equal(latgalianScope.distributionApproved,false,'Draft scope must not imply distribution approval: latgalianScope');
@@ -701,7 +701,7 @@ assert.ok(a78324Components.includes("T('torrent.name')+': '"),'WeiG selection AR
 assert.ok(a78324Components.includes('paintSelectionHit(row.querySelector'), 'Mobile ARIA rebind missing');
 assert.ok(a78324Components.includes('paintSelectionHit(name.querySelector'), 'Desktop ARIA rebind missing');
 assert.ok(a78324Fields.includes("qbText('column.'+field.key,fallback)"),'Official qB column Copy owner changed');
-for(const locale of ['ar','bs','ca','eo','et','fa','gl','he','el','eu','hi-IN','hr','hu','hy','is','ka']){
+for(const locale of ['ar','bs','ca','eo','et','fa','gl','he','el','eu','hi-IN','hr','hu','hy','is','ka','kk','lt','ltg','lv-LV','mn-MN','ms-MY','nb','ne-NP']){
   const overlay=JSON.parse(fs.readFileSync(new URL('../language-packs/weig-i18n/'+locale+'.json',import.meta.url),'utf8'));
   const scope=getTranslationDraftScopeWorklist(locale);
   assert.ok(overlay.messages['torrent.name']&&overlay.messages['torrent.name']!=='Name',
