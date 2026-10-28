@@ -21,8 +21,11 @@ assert.ok(deferredBytes>150000,'route sharding must defer at least 150 KiB of Se
 assert.ok(startupBytes<=Math.floor(baseline.initialJsBytes*.70),`Startup JavaScript budget regressed: ${startupBytes} > 70% of historical baseline ${baseline.initialJsBytes}`);
 assert.ok(i18nBytes<=Math.floor(baseline.i18nBytes*.25),`I18n core budget regressed: ${i18nBytes} > 25% of historical baseline ${baseline.i18nBytes}`);
 
-const localeDir=path.join(privateRoot,'data/weig-i18n'),localeFiles=fs.readdirSync(localeDir).filter(name=>name.endsWith('.json')).sort(),expected=['de','es','fr','ja','ko','pt','ru','zh-CN','zh-HK','zh-TW'].map(x=>x+'.json').sort();
+const localeDir=path.join(privateRoot,'data/weig-i18n'),localeFiles=fs.readdirSync(localeDir).filter(name=>name.endsWith('.json')&&name!=='extended-manifest.json').sort(),expected=['de','es','fr','ja','ko','pt','ru','zh-CN','zh-HK','zh-TW'].map(x=>x+'.json').sort();
 assert.deepEqual(localeFiles,expected);
+const rawInventory=JSON.parse(fs.readFileSync(path.join(localeDir,'extended-manifest.json'),'utf8'));
+assert.deepEqual(rawInventory,{schemaVersion:1,source:'WeiG-extended-locale-inventory',locales:[]},
+  'Raw Pages WebUI must provide the optional empty manifest; only actual language shards count toward the locale budget');
 const localeBytes=localeFiles.reduce((sum,name)=>sum+fs.statSync(path.join(localeDir,name)).size,0),maxLocaleBytes=Math.max(...localeFiles.map(name=>fs.statSync(path.join(localeDir,name)).size));
 assert.ok(maxLocaleBytes<64*1024,'one WeiG locale overlay became too large');
 assert.ok(fs.statSync(path.join(localeDir,'zh-HK.json')).size<8*1024,'Hong Kong differences must remain sparse; never duplicate the Taiwan locale');
