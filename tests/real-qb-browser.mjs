@@ -238,6 +238,27 @@ async function main(){
       assert(resource.kind==='css'?/text\/css/i.test(resource.mime):/(?:java|ecma)script/i.test(resource.mime),
         'Real qB static file '+resource.relative+' has invalid '+resource.kind+' MIME: '+resource.mime);
     }
+    // A78-348: qB's real Alternative WebUI server must expose the same
+    // reviewed-only inventory contract as the materialized installer ZIP.
+    // This is static hosting proof, not an approval of the 48 draft overlays.
+    const localeInventory=await page.evaluate(async exactSha=>{
+      const url=new URL('data/weig-i18n/extended-manifest.json',location.href);
+      url.searchParams.set('v',exactSha);
+      const response=await fetch(url,{cache:'no-store',credentials:'same-origin'});
+      let value=null;
+      if(response.ok)try{value=await response.json();}catch(_e){}
+      return{status:response.status,type:response.headers.get('content-type')||'',value};
+    },weigSha);
+    assert(localeInventory.status===200,'Real qB Alternative WebUI did not host the optional language inventory (HTTP '+localeInventory.status+')');
+    assert(/json/i.test(localeInventory.type),'Real qB optional inventory MIME must be JSON: '+localeInventory.type);
+    assert(localeInventory.value?.schemaVersion===1&&localeInventory.value?.source==='WeiG-extended-locale-inventory'&&
+      Array.isArray(localeInventory.value.locales)&&localeInventory.value.locales.length===0,
+      'Standard real qB distribution must serve an empty extension manifest, never 48 unapproved draft languages');
+    ev.push('PASS','real-qb-optional-locale-inventory',{
+      response:{status:localeInventory.status,mime:localeInventory.type,extendedLocaleCount:0},
+      exact_sha:weigSha,hosting:'real qB Alternative WebUI materialized standard distribution'
+    });
+
     ev.push('PASS','real-qb-materialized-assets',{
       build_sha:weigSha,css:stagedAssets.css.length,js:stagedAssets.js.length+1,
       total_css_js_requests:stagedAssets.css.length+stagedAssets.js.length+1,
