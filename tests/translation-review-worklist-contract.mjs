@@ -267,26 +267,26 @@ assert.equal(icelandicScope.draftScopeComplete,true);
 assert.equal(icelandicScope.distributionApproved,false,'Draft scope must not imply distribution approval: icelandicScope');
 const latvianScope=getTranslationDraftScopeWorklist('lv-LV');
 assert.equal(latvianScope.referenceKeys,673);
-assert.equal(latvianScope.counts.localized,658);
+assert.equal(latvianScope.counts.localized,659);
 assert.equal(latvianScope.counts.intentional_english,8);
-assert.equal(latvianScope.counts.qb_owned,7);
+assert.equal(latvianScope.counts.qb_owned,6);
 assert.equal(latvianScope.unresolvedKeys,0);
 assert.equal(latvianScope.draftScopeComplete,true);
 assert.equal(latvianScope.distributionApproved,false,'Draft scope must not imply distribution approval: latvianScope');
 const galicianScope=getTranslationDraftScopeWorklist('gl');
 assert.equal(galicianScope.referenceKeys,673);
-assert.equal(galicianScope.counts.localized,650);
+assert.equal(galicianScope.counts.localized,651);
 assert.equal(galicianScope.counts.intentional_english,16);
-assert.equal(galicianScope.counts.qb_owned,7);
+assert.equal(galicianScope.counts.qb_owned,6);
 assert.equal(galicianScope.unresolvedKeys,0);
 assert.equal(galicianScope.draftScopeComplete,true);
 assert.equal(galicianScope.distributionApproved,false,'Draft scope must not imply distribution approval: galicianScope');
 const esperantoScope=getTranslationDraftScopeWorklist('eo');
 assert.equal(esperantoScope.referenceKeys,673);
 assert.equal(esperantoScope.canonicalEnglishKeys,693);
-assert.equal(esperantoScope.counts.localized,658);
+assert.equal(esperantoScope.counts.localized,659);
 assert.equal(esperantoScope.counts.intentional_english,8);
-assert.equal(esperantoScope.counts.qb_owned,7);
+assert.equal(esperantoScope.counts.qb_owned,6);
 assert.equal(esperantoScope.unresolvedKeys,0);
 assert.equal(esperantoScope.draftScopeComplete,true);
 assert.equal(esperantoScope.distributionApproved,false,'Draft scope must not imply distribution approval: esperantoScope');
@@ -311,27 +311,27 @@ assert.equal(uzbekScope.distributionApproved,false,'Draft scope must not imply d
 const hindiScope=getTranslationDraftScopeWorklist('hi-IN');
 assert.equal(hindiScope.referenceKeys,673);
 assert.equal(hindiScope.canonicalEnglishKeys,693);
-assert.equal(hindiScope.counts.localized,657);
+assert.equal(hindiScope.counts.localized,658);
 assert.equal(hindiScope.counts.intentional_english,9);
-assert.equal(hindiScope.counts.qb_owned,7);
+assert.equal(hindiScope.counts.qb_owned,6);
 assert.equal(hindiScope.unresolvedKeys,0);
 assert.equal(hindiScope.draftScopeComplete,true);
 assert.equal(hindiScope.distributionApproved,false,'Draft scope must not imply distribution approval: hindiScope');
 const nepaliScope=getTranslationDraftScopeWorklist('ne-NP');
 assert.equal(nepaliScope.referenceKeys,673);
 assert.equal(nepaliScope.canonicalEnglishKeys,693);
-assert.equal(nepaliScope.counts.localized,657);
+assert.equal(nepaliScope.counts.localized,658);
 assert.equal(nepaliScope.counts.intentional_english,9);
-assert.equal(nepaliScope.counts.qb_owned,7);
+assert.equal(nepaliScope.counts.qb_owned,6);
 assert.equal(nepaliScope.unresolvedKeys,0);
 assert.equal(nepaliScope.draftScopeComplete,true);
 assert.equal(nepaliScope.distributionApproved,false,'Draft scope must not imply distribution approval: nepaliScope');
 const greekScope=getTranslationDraftScopeWorklist('el');
 assert.equal(greekScope.referenceKeys,673);
 assert.equal(greekScope.canonicalEnglishKeys,693);
-assert.equal(greekScope.counts.localized,656);
+assert.equal(greekScope.counts.localized,657);
 assert.equal(greekScope.counts.intentional_english,10);
-assert.equal(greekScope.counts.qb_owned,7);
+assert.equal(greekScope.counts.qb_owned,6);
 assert.equal(greekScope.unresolvedKeys,0);
 assert.equal(greekScope.draftScopeComplete,true);
 assert.equal(greekScope.distributionApproved,false,'Draft scope must not imply distribution approval: greekScope');
@@ -339,9 +339,9 @@ assert.equal(greekScope.distributionApproved,false,'Draft scope must not imply d
 const georgianScope=getTranslationDraftScopeWorklist('ka');
 assert.equal(georgianScope.referenceKeys,673);
 assert.equal(georgianScope.canonicalEnglishKeys,693);
-assert.equal(georgianScope.counts.localized,656);
+assert.equal(georgianScope.counts.localized,657);
 assert.equal(georgianScope.counts.intentional_english,10);
-assert.equal(georgianScope.counts.qb_owned,7);
+assert.equal(georgianScope.counts.qb_owned,6);
 assert.equal(georgianScope.unresolvedKeys,0);
 assert.equal(georgianScope.draftScopeComplete,true);
 assert.equal(georgianScope.distributionApproved,false,'Draft scope must not imply distribution approval: georgianScope');
@@ -349,9 +349,9 @@ assert.equal(georgianScope.distributionApproved,false,'Draft scope must not impl
 const kazakhScope=getTranslationDraftScopeWorklist('kk');
 assert.equal(kazakhScope.referenceKeys,673);
 assert.equal(kazakhScope.canonicalEnglishKeys,693);
-assert.equal(kazakhScope.counts.localized,656);
+assert.equal(kazakhScope.counts.localized,657);
 assert.equal(kazakhScope.counts.intentional_english,10);
-assert.equal(kazakhScope.counts.qb_owned,7);
+assert.equal(kazakhScope.counts.qb_owned,6);
 assert.equal(kazakhScope.unresolvedKeys,0);
 assert.equal(kazakhScope.draftScopeComplete,true);
 assert.equal(kazakhScope.distributionApproved,false,'Draft scope must not imply distribution approval: kazakhScope');
@@ -359,9 +359,9 @@ assert.equal(kazakhScope.distributionApproved,false,'Draft scope must not imply 
 const mongolianScope=getTranslationDraftScopeWorklist('mn-MN');
 assert.equal(mongolianScope.referenceKeys,673);
 assert.equal(mongolianScope.canonicalEnglishKeys,693);
-assert.equal(mongolianScope.counts.localized,656);
+assert.equal(mongolianScope.counts.localized,657);
 assert.equal(mongolianScope.counts.intentional_english,10);
-assert.equal(mongolianScope.counts.qb_owned,7);
+assert.equal(mongolianScope.counts.qb_owned,6);
 assert.equal(mongolianScope.unresolvedKeys,0);
 assert.equal(mongolianScope.draftScopeComplete,true);
 assert.equal(mongolianScope.distributionApproved,false,'Draft scope must not imply distribution approval: mongolianScope');
@@ -369,9 +369,9 @@ assert.equal(mongolianScope.distributionApproved,false,'Draft scope must not imp
 const armenianScope=getTranslationDraftScopeWorklist('hy');
 assert.equal(armenianScope.referenceKeys,673);
 assert.equal(armenianScope.canonicalEnglishKeys,693);
-assert.equal(armenianScope.counts.localized,656);
+assert.equal(armenianScope.counts.localized,657);
 assert.equal(armenianScope.counts.intentional_english,10);
-assert.equal(armenianScope.counts.qb_owned,7);
+assert.equal(armenianScope.counts.qb_owned,6);
 assert.equal(armenianScope.unresolvedKeys,0);
 assert.equal(armenianScope.draftScopeComplete,true);
 assert.equal(armenianScope.distributionApproved,false,'Draft scope must not imply distribution approval: armenianScope');
@@ -389,9 +389,9 @@ assert.equal(occitanScope.distributionApproved,false,'Draft scope must not imply
 const basqueScope=getTranslationDraftScopeWorklist('eu');
 assert.equal(basqueScope.referenceKeys,673);
 assert.equal(basqueScope.canonicalEnglishKeys,693);
-assert.equal(basqueScope.counts.localized,656);
+assert.equal(basqueScope.counts.localized,657);
 assert.equal(basqueScope.counts.intentional_english,10);
-assert.equal(basqueScope.counts.qb_owned,7);
+assert.equal(basqueScope.counts.qb_owned,6);
 assert.equal(basqueScope.unresolvedKeys,0);
 assert.equal(basqueScope.draftScopeComplete,true);
 assert.equal(basqueScope.distributionApproved,false,'Draft scope must not imply distribution approval: basqueScope');
@@ -409,9 +409,9 @@ assert.equal(latgalianScope.distributionApproved,false,'Draft scope must not imp
 const arabicScope=getTranslationDraftScopeWorklist('ar');
 assert.equal(arabicScope.referenceKeys,673);
 assert.equal(arabicScope.canonicalEnglishKeys,693);
-assert.equal(arabicScope.counts.localized,656);
+assert.equal(arabicScope.counts.localized,657);
 assert.equal(arabicScope.counts.intentional_english,10);
-assert.equal(arabicScope.counts.qb_owned,7);
+assert.equal(arabicScope.counts.qb_owned,6);
 assert.equal(arabicScope.unresolvedKeys,0);
 assert.equal(arabicScope.draftScopeComplete,true);
 assert.equal(arabicScope.distributionApproved,false,'Draft scope must not imply distribution approval: arabicScope');
@@ -419,9 +419,9 @@ assert.equal(arabicScope.distributionApproved,false,'Draft scope must not imply 
 const persianScope=getTranslationDraftScopeWorklist('fa');
 assert.equal(persianScope.referenceKeys,673);
 assert.equal(persianScope.canonicalEnglishKeys,693);
-assert.equal(persianScope.counts.localized,656);
+assert.equal(persianScope.counts.localized,657);
 assert.equal(persianScope.counts.intentional_english,10);
-assert.equal(persianScope.counts.qb_owned,7);
+assert.equal(persianScope.counts.qb_owned,6);
 assert.equal(persianScope.unresolvedKeys,0);
 assert.equal(persianScope.draftScopeComplete,true);
 assert.equal(persianScope.distributionApproved,false,'Draft scope must not imply distribution approval: persianScope');
@@ -429,9 +429,9 @@ assert.equal(persianScope.distributionApproved,false,'Draft scope must not imply
 const hebrewScope=getTranslationDraftScopeWorklist('he');
 assert.equal(hebrewScope.referenceKeys,673);
 assert.equal(hebrewScope.canonicalEnglishKeys,693);
-assert.equal(hebrewScope.counts.localized,656);
+assert.equal(hebrewScope.counts.localized,657);
 assert.equal(hebrewScope.counts.intentional_english,10);
-assert.equal(hebrewScope.counts.qb_owned,7);
+assert.equal(hebrewScope.counts.qb_owned,6);
 assert.equal(hebrewScope.unresolvedKeys,0);
 assert.equal(hebrewScope.draftScopeComplete,true);
 assert.equal(hebrewScope.distributionApproved,false,'Draft scope must not imply distribution approval: hebrewScope');
@@ -715,3 +715,7 @@ for(const locale of ['ar','bs','ca','eo','et','fa','gl','he','el','eu','hi-IN','
 
 // A78-326: repair the A78-324 smoke fixture count drift on the latest
 // cumulative A78-325 tree; source-based classifications remain draft-only.
+
+// A78-328: repair all remaining stale scope-count fixtures discovered by
+// A78-326 Core smoke; on top of preserved A78-327 translations. A static
+// candidate is still not owner-verified language QA.
