@@ -645,8 +645,29 @@ try{
       a74Geometry.perfDisplay==='grid'&&a74Geometry.columns===expectedColumns&&!a74Geometry.perfOverflow,
       'A74 live responsive stats/performance layout at '+width+'px: '+JSON.stringify(a74Geometry));
   }
+  // A78-340: real Chrome RTL/LTR root direction and shell geometry across mobile/desktop.
+  // Standard Pages intentionally excludes the 48 draft dictionaries; this tests direction,
+  // NOT the full translated visual layout or 693-key semantic quality.
+  for(const width of [390,1280]){
+    await page.setViewportSize({width,height:844});
+    for(const locale of ['ar','fa','he','en','zh-CN']){
+      await page.evaluate(value=>window.WeiG.I18n.applyLocale(value,{reload:false}),locale);
+      const wanted=['ar','fa','he'].includes(locale)?'rtl':'ltr';
+      await page.waitForFunction(({locale,wanted})=>document.documentElement.lang===locale&&
+        document.documentElement.dir===wanted&&getComputedStyle(document.documentElement).direction===wanted,
+        {locale,wanted},{timeout:20000});
+      const proof=await page.evaluate(()=>{
+        const root=document.documentElement,app=document.getElementById('app'),r=app&&app.getBoundingClientRect();
+        return{lang:root.lang,dir:root.dir,computed:getComputedStyle(root).direction,
+          shellWidth:r?.width||0,viewport:innerWidth,appVisibility:app?getComputedStyle(app).visibility:'missing'};
+      });
+      assert.ok(proof.shellWidth>0&&proof.appVisibility==='visible',
+        'RTL/LTR browser switch must preserve visible UI shell: '+JSON.stringify(proof));
+      assert.equal(proof.dir,wanted,'RTL/LTR direction drifted at '+width+'px '+locale);
+    }
+  }
   await page.setViewportSize({width:360,height:844});
-  assert.deepEqual(errors,[],`deployed mobile layout produced browser errors: ${errors.join('\n')}`);
+  assert.deepEqual(errors,[],`deployed mobile layout produced browser errors: ${errors.join('\\n')}`);
   await context.close();
   console.log(`Virtual qB Pages mobile layout acceptance passed for ${expectedSha}: stacked progress, single-line pager/actions, RSS header actions + Add Feed dialog, Header-owned Logs search layout, a single-row source-derived Settings rail, and a Drawer with fixed telemetry plus hidden mobile version metadata.`);
 } finally {
