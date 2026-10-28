@@ -52,3 +52,22 @@ for(const record of report.records){
   if(record.overlayStatus==='draft'||record.overlayStatus==='approved')assert.ok(record.locale,'External locale must have canonical slug');
 }
 console.log('Official locale progress contract passed:',JSON.stringify({readmes:report.readmes,extended:report.extendedOverlays}));
+
+// A78-319: separate 673-key Simplified Chinese reference scope from the
+// 20 English-only keys. A fallback classification is not semantic QA approval.
+assert.deepEqual(report.referenceScope,{
+  canonicalEnglishKeys:693,simplifiedChineseKeys:673,englishOnlyKeys:20,
+  sourcePreservedEnglishOnly:8,contextualEnglishOnly:12
+});
+const breakdown=ledger.unreviewedByReference;
+assert.equal(breakdown.withSimplifiedChinese+breakdown.sourcePreservedEnglish+
+  breakdown.contextualEnglishOnly,ledger.unreviewed);
+// All 48 drafts now formally account for the eight source-preserved labels.
+assert.equal(breakdown.sourcePreservedEnglish,0);
+for(const record of externalRecords){
+  const b=record.translationKeys.unreviewedByReference;
+  assert.equal(b.withSimplifiedChinese+b.sourcePreservedEnglish+b.contextualEnglishOnly,
+    record.translationKeys.unreviewed);
+  assert.ok(b.contextualEnglishOnly<=12,'Only 12 English-only keys need contextual locale decisions');
+  assert.equal(b.sourcePreservedEnglish,0);
+}
