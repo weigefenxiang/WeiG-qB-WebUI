@@ -1,4 +1,7 @@
 import assert from 'node:assert/strict';
+import fs from 'node:fs';
+import path from 'node:path';
+import {fileURLToPath} from 'node:url';
 import {launchBrowser} from './browser-driver.mjs';
 import {recoverPageSession} from './pages-live-session.mjs';
 
@@ -669,6 +672,76 @@ try{
   await page.setViewportSize({width:360,height:844});
   assert.deepEqual(errors,[],`deployed mobile layout produced browser errors: ${errors.join('\\n')}`);
   await context.close();
+
+  // A78-341: Test 48 REAL draft sources in Chrome without changing the
+  // production standard archive or fabricating translationStatus=approved.
+  // These are QA-only Playwright HTTP route fixtures, not published language assets.
+  const draftSourceDir=path.resolve(path.dirname(fileURLToPath(import.meta.url)),'../language-packs/weig-i18n');
+  const sourcePackNames=fs.readdirSync(draftSourceDir).filter(name=>name.endsWith('.json')).sort();
+  assert.equal(sourcePackNames.length,48,'Chrome draft QA requires exactly 48 external locale source files');
+  const sourcePacks=new Map(sourcePackNames.map(name=>{
+    const text=fs.readFileSync(path.join(draftSourceDir,name),'utf8');
+    const data=JSON.parse(text),locale=name.slice(0,-5);
+    assert.equal(data.locale,locale);
+    assert.equal(data.translationStatus,'draft','Draft Chrome QA must not rely on approved translation status');
+    return[locale,{text,messages:data.messages}];
+  }));
+  const qaContext=await browser.newContext({viewport:{width:390,height:844},locale:'en-US'});
+  try{
+    const qaPage=await qaContext.newPage(),qaErrors=[];
+    qaPage.on('pageerror',error=>qaErrors.push(error?.stack||error?.message||String(error)));
+    let injectedShards=0;
+    await qaPage.route(/\/data\/weig-i18n\/[^/?]+\.json(?:\?|$)/,route=>{
+      const resource=new URL(route.request().url()).pathname.split('/').pop();
+      if(resource==='extended-manifest.json')return route.fulfill({
+        status:200,contentType:'application/json',
+        body:JSON.stringify({schemaVersion:1,source:'WeiG-extended-locale-inventory',locales:[...sourcePacks.keys()]})
+      });
+      const target=resource.replace(/\.json$/,'');
+      if(!sourcePacks.has(target))return route.continue();
+      injectedShards++;
+      return route.fulfill({status:200,contentType:'application/json',body:sourcePacks.get(target).text});
+    });
+    const sim='pages-locale-draft-qa-'+Date.now();
+    const url=new URL('dev/app/',base);
+    url.search=new URLSearchParams({sim,qb:'5.2.3',count:'20',scenario:'mixed',seed:'A78-341-locale-draft-qa'}).toString();
+    await recoverPageSession(qaPage,{
+      label:'Pages 48-draft QA '+sim,qbVersion:'5.2.3',timeoutMs:sessionTimeoutMs,
+      navigate:async attempt=>{
+        const target=new URL(url);
+        target.searchParams.set('__weig_session_attempt',String(attempt));
+        await qaPage.goto(target.toString(),{waitUntil:'domcontentloaded',timeout:sessionTimeoutMs});
+      },
+      onLogin:async()=>{await qaPage.locator('#login-btn').click();}
+    });
+    await qaPage.waitForFunction(()=>window.WeiG?.SessionController?.readLocaleBootstrap?.()?.initialized===true,
+      null,{timeout:30000});
+    let checked=0;
+    for(const width of [390,1280]){
+      await qaPage.setViewportSize({width,height:844});
+      for(const [locale,pack] of sourcePacks){
+        const expected=pack.messages['nav.torrents']||'Torrents';
+        const direction=['ar','fa','he'].includes(locale)?'rtl':'ltr';
+        await qaPage.evaluate(code=>window.WeiG.I18n.applyLocale(code,{reload:false}),locale);
+        await qaPage.waitForFunction(({locale,expected,direction})=>{
+          const html=document.documentElement,nav=document.querySelector('[data-i18n="nav.torrents"]');
+          return html.lang===locale&&html.dir===direction&&
+            getComputedStyle(html).direction===direction&&nav?.textContent===expected;
+        },{locale,expected,direction},{timeout:20000});
+        assert.equal(await qaPage.locator('#app').isVisible(),true,
+          'QA-only external draft must preserve visible app at '+width+'px '+locale);
+        checked++;
+      }
+    }
+    assert.equal(checked,96,'Every external source draft must project into Chrome on mobile and desktop');
+    assert.equal(injectedShards,48,'Every external source draft must load through its real W.I18n asset path exactly once');
+    assert.deepEqual(qaErrors,[],'QA-only draft Chrome browser errors: '+qaErrors.join('\n'));
+    console.log('QA-only Chrome 48 draft source overlays PASS: '+checked+
+      ' locale × viewport nav/RTL DOM checks, without publishing draft assets. Semantic/naturalness QA remains pending.');
+  }finally{
+    await qaContext.close();
+  }
+
   console.log(`Virtual qB Pages mobile layout acceptance passed for ${expectedSha}: stacked progress, single-line pager/actions, RSS header actions + Add Feed dialog, Header-owned Logs search layout, a single-row source-derived Settings rail, and a Drawer with fixed telemetry plus hidden mobile version metadata.`);
 } finally {
   await browser.close();
