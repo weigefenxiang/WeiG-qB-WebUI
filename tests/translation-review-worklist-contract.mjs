@@ -643,3 +643,16 @@ for(const key of ['torrent.eta','torrent.ratio','settings.about.version','settin
   assert.equal(exceptions.find(item=>item.key===key)?.classification,'target-locale-context-review-required');
 }
 assert.equal(sharedCallers.verifiedRuntimeOwnerCount,0);
+
+// A78-314: the 8 source-preserved English labels are explicitly accounted
+// in six existing drafts; no automatic full-locale or semantic QA approval.
+for(const locale of ['ar','az-Latn','bs','ca','el','eo']){
+  const work=getTranslationReviewWorklist(locale);
+  assert.equal(work.status,'draft');
+  assert.ok(work.reviewedEnglishFallbackCount>=8);
+  for(const key of ['nav.rss','rss.title','capability.rss.title','settings.weig.title',
+    'language.en','language.zh-CN','language.ja','language.ko']){
+    assert.ok(!work.work.some(item=>item.key===key),
+      'Fixed source label must be formal English fallback: '+locale+'/'+key);
+  }
+}
