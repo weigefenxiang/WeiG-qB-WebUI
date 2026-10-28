@@ -20,6 +20,11 @@ on:
         required: false
         default: false
         type: boolean
+      allow_dev_release_mutation:
+        description: Explicitly authorize updating existing dev-A78 prerelease tag and assets
+        required: false
+        default: false
+        type: boolean
 
 permissions:
   actions: read
@@ -370,7 +375,9 @@ jobs:
   publish_dev_stage:
     name: Publish rolling Dev stage after verification
     needs: [build, deploy, verify]
-    if: ${{ always() && github.ref_name == 'dev' && needs.build.result == 'success' && needs.verify.result == 'success' && (needs.deploy.result == 'success' || needs.build.outputs.reuse_deployed == 'true') }}
+    # Pages validation does not authorize GitHub Release or tag mutation.
+    # Normal source-relay dispatch omits this opt-in and must leave dev-A78 untouched.
+    if: ${{ always() && inputs.allow_dev_release_mutation == true && github.ref_name == 'dev' && needs.build.result == 'success' && needs.verify.result == 'success' && (needs.deploy.result == 'success' || needs.build.outputs.reuse_deployed == 'true') }}
     runs-on: ubuntu-latest
     permissions:
       contents: write
