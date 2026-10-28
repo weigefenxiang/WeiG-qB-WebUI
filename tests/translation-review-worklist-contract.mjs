@@ -243,25 +243,25 @@ assert.equal(ltScope.draftScopeComplete,true);
 assert.equal(ltScope.distributionApproved,false,'Draft scope must not imply distribution approval: ltScope');
 const estonianScope=getTranslationDraftScopeWorklist('et');
 assert.equal(estonianScope.referenceKeys,673);
-assert.equal(estonianScope.counts.localized,657);
+assert.equal(estonianScope.counts.localized,658);
 assert.equal(estonianScope.counts.intentional_english,9);
-assert.equal(estonianScope.counts.qb_owned,7);
+assert.equal(estonianScope.counts.qb_owned,6);
 assert.equal(estonianScope.unresolvedKeys,0);
 assert.equal(estonianScope.draftScopeComplete,true);
 assert.equal(estonianScope.distributionApproved,false,'Draft scope must not imply distribution approval: estonianScope');
 const hungarianScope=getTranslationDraftScopeWorklist('hu');
 assert.equal(hungarianScope.referenceKeys,673);
-assert.equal(hungarianScope.counts.localized,657);
+assert.equal(hungarianScope.counts.localized,658);
 assert.equal(hungarianScope.counts.intentional_english,9);
-assert.equal(hungarianScope.counts.qb_owned,7);
+assert.equal(hungarianScope.counts.qb_owned,6);
 assert.equal(hungarianScope.unresolvedKeys,0);
 assert.equal(hungarianScope.draftScopeComplete,true);
 assert.equal(hungarianScope.distributionApproved,false,'Draft scope must not imply distribution approval: hungarianScope');
 const icelandicScope=getTranslationDraftScopeWorklist('is');
 assert.equal(icelandicScope.referenceKeys,673);
-assert.equal(icelandicScope.counts.localized,657);
+assert.equal(icelandicScope.counts.localized,658);
 assert.equal(icelandicScope.counts.intentional_english,9);
-assert.equal(icelandicScope.counts.qb_owned,7);
+assert.equal(icelandicScope.counts.qb_owned,6);
 assert.equal(icelandicScope.unresolvedKeys,0);
 assert.equal(icelandicScope.draftScopeComplete,true);
 assert.equal(icelandicScope.distributionApproved,false,'Draft scope must not imply distribution approval: icelandicScope');
@@ -712,3 +712,6 @@ for(const locale of ['ar','bs','ca','eo','et','fa','gl','he','el','eu','hi-IN','
 
 // A78-325: the second eight draft locales also use the WeiG-owned ARIA
 // translation. The same source-owner assertion above protects qB Copy separation.
+
+// A78-326: repair the A78-324 smoke fixture count drift on the latest
+// cumulative A78-325 tree; source-based classifications remain draft-only.
