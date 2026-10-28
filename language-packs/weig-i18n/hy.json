@@ -3,6 +3,17 @@
   "source": "WeiG-runtime-locale-overlay",
   "locale": "hy",
   "translationStatus": "draft",
+  "englishSourceSha256": "d0d6412654389081013f556747436862ef4c65ec6cc3410c267596055fd88959",
+  "reviewedEnglishFallbackKeys": [
+    "nav.rss",
+    "rss.title",
+    "capability.rss.title",
+    "settings.weig.title",
+    "language.en",
+    "language.zh-CN",
+    "language.ja",
+    "language.ko"
+  ],
   "messages": {
     "app.skip": "Անցնել տոռենտների ցանկին",
     "app.back": "Հետ",

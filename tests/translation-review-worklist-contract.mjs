@@ -646,7 +646,7 @@ assert.equal(sharedCallers.verifiedRuntimeOwnerCount,0);
 
 // A78-314: the 8 source-preserved English labels are explicitly accounted
 // in six existing drafts; no automatic full-locale or semantic QA approval.
-for(const locale of ['ar','az-Latn','bs','ca','el','eo','et','eu','fa','gl','he','hi-IN','hr','hu']){
+for(const locale of ['ar','az-Latn','bs','ca','el','eo','et','eu','fa','gl','he','hi-IN','hr','hu','hy','id','is','ka','kk','lt','ltg','lv-LV']){
   const work=getTranslationReviewWorklist(locale);
   assert.equal(work.status,'draft');
   assert.ok(work.reviewedEnglishFallbackCount>=8);
