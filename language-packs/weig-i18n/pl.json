@@ -7,7 +7,6 @@
   "reviewedEnglishFallbackKeys": [
     "nav.rss",
     "rss.title",
-    "torrent.name",
     "torrent.size",
     "torrent.progress",
     "torrent.download",
@@ -161,6 +160,7 @@
     "torrent.autoTmm": "Automatyczne zarządzanie torrentami",
     "torrent.top": "Przenieś na górę",
     "torrent.bottom": "Przenieś na dół",
+    "torrent.name": "Nazwa",
     "torrent.rename": "Zmień nazwę",
     "torrent.location": "Ustaw lokalizację",
     "torrent.category": "Ustaw kategorię",
