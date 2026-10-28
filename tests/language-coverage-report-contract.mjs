@@ -71,3 +71,16 @@ for(const record of externalRecords){
   assert.ok(b.contextualEnglishOnly<=12,'Only 12 English-only keys need contextual locale decisions');
   assert.equal(b.sourcePreservedEnglish,0);
 }
+
+// A78-320: 673-reference draft decisions can be triaged without promoting
+// their source/owner guesses to independent runtime or linguistic QA evidence.
+const pending=ledger.pendingDraftDecisions;
+assert.equal(pending.intentionalEnglishCandidate+pending.qBOwnedCandidate+
+  pending.unclassifiedChineseReference+pending.englishOnlyContext+
+  pending.sourcePreservedUnregistered,ledger.unreviewed);
+assert.equal(pending.sourcePreservedUnregistered,0);
+for(const item of externalRecords){
+  const pd=item.translationKeys.pendingDraftDecisions;
+  assert.equal(Object.values(pd).reduce((sum,n)=>sum+n,0),item.translationKeys.unreviewed);
+  assert.ok(pd.qBOwnedCandidate>=0,'Draft qB-owner claim requires separate runtime verification');
+}

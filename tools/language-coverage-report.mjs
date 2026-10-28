@@ -3,6 +3,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import {fileURLToPath} from 'node:url';
 import {readmePath} from './readme-language-navigation.mjs';
+import {getTranslationDraftScopeWorklist} from './translation-review-worklist.mjs';
 import {expectedExtendedLocales,inspectExtendedLocaleSources,canonicalEnglishTranslationKeys,rootOfExternalLocales,SOURCE_PRESERVED_UI_LABELS} from './external-weig-locale-assets.mjs';
 
 const root=path.resolve(path.dirname(fileURLToPath(import.meta.url)),'..');
@@ -37,8 +38,25 @@ export function languageCoverageReport(){
       contextualEnglishOnly:outstanding.filter(key=>!Object.hasOwn(simplifiedChinese,key)&&!sourcePreserved.has(key)).length
     };
     assert.equal(Object.values(unreviewedByReference).reduce((a,b)=>a+b,0),outstanding.length);
+    // Draft scope decisions are useful triage, not independently verified QA.
+    const draftScope=extended.has(lang.slug)?getTranslationDraftScopeWorklist(lang.slug):null;
+    const outstandingSet=new Set(outstanding);
+    const pendingDraftDecisions={
+      intentionalEnglishCandidate:0,qBOwnedCandidate:0,unclassifiedChineseReference:0,
+      englishOnlyContext:unreviewedByReference.contextualEnglishOnly,
+      sourcePreservedUnregistered:unreviewedByReference.sourcePreservedEnglish
+    };
+    for(const item of draftScope?.items||[]){
+      if(!outstandingSet.has(item.key))continue;
+      if(item.classification==='intentional_english')pendingDraftDecisions.intentionalEnglishCandidate++;
+      else if(item.classification==='qb_owned')pendingDraftDecisions.qBOwnedCandidate++;
+      else pendingDraftDecisions.unclassifiedChineseReference++;
+    }
+    if(extended.has(lang.slug))assert.equal(
+      Object.values(pendingDraftDecisions).reduce((a,b)=>a+b,0),outstanding.length);
     const translationKeys=extended.has(lang.slug)?{
-      supplied,reviewedEnglishFallback,unreviewed:outstanding.length,unreviewedByReference}:null;
+      supplied,reviewedEnglishFallback,unreviewed:outstanding.length,
+      unreviewedByReference,pendingDraftDecisions}:null;
     return {code:lang.code,locale:lang.slug,name:lang.name,readme:file,readmeReady,overlayStatus,translationKeys};
   });
   assert.equal(records.length,61);
@@ -60,13 +78,24 @@ export function languageCoverageReport(){
     contextualEnglishOnly:external.reduce((n,item)=>n+item.translationKeys.unreviewedByReference.contextualEnglishOnly,0)
   };
   assert.equal(Object.values(unreviewedByReference).reduce((a,b)=>a+b,0),unreviewed);
+  const pendingDraftDecisions={
+    intentionalEnglishCandidate:0,qBOwnedCandidate:0,unclassifiedChineseReference:0,
+    englishOnlyContext:0,sourcePreservedUnregistered:0
+  };
+  for(const item of external){
+    for(const key of Object.keys(pendingDraftDecisions)){
+      pendingDraftDecisions[key]+=item.translationKeys.pendingDraftDecisions[key];
+    }
+  }
+  assert.equal(Object.values(pendingDraftDecisions).reduce((a,b)=>a+b,0),unreviewed);
   const referenceScope={canonicalEnglishKeys:canonicalEnglishTranslationKeys.length,
     simplifiedChineseKeys:Object.keys(simplifiedChinese).length,
     englishOnlyKeys:referenceExceptions.length,
     sourcePreservedEnglishOnly:referenceExceptions.filter(key=>sourcePreserved.has(key)).length,
     contextualEnglishOnly:referenceExceptions.filter(key=>!sourcePreserved.has(key)).length};
   const weiGUiKeyCoverage={canonicalPerLocale:canonicalEnglishTranslationKeys.length,
-    expectedSlots,supplied,reviewedEnglishFallback,unreviewed,unreviewedByReference};
+    expectedSlots,supplied,reviewedEnglishFallback,unreviewed,
+    unreviewedByReference,pendingDraftDecisions};
   return {schemaVersion:1,source:'WeiG-official-locale-coverage',weiGUiKeyCoverage,referenceScope,
     officialLanguages:records.length,readmes:{ready:docsReady,missing:records.length-docsReady},
     extendedOverlays:{expected:overlays.expected,approved:overlays.ready,draft:overlays.drafts.length,missing:overlays.expected-overlays.ready-overlays.drafts.length},
