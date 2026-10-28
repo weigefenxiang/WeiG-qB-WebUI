@@ -15,8 +15,11 @@ for(const legacy of ['var WEIG_SETTINGS=','var WEIG_CORE=','var WEIG_RUNTIME=','
 assert.ok(source.includes('var SUPPORTED_LOCALES=')&&source.includes("data/weig-i18n/'+target+'.json")&&source.includes("namespace:'weig-i18n'")&&source.includes('identity:target'),'W.I18n must route one normalized current locale through RuntimeAssets');
 assert.ok(source.includes('loadWeiGLocale(locale)'),'W.I18n.ready must wait for the current WeiG locale shard');
 assert.ok(fs.existsSync(localeDir)&&fs.statSync(localeDir).isDirectory(),'WeiG locale shard directory missing');
-const shardFiles=fs.readdirSync(localeDir).filter(name=>name.endsWith('.json')).sort();
+const shardFiles=fs.readdirSync(localeDir).filter(name=>name.endsWith('.json')&&name!=='extended-manifest.json').sort();
 assert.deepEqual(shardFiles,overlays.map(locale=>locale+'.json').sort(),'only non-English supported WeiG locale overlays should be materialized');
+assert.deepEqual(JSON.parse(fs.readFileSync(path.join(localeDir,'extended-manifest.json'),'utf8')),
+  {schemaVersion:1,source:'WeiG-extended-locale-inventory',locales:[]},
+  'The optional unapproved extended inventory is a distinct source file, not an eleventh official overlay');
 
 const emptyDocument={documentElement:{lang:''},querySelectorAll(){return[];},querySelector(){return null;}};
 class CustomEvent{constructor(type,init){this.type=type;this.detail=init?.detail;}}
